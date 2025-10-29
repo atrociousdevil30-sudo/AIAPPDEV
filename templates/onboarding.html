@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+
+{% block title %}Onboarding - SmartHire AI{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-white">Candidate Onboarding</h1>
+    </div>
+    
+    <div class="row">
+        <!-- Left Column - Sample Candidates -->
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm h-100 bg-dark">
+                <div class="card-header border-bottom border-secondary py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 text-white">Sample Candidates</h5>
+                    <button type="button" class="btn btn-sm btn-outline-light" id="refreshSamples">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for candidate in sample_candidates %}
+                        <a href="#" class="list-group-item list-group-item-action border-0 py-3 bg-dark sample-candidate" 
+                           data-name="{{ candidate.name }}" 
+                           data-job="{{ candidate.job_desc }}"
+                           data-resume="{{ candidate.resume_text|replace('\n', '\\n')|replace('"', '\\"')|replace("'", "\\'") }}"
+                           style="border-bottom: 1px solid #2d2d2d !important;">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0 me-3">
+                                    <div class="avatar avatar-md">
+                                        <span class="avatar-text bg-primary">{{ candidate.name.split(' ')|map('first')|join('')|upper }}</span>
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1 text-white">{{ candidate.name }}</h6>
+                                    <p class="mb-0 text-muted small">{{ candidate.job_desc }}</p>
+                                </div>
+                                <span class="badge bg-secondary">Sample</span>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="card-footer border-top border-secondary py-2">
+                    <small class="text-muted">Click on a sample to fill the form</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column - Onboarding Form -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm h-100 bg-dark">
+                <div class="card-header border-bottom border-secondary py-3">
+                    <h5 class="mb-0 text-white">New Candidate Onboarding</h5>
+                </div>
+                <div class="card-body">
+                    <form id="resumeForm" method="POST" action="{{ url_for('onboarding_route') }}" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="row mb-3">
+                            <div class="col-md-6 mb-3 mb-md-0">
+                                <label for="candidateName" class="form-label">Candidate Name</label>
+                                <input type="text" class="form-control" id="candidateName" name="candidateName" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="jobDescriptionTitle" class="form-label">Job Title</label>
+                                <input type="text" class="form-control" id="jobDescriptionTitle" name="jobDescriptionTitle" placeholder="e.g., Senior Python Developer" required>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="jobDescription" class="form-label">Job Description</label>
+                            <textarea class="form-control" id="jobDescription" name="jobDescription" rows="4" required 
+                                      placeholder="Paste the detailed job description here..."></textarea>
+                            <div class="form-text">Be specific about required skills and experience for better matching.</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label for="resumeText" class="form-label mb-0">Resume Text</label>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="clearForm">
+                                    <i class="fas fa-eraser me-1"></i>Clear Form
+                                </button>
+                            </div>
+                            <textarea class="form-control font-monospace" id="resumeText" name="resumeText" rows="10" required 
+                                      placeholder="Paste the candidate's resume text here..."></textarea>
+                            <div class="form-text">For best results, use plain text format (no images or tables).</div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-primary px-4" id="analyzeBtn">
+                                <i class="fas fa-search me-2"></i>
+                                <span id="analyzeText">Analyze Resume</span>
+                                <span id="analyzeSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+            <div id="resultCard" class="card border-0 shadow-sm bg-dark mt-4">
+                {% if analysis and analysis.get('candidate', {}).get('name') != 'Not specified' %}
+                <div class="card-header border-bottom border-success bg-dark">
+                    <h5 class="mb-0 text-success">
+                        <i class="fas fa-check-circle me-2"></i>Analysis Complete
+                    </h5>
+                </div>
+                {% else %}
+                <div class="card-header border-bottom border-warning bg-dark">
+                    <h5 class="mb-0 text-warning">
+                        <i class="fas fa-hourglass-half me-2"></i>Analysis Pending
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center py-4">
+                        <i class="fas fa-file-upload fa-3x text-muted mb-3"></i>
+                        <p class="text-muted mb-0">Upload a resume to begin analysis</p>
+                    </div>
+                </div>
+                {% endif %}
+                {% if analysis and analysis.get('candidate', {}).get('name') != 'Not specified' %}
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h4 class="h6 text-muted mb-1">Candidate Name</h4>
+                            <p id="resultName" class="h4">{{ analysis.candidate.name }}</p>
+                            {% if analysis.candidate.email %}
+                            <p class="mb-1"><i class="fas fa-envelope me-2 text-muted"></i> {{ analysis.candidate.email }}</p>
+                            {% endif %}
+                            {% if analysis.candidate.phone %}
+                            <p class="mb-0"><i class="fas fa-phone me-2 text-muted"></i> {{ analysis.candidate.phone }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <h4 class="h6 text-muted mb-1">Match Score{% if analysis.job and analysis.job.title %} for {{ analysis.job.title }}{% endif %}</h4>
+                            <div class="d-flex align-items-center">
+                                <div class="progress flex-grow-1 me-3" style="height: 25px;">
+                                    <div id="scoreBar" class="progress-bar bg-success" role="progressbar" 
+                                         aria-valuenow="{{ score }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">
+                                    </div>
+                                </div>
+                                <span id="scoreValue" class="h4 mb-0">{{ score }}%</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h4 class="h6 text-muted mb-2">Matched Skills</h4>
+                            {% if analysis and analysis.match_score and analysis.match_score.matched_skills %}
+                                <div class="d-flex flex-wrap gap-1">
+                                    {% for skill in analysis.match_score.matched_skills %}
+                                        <span class="badge bg-success bg-opacity-25 text-success">{{ skill }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <p class="text-muted">No skills matched or analysis not available</p>
+                            {% endif %}
+                            
+                            <h4 class="h6 text-muted mt-3 mb-2">Missing Skills</h4>
+                            {% if analysis and analysis.match_score and analysis.match_score.missing_skills %}
+                                <div class="d-flex flex-wrap gap-1">
+                                    {% for skill in analysis.match_score.missing_skills %}
+                                        <span class="badge bg-secondary">{{ skill }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <p class="text-muted">No missing skills found or analysis not available</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <h4 class="h6 text-muted mb-2">Experience Level</h4>
+                            {% if analysis and analysis.match_score and analysis.match_score.experience_match is defined %}
+                                <div class="progress mb-3" style="height: 20px;">
+                                    <div id="experienceBar" class="progress-bar bg-info" role="progressbar" 
+                                         aria-valuenow="{{ analysis.match_score.experience_match }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">
+                                    </div>
+                                </div>
+                                <p class="small text-muted mb-3">
+                                    {% if analysis.match_score.experience_level %}
+                                        {{ analysis.match_score.experience_level }} ({{ analysis.match_score.experience_match }}% match)
+                                    {% else %}
+                                        Experience level not available
+                                    {% endif %}
+                                </p>
+                            {% else %}
+                                <p class="text-muted">Experience analysis not available</p>
+                            {% endif %}
+                            
+                            {% if analysis and analysis.experience %}
+                                <h4 class="h6 text-muted mt-3 mb-2">Work Experience</h4>
+                                <ul class="list-unstyled small">
+                                    {% for exp in analysis.experience %}
+                                    <li class="mb-1">
+                                        <strong>{{ exp.title }}</strong> 
+                                        {% if exp.company %}
+                                        at {{ exp.company }}
+                                        {% endif %}
+                                        {% if exp.duration %}
+                                        <span class="text-muted">({{ exp.duration }})</span>
+                                        {% endif %}
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <h4 class="h6 text-muted mt-3 mb-2">Work Experience</h4>
+                                <p class="text-muted">No work experience available</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <button class="btn btn-outline-success" id="approveInterviewBtn">
+                            <i class="fas fa-check-circle me-2"></i>Approve for Interview
+                        </button>
+                        <div>
+                            <button class="btn btn-outline-primary me-2" id="saveCandidateBtn">
+                                <i class="fas fa-save me-2"></i>Save Candidate
+                            </button>
+                            <button class="btn btn-outline-danger me-2" id="rejectCandidateBtn">
+                                <i class="fas fa-times-circle me-2"></i>Reject Candidate
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                </div>
+                {% endif %}
+            </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/onboarding.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get progress bars
+        const scoreBar = document.getElementById('scoreBar');
+        const experienceBar = document.getElementById('experienceBar');
+        
+        // Set progress bar values from server-side variables
+        if (scoreBar) {
+            scoreBar.style.width = '{{ score }}%';
+            scoreBar.setAttribute('aria-valuenow', '{{ score }}');
+        }
+        
+        if (experienceBar) {
+            experienceBar.style.width = '{{ experience_match }}%';
+            experienceBar.setAttribute('aria-valuenow', '{{ experience_match }}');
+        }
+        
+        // Add click handlers for buttons
+        const startInterviewBtn = document.getElementById('startInterviewBtn');
+        const saveCandidateBtn = document.getElementById('saveCandidateBtn');
+        const rejectCandidateBtn = document.getElementById('rejectCandidateBtn');
+        
+        const approveInterviewBtn = document.getElementById('approveInterviewBtn');
+        if (approveInterviewBtn) {
+            approveInterviewBtn.addEventListener('click', function() {
+                // Show success message with toast notification
+                const toast = document.createElement('div');
+                toast.className = 'position-fixed bottom-0 end-0 p-3';
+                toast.style.zIndex = '11';
+                toast.innerHTML = `
+                    <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+                        <div class="toast-header bg-success text-white">
+                            <strong class="me-auto">Success</strong>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                        </div>
+                        <div class="toast-body">
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            The candidate has been approved for an interview. They will be notified shortly.
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(toast);
+                
+                // Remove the toast after 5 seconds
+                setTimeout(() => {
+                    toast.remove();
+                }, 5000);
+            });
+        }
+        
+        if (saveCandidateBtn) {
+            saveCandidateBtn.addEventListener('click', function() {
+                alert('Candidate saved successfully!');
+            });
+        }
+        
+        if (rejectCandidateBtn) {
+            rejectCandidateBtn.addEventListener('click', function() {
+                if (confirm('Are you sure you want to reject this candidate? This action cannot be undone.')) {
+                    // Show rejection success message
+                    const toast = document.createElement('div');
+                    toast.className = 'position-fixed bottom-0 end-0 p-3';
+                    toast.style.zIndex = '11';
+                    toast.innerHTML = `
+                        <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+                            <div class="toast-header bg-danger text-white">
+                                <strong class="me-auto">Candidate Rejected</strong>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                            </div>
+                            <div class="toast-body">
+                                <i class="fas fa-times-circle text-danger me-2"></i>
+                                The candidate has been rejected and moved to the rejected candidates list.
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(toast);
+                    
+                    // Remove the toast after 5 seconds
+                    setTimeout(() => {
+                        toast.remove();
+                    }, 5000);
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,731 @@
+{% extends "base.html" %}
+
+{% block title %}{{ candidate.name }} - Resume Review - SmartHire AI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .avatar {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        font-weight: 600;
+    }
+    
+    .avatar-xxl {
+        width: 100px;
+        height: 100px;
+        font-size: 2.5rem;
+    }
+    
+    .gauge {
+        width: 150px;
+        height: 150px;
+        margin: 0 auto 1rem;
+    }
+    
+    .gauge-body {
+        width: 100%;
+        height: 0;
+        padding-bottom: 50%;
+        position: relative;
+        border-top-left-radius: 100% 200%;
+        border-top-right-radius: 100% 200%;
+        overflow: hidden;
+        background-color: #f5f5f5;
+    }
+    
+    .gauge-fill {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #4CAF50;
+        transform-origin: center top;
+        transform: rotate(0.5turn);
+        transition: transform 1s ease-out;
+    }
+    
+    .gauge-cover {
+        width: 75%;
+        height: 150%;
+        background-color: var(--bg-color);
+        border-radius: 50%;
+        position: absolute;
+        top: 25%;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: bold;
+        padding-bottom: 30%;
+        color: var(--text-color);
+    }
+    
+    .gauge-label {
+        text-align: center;
+        font-size: 0.9rem;
+        color: #666;
+        margin-top: 0.5rem;
+    }
+    
+    .skill-badge {
+        margin: 0.2rem;
+        font-weight: 500;
+    }
+    
+    .nav-tabs .nav-link {
+        color: #495057;
+        font-weight: 500;
+    }
+    
+    .nav-tabs .nav-link.active {
+        font-weight: 600;
+        border-bottom: 3px solid #0d6efd;
+    }
+    
+    .match-score {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+    
+    .ai-analysis-card {
+        border-left: 4px solid #0d6efd;
+    }
+    
+    .suggestion-item {
+        position: relative;
+        padding-left: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .suggestion-item:before {
+        content: '•';
+        position: absolute;
+        left: 0.5rem;
+        color: #0d6efd;
+    }
+    
+    .timeline {
+        position: relative;
+        padding-left: 1.5rem;
+    }
+    
+    .timeline:before {
+        content: '';
+        position: absolute;
+        left: 0.5rem;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background-color: #e9ecef;
+    }
+    
+    .timeline-item {
+        position: relative;
+        padding-bottom: 1.5rem;
+    }
+    
+    .timeline-item:before {
+        content: '';
+        position: absolute;
+        left: -1.5rem;
+        top: 0.3rem;
+        width: 0.75rem;
+        height: 0.75rem;
+        border-radius: 50%;
+        background-color: #0d6efd;
+    }
+    
+    .progress-thin {
+        height: 5px;
+        background-color: var(--bg-color);
+    }
+    
+    .progress-bar[data-width] {
+        width: 0;
+        transition: width 1s ease-in-out;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center py-3 border-bottom">
+        <div class="d-flex align-items-center">
+            <a href="{{ url_for('onboarding') }}" class="btn btn-outline-secondary btn-sm me-3" title="Back to Onboarding">
+                <i class="fas fa-arrow-left me-1"></i> Back to Onboarding
+            </a>
+            <div>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0">
+                        <li class="breadcrumb-item"><a href="{{ url_for('hr_dashboard') }}" class="text-decoration-none">Dashboard</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Resume Review</li>
+                    </ol>
+                </nav>
+                <h4 class="mb-0">{{ candidate.name }}</h4>
+                <p class="text-muted mb-0">{{ candidate.job_desc }}</p>
+            </div>
+        </div>
+        <div>
+            <div class="btn-group">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-ellipsis-v"></i>
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#"><i class="fas fa-download me-2"></i>Download Resume</a></li>
+                    <li><a class="dropdown-item" href="#"><i class="fas fa-print me-2"></i>Print</a></li>
+                    <li><a class="dropdown-item" href="#"><i class="fas fa-envelope me-2"></i>Email Candidate</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="#"><i class="fas fa-trash-alt me-2"></i>Delete</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <!-- Left Sidebar -->
+        <div class="col-md-4 col-lg-3">
+            <!-- Candidate Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body text-center">
+                    <div class="avatar avatar-xxl mb-3">
+                        <span class="avatar-text bg-primary text-white">
+                            {{ candidate.name.split(' ')|map('first')|join('')|upper }}
+                        </span>
+                    </div>
+                    <a href="{{ url_for('schedule_appointment', candidate_id=candidate.id) }}" class="btn btn-primary w-100 mb-2">
+                        <i class="fas fa-calendar-plus me-2"></i>Schedule Interview
+                    </a>
+                    <button class="btn btn-outline-secondary w-100">
+                        <i class="fas fa-envelope me-2"></i>Contact
+                    </button>
+                    <h5 class="mb-1">{{ candidate.name }}</h5>
+                    <p class="text-muted mb-3">
+                        {% if candidate.email %}
+                            {{ candidate.email }}<br>
+                        {% endif %}
+                        {% if candidate.phone %}
+                            {{ candidate.phone }}
+                        {% endif %}
+                    </p>
+                    
+                    <div class="d-grid gap-2">
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-success">
+                                <i class="fas fa-check me-2"></i>Shortlist
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-2"></i>Reject
+                            </button>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary">
+                            <i class="fas fa-calendar-alt me-2"></i>Schedule Interview
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ATS Score -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-0">
+                    <h6 class="mb-0 text-light">Candidate Information</h6>
+                </div>
+                <div class="card-body text-center">
+                    <div class="position-relative d-inline-block mb-3">
+                        <div class="position-relative">
+                            <div class="gauge" data-value="{{ candidate.score / 100 }}">
+                                <div class="gauge-body">
+                                    <div class="gauge-fill"></div>
+                                    <div class="gauge-cover">{{ candidate.score|int }}%</div>
+                                </div>
+                                <div class="gauge-label">Match Score</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-start">
+                        <h6 class="mb-2">Scoring Breakdown:</h6>
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Skills</span>
+                                <span>{{ (candidate.score * 0.3)|int }}%</span>
+                            </div>
+                            {% set skills_width = (candidate.score * 0.3)|round(1) %}
+                            <div class="progress progress-thin">
+                                <div class="progress-bar bg-success" 
+                                     role="progressbar" 
+                                     data-width="{{ skills_width }}"
+                                     aria-valuenow="{{ skills_width|int }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Experience</span>
+                                <span>{{ (candidate.score * 0.4)|int }}%</span>
+                            </div>
+                            {% set exp_width = (candidate.score * 0.4)|round(1) %}
+                            <div class="progress progress-thin">
+                                <div class="progress-bar bg-info" 
+                                     role="progressbar" 
+                                     data-width="{{ exp_width }}"
+                                     aria-valuenow="{{ exp_width|int }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Education</span>
+                                <span>{{ (candidate.score * 0.2)|int }}%</span>
+                            </div>
+                            {% set edu_width = (candidate.score * 0.2)|round(1) %}
+                            <div class="progress progress-thin">
+                                <div class="progress-bar bg-warning" 
+                                     role="progressbar" 
+                                     data-width="{{ edu_width }}"
+                                     aria-valuenow="{{ edu_width|int }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Other</span>
+                                <span>{{ (candidate.score * 0.1)|int }}%</span>
+                            </div>
+                            {% set other_width = (candidate.score * 0.1)|round(1) %}
+                            <div class="progress progress-thin">
+                                <div class="progress-bar bg-secondary" 
+                                     role="progressbar" 
+                                     data-width="{{ other_width }}"
+                                     aria-valuenow="{{ other_width|int }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Skills -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0">
+                    <h6 class="mb-0 text-light">Technical Skills</h6>
+                </div>
+                <div class="card-body">
+                    {% if skills.programming_languages %}
+                    <div class="mb-3">
+                        <h6 class="text-light mb-2">Programming Languages</h6>
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            {% for skill in skills.programming_languages %}
+                            <span class="badge bg-primary bg-opacity-25 text-light">{{ skill }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if skills.frameworks %}
+                    <div class="mb-3">
+                        <h6 class="text-light mb-2">Frameworks & Libraries</h6>
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            {% for skill in skills.frameworks %}
+                            <span class="badge bg-success bg-opacity-25 text-light">{{ skill }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if skills.tools %}
+                    <div class="mb-3">
+                        <h6 class="text-light mb-2">Tools & Technologies</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for skill in skills.tools %}
+                            <span class="badge bg-info bg-opacity-25 text-light">{{ skill }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if skills.design_tools %}
+                    <div class="mb-3">
+                        <h6 class="text-light mb-2">Design Tools</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for skill in skills.design_tools %}
+                            <span class="badge bg-purple bg-opacity-25 text-light">{{ skill }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if skills.management_skills %}
+                    <div class="mb-3">
+                        <h6 class="text-light mb-2">Management Skills</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for skill in skills.management_skills %}
+                            <span class="badge bg-teal bg-opacity-25 text-light">{{ skill }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                {% if skills.soft_skills %}
+                <div class="card-header bg-transparent border-0 border-top border-secondary">
+                    <h6 class="mb-0 text-light">Soft Skills</h6>
+                </div>
+                <div class="card-body pt-0">
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for skill in skills.soft_skills %}
+                        <span class="badge bg-warning bg-opacity-25 text-light">{{ skill }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-8 col-lg-9">
+            <!-- Resume Content -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-0">
+                    <ul class="nav nav-tabs card-header-tabs border-bottom-0" id="resumeTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active text-light" id="experience-tab" data-bs-toggle="tab" data-bs-target="#experience" type="button" role="tab" aria-controls="experience" aria-selected="true">
+                                Experience
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link text-light" id="education-tab" data-bs-toggle="tab" data-bs-target="#education" type="button" role="tab" aria-controls="education" aria-selected="false">
+                                Education
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link text-light" id="notes-tab" data-bs-toggle="tab" data-bs-target="#notes" type="button" role="tab" aria-controls="notes" aria-selected="false">
+                                Notes
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    <div class="tab-content" id="resumeTabsContent">
+                        <!-- Experience Tab -->
+                        <div class="tab-pane fade show active" id="experience" role="tabpanel" aria-labelledby="experience-tab">
+                            <div class="timeline-item position-relative ps-4 pb-4">
+                                <div class="d-flex justify-content-between">
+                                    <h6 class="mb-1 text-light">Senior Software Engineer</h6>
+                                    <small class="text-muted">Jan 2022 - Present</small>
+                                </div>
+                                <p class="mb-1 fw-bold text-light">TechCorp Solutions</p>
+                                <p class="mb-2 text-muted">Led development of AI-powered recruitment tools and implemented automated resume screening system that reduced hiring time by 40%.</p>
+                            </div>
+                            <div class="timeline-item position-relative ps-4 pb-4">
+                                <div class="d-flex justify-content-between">
+                                    <h6 class="mb-1 text-light">Software Engineer</h6>
+                                    <small class="text-muted">Mar 2019 - Dec 2021</small>
+                                </div>
+                                <p class="mb-1 fw-bold text-light">InnovateSoft</p>
+                                <p class="mb-2 text-muted">Developed and maintained web applications using Python, Django, and React. Collaborated with cross-functional teams to deliver high-quality software solutions.</p>
+                            </div>
+                        </div>
+
+                        <!-- Education Tab -->
+                        <div class="tab-pane fade" id="education" role="tabpanel" aria-labelledby="education-tab">
+                            <div class="timeline-item position-relative ps-4 pb-4">
+                                <div class="d-flex justify-content-between">
+                                    <h6 class="mb-1 text-light">Masters in Computer Science</h6>
+                                    <small class="text-muted">2017 - 2019</small>
+                                </div>
+                                <p class="mb-1 fw-bold text-light">Stanford University</p>
+                                <p class="mb-2 text-muted">Specialized in Artificial Intelligence and Machine Learning. GPA: 3.8/4.0</p>
+                            </div>
+                            <div class="timeline-item position-relative ps-4 pb-4">
+                                <div class="d-flex justify-content-between">
+                                    <h6 class="mb-1 text-light">Bachelors in Computer Science</h6>
+                                    <small class="text-muted">2013 - 2017</small>
+                                </div>
+                                <p class="mb-1 fw-bold text-light">University of California, Berkeley</p>
+                                <p class="mb-2 text-muted">Minor in Data Science. Graduated with Honors. GPA: 3.7/4.0</p>
+                            </div>
+                        </div>
+
+                        <!-- Notes Tab -->
+                        <div class="tab-pane fade" id="notes" role="tabpanel" aria-labelledby="notes-tab">
+                            <div class="mb-3">
+                                <textarea class="form-control" rows="5" placeholder="Add your notes about this candidate..."></textarea>
+                                <div class="d-flex justify-content-end mt-2">
+                                    <button class="btn btn-primary btn-sm">Save Notes</button>
+                                </div>
+                            </div>
+                            <div class="border-top border-secondary pt-3">
+                                <h6 class="text-light mb-3">Previous Notes</h6>
+                                
+                                <!-- Note 1 -->
+                                <div class="card bg-dark border-secondary mb-3">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar avatar-sm me-2">
+                                                    <span class="avatar-text bg-primary">HR</span>
+                                                </div>
+                                                <span class="text-light fw-bold">Sarah Johnson</span>
+                                            </div>
+                                            <small class="text-muted">Oct 25, 2025</small>
+                                        </div>
+                                        <h6 class="text-light mb-2">Initial Screening</h6>
+                                        <p class="text-muted mb-0">Candidate shows strong technical background and relevant experience. Scheduled for technical interview next week. Particularly impressed with their AI/ML experience at TechCorp.</p>
+                                    </div>
+                                </div>
+
+                                <!-- Note 2 -->
+                                <div class="card bg-dark border-secondary mb-3">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar avatar-sm me-2">
+                                                    <span class="avatar-text bg-success">TM</span>
+                                                </div>
+                                                <span class="text-light fw-bold">Michael Chen</span>
+                                            </div>
+                                            <small class="text-muted">Oct 26, 2025</small>
+                                        </div>
+                                        <h6 class="text-light mb-2">Technical Assessment</h6>
+                                        <p class="text-muted mb-0">Completed the coding challenge with flying colors. Demonstrated excellent problem-solving skills and clean code practices. Scored 9.5/10 on the technical evaluation.</p>
+                                    </div>
+                                </div>
+
+                                <!-- Note 3 -->
+                                <div class="card bg-dark border-secondary">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar avatar-sm me-2">
+                                                    <span class="avatar-text bg-warning">HM</span>
+                                                </div>
+                                                <span class="text-light fw-bold">David Wilson</span>
+                                            </div>
+                                            <small class="text-muted">Oct 27, 2025</small>
+                                        </div>
+                                        <h6 class="text-light mb-2">Final Interview</h6>
+                                        <p class="text-muted mb-0">Impressive cultural fit and communication skills. Demonstrated strong leadership potential and team collaboration. Recommended for Senior Developer position.</p>
+                                    </div>
+                                </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Analysis -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0">
+                    <h6 class="mb-0">AI Analysis</h6>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-dark bg-dark text-light border border-secondary">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-robot fa-2x me-3 text-primary"></i>
+                            <div>
+                                <h5 class="alert-heading mb-1 text-light">AI-Powered Insights</h5>
+                                <p class="mb-0 text-muted">Our AI has analyzed this resume and identified key strengths and potential concerns.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card bg-dark border border-secondary mb-3">
+                                <div class="card-body">
+                                    <h6 class="text-light"><i class="fas fa-check-circle text-success me-2"></i>Strengths</h6>
+                                    <ul class="mb-0 text-muted">
+                                        <li>Strong experience with Python and web frameworks</li>
+                                        <li>Relevant industry experience in tech companies</li>
+                                        <li>Consistent career progression</li>
+                                        <li>Strong educational background</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-dark border border-secondary mb-3">
+                                <div class="card-body">
+                                    <h6 class="text-light"><i class="fas fa-exclamation-triangle text-warning me-2"></i>Considerations</h6>
+                                    <ul class="mb-0 text-muted">
+                                        <li>Short tenure at previous company (1 year)</li>
+                                        <li>Limited management experience</li>
+                                        <li>No certifications listed</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <h6 class="text-light mb-3">Suggested Interview Questions</h6>
+                        <ol class="list-group list-group-numbered">
+                            <li class="list-group-item bg-dark text-light border-secondary mb-2">Can you tell us about a challenging Python project you worked on and how you approached it?</li>
+                            <li class="list-group-item bg-dark text-light border-secondary mb-2">What led to your short tenure at [Previous Company]?</li>
+                            <li class="list-group-item bg-dark text-light border-secondary">How do you stay updated with the latest web development trends and technologies?</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+    /* Gauge Chart Styles */
+    .gauge {
+        width: 200px;
+        height: 200px;
+        position: relative;
+        margin: 0 auto 20px;
+    }
+
+    .gauge-body {
+        width: 100%;
+        height: 0;
+        padding-bottom: 50%;
+        position: relative;
+        border-top-left-radius: 100% 200%;
+        border-top-right-radius: 100% 200%;
+        overflow: hidden;
+        background-color: #f5f5f5;
+    }
+
+    .gauge-fill {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, #dc3545, #ffc107, #28a745);
+        transform-origin: center top;
+        transform: rotate(0.5turn);
+        transition: transform 1s ease-out;
+    }
+
+    .gauge-cover {
+        width: 75%;
+        height: 150%;
+        background: white;
+        border-radius: 50%;
+        position: absolute;
+        top: 25%;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #333;
+    }
+
+    .gauge-label {
+        text-align: center;
+        font-size: 1rem;
+        color: #6c757d;
+        margin-top: 10px;
+    }
+
+    /* Custom tab styles */
+    .nav-tabs .nav-link {
+        color: #6c757d;
+        font-weight: 500;
+        border: none;
+        padding: 0.75rem 1.25rem;
+    }
+
+    .nav-tabs .nav-link.active {
+        color: #0d6efd;
+        background-color: transparent;
+        border-bottom: 3px solid #0d6efd;
+    }
+
+    .nav-tabs .nav-link:hover:not(.active) {
+        border-color: transparent;
+        color: #0d6efd;
+    }
+
+    /* Card styles */
+    .card {
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+    }
+
+    .card-header {
+        padding: 1rem 1.25rem;
+    }
+
+    /* Avatar styles */
+    .avatar {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background-color: #f0f0f0;
+        color: #6c757d;
+        font-weight: 600;
+    }
+
+    .avatar-xxl {
+        width: 120px;
+        height: 120px;
+        font-size: 3rem;
+    }
+
+    .avatar-md {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+
+    .avatar-sm {
+        width: 30px;
+        height: 30px;
+        font-size: 0.875rem;
+    }
+
+    .avatar-text {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+    }
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Update gauge fill based on ATS score
+    const gaugeFill = document.querySelector('.gauge-fill');
+    if (gaugeFill) {
+        const value = parseFloat(gaugeFill.parentElement.parentElement.dataset.value);
+        const rotation = value * 180; // 0-180 degrees for half-circle gauge
+        gaugeFill.style.transform = `rotate(${rotation / 180}turn)`;
+    }
+    
+    // Initialize progress bars
+    document.querySelectorAll('.progress-bar[data-width]').forEach(bar => {
+        const width = bar.dataset.width;
+        bar.style.width = `${width}%`;
+    });
+    
+    // Initialize tooltips
+    var tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipTriggerList.forEach(function(tooltipTriggerEl) {
+        new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %}

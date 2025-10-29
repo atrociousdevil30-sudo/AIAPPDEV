@@ -1,0 +1,495 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">AI-Powered Interview</h4>
+                </div>
+                <div class="card-body">
+                    <div id="interviewContainer">
+                        <!-- Initial State -->
+                        <div id="welcomeScreen" class="text-center py-5">
+                            <div class="mb-4">
+                                <i class="fas fa-robot fa-5x text-primary mb-3"></i>
+                                <h3>Welcome to Your AI Interview</h3>
+                                <p class="text-muted">This interview will assess your skills and experience for the position.</p>
+                            </div>
+                            
+                            <div class="requirements-card p-4 mb-4 bg-light rounded">
+                                <h5>Requirements:</h5>
+                                <ul class="text-start">
+                                    <li>Stable internet connection</li>
+                                    <li>Webcam and microphone access</li>
+                                    <li>Quiet environment</li>
+                                    <li>Approximately 30 minutes of your time</li>
+                                </ul>
+                                <div class="form-check mb-3 text-start">
+                                    <input class="form-check-input" type="checkbox" id="consentCheck">
+                                    <label class="form-check-label" for="consentCheck">
+                                        I understand that this interview will be recorded for evaluation purposes.
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <button id="startInterviewBtn" class="btn btn-primary btn-lg" disabled>
+                                <i class="fas fa-play-circle me-2"></i>Start Interview
+                            </button>
+                        </div>
+                        
+                        <!-- Interview in Progress -->
+                        <div id="interviewInProgress" class="d-none">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="question-container mb-4">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h5>Question <span id="questionNumber">1</span> of <span id="totalQuestions">5</span></h5>
+                                            <div class="text-muted">
+                                                <i class="fas fa-clock me-1"></i>
+                                                <span id="timer">05:00</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="card mb-3">
+                                            <div class="card-body">
+                                                <p class="card-text" id="questionText">Loading question...</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="response-container mb-4">
+                                            <div class="form-floating">
+                                                <textarea class="form-control" placeholder="Type your answer here..." 
+                                                          id="answerText" style="height: 120px"></textarea>
+                                                <label for="answerText">Your Answer</label>
+                                            </div>
+                                            <div class="d-flex justify-content-between mt-2">
+                                                <small class="text-muted">Your response will be analyzed for content and clarity.</small>
+                                                <button id="nextQuestionBtn" class="btn btn-primary" disabled>
+                                                    Next <i class="fas fa-arrow-right ms-1"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <div class="card mb-3">
+                                        <div class="card-header">
+                                            <h6 class="mb-0">Video Feed</h6>
+                                        </div>
+                                        <div class="card-body text-center p-2">
+                                            <video id="webcam" width="100%" autoplay muted class="rounded"></video>
+                                            <div class="mt-2">
+                                                <button id="toggleVideoBtn" class="btn btn-sm btn-outline-secondary me-2">
+                                                    <i class="fas fa-video"></i> Camera
+                                                </button>
+                                                <button id="toggleAudioBtn" class="btn btn-sm btn-outline-secondary">
+                                                    <i class="fas fa-microphone"></i> Mic
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6 class="mb-0">Progress</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="progress mb-3" style="height: 20px;">
+                                                <div class="progress-bar bg-success" id="progressBar" role="progressbar" 
+                                                     style="width: 0%" aria-valuenow="0" aria-valuemin="0" 
+                                                     aria-valuemax="100">0%</div>
+                                            </div>
+                                            <div class="d-flex justify-content-between">
+                                                <small>Questions: <span id="completedQuestions">0</span>/<span id="totalQuestions2">5</span></small>
+                                                <small>Time: <span id="elapsedTime">00:00</span></small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Interview Complete -->
+                        <div id="interviewComplete" class="text-center py-5 d-none">
+                            <div class="mb-4">
+                                <div class="checkmark-circle">
+                                    <div class="checkmark draw"></div>
+                                </div>
+                                <h3 class="mt-4">Interview Complete!</h3>
+                                <p class="text-muted">Thank you for completing the interview.</p>
+                            </div>
+                            
+                            <div class="results-card p-4 mb-4 bg-light rounded text-start">
+                                <h5 class="mb-3">Interview Summary</h5>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <p><strong>Total Questions:</strong> <span id="summaryTotalQuestions">5</span></p>
+                                        <p><strong>Time Taken:</strong> <span id="summaryTimeTaken">12:34</span></p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p><strong>Confidence Score:</strong> <span id="confidenceScore">85</span>/100</p>
+                                        <p><strong>Status:</strong> <span class="badge bg-success">Completed</span></p>
+                                    </div>
+                                </div>
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Your responses are being analyzed. You'll receive a notification once the results are ready.
+                                </div>
+                            </div>
+                            
+                            <a href="{{ url_for('candidate_dashboard_route') }}" class="btn btn-primary">
+                                <i class="fas fa-tachometer-alt me-2"></i>Return to Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+/* Checkmark animation */
+.checkmark-circle {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    display: block;
+    stroke-width: 4;
+    stroke: #4bb71b;
+    stroke-miterlimit: 10;
+    margin: 0 auto;
+    box-shadow: inset 0px 0px 0px #4bb71b;
+    animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
+}
+
+.checkmark {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: block;
+    stroke-width: 4;
+    stroke: #4bb71b;
+    stroke-miterlimit: 10;
+    margin: 10% auto;
+    animation: scale .3s ease-in-out .9s both;
+}
+
+.checkmark__check {
+    transform-origin: 50% 50%;
+    stroke-dasharray: 48;
+    stroke-dashoffset: 48;
+    animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+}
+
+@keyframes stroke {
+    100% { stroke-dashoffset: 0; }
+}
+
+@keyframes scale {
+    0%, 100% { transform: none; }
+    50% { transform: scale3d(1.1, 1.1, 1); }
+}
+
+@keyframes fill {
+    100% { box-shadow: inset 0px 0px 0px 50px rgba(75, 183, 27, 0.1); }
+}
+
+/* Video container */
+#webcam {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    max-width: 100%;
+}
+
+/* Question styling */
+.question-container {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 4px solid #0d6efd;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .card {
+        margin-bottom: 15px;
+    }
+    
+    .requirements-card, .results-card {
+        text-align: left;
+    }
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Interview configuration
+    const interviewConfig = {
+        totalQuestions: 5,
+        timePerQuestion: 300, // 5 minutes in seconds
+        currentQuestion: 1,
+        timer: null,
+        timeLeft: 0,
+        startTime: null,
+        mediaRecorder: null,
+        recordedChunks: [],
+        isVideoOn: true,
+        isAudioOn: true,
+        interviewData: {
+            answers: [],
+            startTime: null,
+            endTime: null,
+            videoBlob: null
+        }
+    };
+    
+    // DOM Elements
+    const $welcomeScreen = $('#welcomeScreen');
+    const $interviewInProgress = $('#interviewInProgress');
+    const $interviewComplete = $('#interviewComplete');
+    const $startInterviewBtn = $('#startInterviewBtn');
+    const $nextQuestionBtn = $('#nextQuestionBtn');
+    const $answerText = $('#answerText');
+    const $questionText = $('#questionText');
+    const $questionNumber = $('#questionNumber');
+    const $totalQuestions = $('#totalQuestions');
+    const $totalQuestions2 = $('#totalQuestions2');
+    const $completedQuestions = $('#completedQuestions');
+    const $progressBar = $('#progressBar');
+    const $timer = $('#timer');
+    const $elapsedTime = $('#elapsedTime');
+    const $webcam = $('#webcam')[0];
+    const $toggleVideoBtn = $('#toggleVideoBtn');
+    const $toggleAudioBtn = $('#toggleAudioBtn');
+    
+    // Questions (in a real app, these would come from the server)
+    const questions = [
+        "Can you tell me about a challenging project you've worked on and how you approached it?",
+        "How do you handle disagreements or conflicts within your team?",
+        "Describe a time when you had to learn a new technology or skill quickly. How did you approach it?",
+        "What development methodologies are you familiar with, and which do you prefer and why?",
+        "Where do you see yourself in 5 years, and how does this position align with your career goals?"
+    ];
+    
+    // Event Listeners
+    $('#consentCheck').on('change', function() {
+        $startInterviewBtn.prop('disabled', !$(this).is(':checked'));
+    });
+    
+    $startInterviewBtn.on('click', startInterview);
+    $nextQuestionBtn.on('click', nextQuestion);
+    $toggleVideoBtn.on('click', toggleVideo);
+    $toggleAudioBtn.on('click', toggleAudio);
+    $answerText.on('input', validateAnswer);
+    
+    // Initialize
+    $totalQuestions.text(interviewConfig.totalQuestions);
+    $totalQuestions2.text(interviewConfig.totalQuestions);
+    
+    // Functions
+    function startInterview() {
+        // Hide welcome screen, show interview
+        $welcomeScreen.addClass('d-none');
+        $interviewInProgress.removeClass('d-none');
+        
+        // Set up media devices
+        setupMediaDevices();
+        
+        // Start the interview
+        interviewConfig.interviewData.startTime = new Date();
+        startQuestionTimer();
+        updateQuestion(1);
+    }
+    
+    function setupMediaDevices() {
+        // Request camera and microphone access
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            .then(function(stream) {
+                $webcam.srcObject = stream;
+                
+                // Set up media recorder
+                interviewConfig.mediaRecorder = new MediaRecorder(stream);
+                interviewConfig.mediaRecorder.ondataavailable = handleDataAvailable;
+                interviewConfig.mediaRecorder.start();
+                
+                // Start recording
+                const options = { mimeType: 'video/webm;codecs=vp9' };
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    options.mimeType = 'video/webm;codecs=vp8';
+                    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                        options.mimeType = 'video/webm';
+                    }
+                }
+                
+                try {
+                    interviewConfig.mediaRecorder = new MediaRecorder(stream, options);
+                    interviewConfig.mediaRecorder.ondataavailable = handleDataAvailable;
+                    interviewConfig.mediaRecorder.start(1000); // Collect data every second
+                } catch (e) {
+                    console.error('Error setting up media recorder:', e);
+                }
+            })
+            .catch(function(err) {
+                console.error('Error accessing media devices:', err);
+                alert('Could not access camera/microphone. Please check your permissions and try again.');
+            });
+    }
+    
+    function handleDataAvailable(event) {
+        if (event.data.size > 0) {
+            interviewConfig.recordedChunks.push(event.data);
+        }
+    }
+    
+    function startQuestionTimer() {
+        interviewConfig.timeLeft = interviewConfig.timePerQuestion;
+        updateTimerDisplay();
+        
+        interviewConfig.timer = setInterval(function() {
+            interviewConfig.timeLeft--;
+            updateTimerDisplay();
+            
+            // Update elapsed time
+            const elapsed = Math.floor((new Date() - interviewConfig.interviewData.startTime) / 1000);
+            const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+            const seconds = (elapsed % 60).toString().padStart(2, '0');
+            $elapsedTime.text(`${minutes}:${seconds}`);
+            
+            if (interviewConfig.timeLeft <= 0) {
+                clearInterval(interviewConfig.timer);
+                // Auto-submit if time runs out
+                nextQuestion();
+            }
+        }, 1000);
+    }
+    
+    function updateTimerDisplay() {
+        const minutes = Math.floor(interviewConfig.timeLeft / 60).toString().padStart(2, '0');
+        const seconds = (interviewConfig.timeLeft % 60).toString().padStart(2, '0');
+        $timer.text(`${minutes}:${seconds}`);
+    }
+    
+    function updateQuestion(questionNum) {
+        if (questionNum > interviewConfig.totalQuestions) {
+            finishInterview();
+            return;
+        }
+        
+        interviewConfig.currentQuestion = questionNum;
+        $questionNumber.text(questionNum);
+        $questionText.text(questions[questionNum - 1]);
+        $answerText.val('');
+        $nextQuestionBtn.prop('disabled', true);
+        
+        // Update progress
+        const progress = Math.floor(((questionNum - 1) / interviewConfig.totalQuestions) * 100);
+        $progressBar.css('width', `${progress}%`).attr('aria-valuenow', progress).text(`${progress}%`);
+        $completedQuestions.text(questionNum - 1);
+    }
+    
+    function validateAnswer() {
+        $nextQuestionBtn.prop('disabled', $answerText.val().trim().length < 10);
+    }
+    
+    function nextQuestion() {
+        // Save current answer
+        if ($answerText.val().trim()) {
+            interviewConfig.interviewData.answers.push({
+                question: questions[interviewConfig.currentQuestion - 1],
+                answer: $answerText.val().trim(),
+                timeSpent: interviewConfig.timePerQuestion - interviewConfig.timeLeft
+            });
+        }
+        
+        // Reset timer for next question
+        clearInterval(interviewConfig.timer);
+        
+        // If there are more questions, show the next one
+        if (interviewConfig.currentQuestion < interviewConfig.totalQuestions) {
+            updateQuestion(interviewConfig.currentQuestion + 1);
+            startQuestionTimer();
+        } else {
+            finishInterview();
+        }
+    }
+    
+    function finishInterview() {
+        // Stop media recording
+        if (interviewConfig.mediaRecorder && interviewConfig.mediaRecorder.state !== 'inactive') {
+            interviewConfig.mediaRecorder.stop();
+        }
+        
+        // Stop all tracks in the stream
+        if ($webcam.srcObject) {
+            $webcam.srcObject.getTracks().forEach(track => track.stop());
+        }
+        
+        // Update interview data
+        interviewConfig.interviewData.endTime = new Date();
+        
+        // Create video blob from recorded chunks
+        if (interviewConfig.recordedChunks.length > 0) {
+            const blob = new Blob(interviewConfig.recordedChunks, { type: 'video/webm' });
+            interviewConfig.interviewData.videoBlob = blob;
+            
+            // In a real app, you would upload this to your server
+            // uploadVideo(blob);
+        }
+        
+        // Show completion screen
+        $interviewInProgress.addClass('d-none');
+        $interviewComplete.removeClass('d-none');
+        
+        // Calculate and display time taken
+        const timeTaken = Math.floor((interviewConfig.interviewData.endTime - interviewConfig.interviewData.startTime) / 1000);
+        const minutes = Math.floor(timeTaken / 60).toString().padStart(2, '0');
+        const seconds = (timeTaken % 60).toString().padStart(2, '0');
+        $('#summaryTimeTaken').text(`${minutes}:${seconds}`);
+        
+        // In a real app, you would send the interview data to your server here
+        // submitInterviewResults(interviewConfig.interviewData);
+    }
+    
+    function toggleVideo() {
+        if ($webcam.srcObject) {
+            const videoTrack = $webcam.srcObject.getVideoTracks()[0];
+            if (videoTrack) {
+                interviewConfig.isVideoOn = !interviewConfig.isVideoOn;
+                videoTrack.enabled = interviewConfig.isVideoOn;
+                $toggleVideoBtn.toggleClass('btn-outline-danger', !interviewConfig.isVideoOn);
+                $toggleVideoBtn.toggleClass('btn-outline-secondary', interviewConfig.isVideoOn);
+            }
+        }
+    }
+    
+    function toggleAudio() {
+        if ($webcam.srcObject) {
+            const audioTrack = $webcam.srcObject.getAudioTracks()[0];
+            if (audioTrack) {
+                interviewConfig.isAudioOn = !interviewConfig.isAudioOn;
+                audioTrack.enabled = interviewConfig.isAudioOn;
+                $toggleAudioBtn.toggleClass('btn-outline-danger', !interviewConfig.isAudioOn);
+                $toggleAudioBtn.toggleClass('btn-outline-secondary', interviewConfig.isAudioOn);
+            }
+        }
+    }
+    
+    // Handle page refresh/close
+    window.addEventListener('beforeunload', function(e) {
+        if ($interviewInProgress.is(':visible') && !$interviewComplete.is(':visible')) {
+            e.preventDefault();
+            e.returnValue = 'Are you sure you want to leave? Your interview progress may be lost.';
+            return e.returnValue;
+        }
+    });
+});
+</script>
+{% endblock %}

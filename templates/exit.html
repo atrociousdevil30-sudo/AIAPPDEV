@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}Exit Interviews{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="h5 mb-0">Exit Interview Form</h2>
+                </div>
+                <div class="card-body">
+                    <form id="exitForm" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="mb-3">
+                            <label for="employeeName" class="form-label">Your Name</label>
+                            <input type="text" class="form-control" id="employeeName" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="reasonLeaving" class="form-label">Reason for Leaving</label>
+                            <select class="form-select" id="reasonLeaving" required>
+                                <option value="" selected disabled>Select a reason...</option>
+                                <option value="career_advancement">Career Advancement</option>
+                                <option value="better_opportunity">Better Opportunity</option>
+                                <option value="relocation">Relocation</option>
+                                <option value="work_environment">Work Environment</option>
+                                <option value="compensation">Compensation</option>
+                                <option value="personal_reasons">Personal Reasons</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="additionalFeedback" class="form-label">Additional Feedback</label>
+                            <textarea class="form-control" id="additionalFeedback" rows="4" required></textarea>
+                            <div class="form-text">Your feedback is valuable to us. Please be honest and constructive.</div>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="contactForDetails" checked>
+                            <label class="form-check-label" for="contactForDetails">I'm open to being contacted for additional details</label>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary" id="submitExitForm">
+                                <span id="submitText">Submit Feedback</span>
+                                <span id="submitSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="h5 mb-0">Your Feedback Matters</h2>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Your responses will be kept confidential and used to improve our workplace.
+                    </div>
+                    
+                    <h5 class="h6 text-muted mt-4 mb-3">Why We Value Your Feedback</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            Helps us improve employee experience
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            Identifies areas for organizational growth
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            Informs better management practices
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            Contributes to a better workplace for remaining team members
+                        </li>
+                    </ul>
+                    
+                    <div class="alert alert-light mt-4">
+                        <h6 class="alert-heading">Thank You</h6>
+                        <p class="mb-0 small">We appreciate your time and contributions to our organization. We wish you the best in your future endeavors.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="h5 mb-0">Previous Exit Feedback</h2>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="feedbackTable">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Name</th>
+                                    <th>Reason for Leaving</th>
+                                    <th>Sentiment</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="feedbackTableBody">
+                                <!-- Feedback will be loaded here via JavaScript -->
+                                <tr>
+                                    <td colspan="5" class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Feedback Detail Modal -->
+<div class="modal fade" id="feedbackModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content bg-dark text-light border-0">
+            <div class="modal-header bg-dark border-secondary">
+                <h5 class="modal-title d-flex align-items-center text-light">
+                    <i class="fas fa-comment-alt me-2 text-primary"></i>
+                    <span>Exit Interview Feedback</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body bg-dark">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <div class="card h-100 bg-dark-800 border-secondary">
+                            <div class="card-body">
+                                <h6 class="text-uppercase small text-muted mb-3">Employee Information</h6>
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="avatar avatar-lg bg-primary bg-opacity-25 text-primary rounded-circle me-3 d-flex align-items-center justify-content-center">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="mb-0 text-light" id="feedbackEmployeeName">-</h5>
+                                        <span class="text-muted small" id="feedbackDate">-</span>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between border-top border-secondary pt-3">
+                                    <div>
+                                        <p class="small text-muted mb-1">Department</p>
+                                        <p class="mb-0 text-light" id="feedbackDepartment">-</p>
+                                    </div>
+                                    <div>
+                                        <p class="small text-muted mb-1">Employment Duration</p>
+                                        <p class="mb-0 text-light" id="feedbackDuration">-</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100 bg-dark-800 border-secondary">
+                            <div class="card-body">
+                                <h6 class="text-uppercase small text-muted mb-3">Exit Details</h6>
+                                <div class="mb-3">
+                                    <p class="small text-muted mb-1">Reason for Leaving</p>
+                                    <div class="badge bg-primary bg-opacity-25 text-primary p-2 w-100 text-start border border-primary border-opacity-25" id="feedbackReason">
+                                        <i class="fas fa-sign-out-alt me-2"></i>
+                                        <span>-</span>
+                                    </div>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="feedbackContactAllowed" disabled>
+                                    <label class="form-check-label small text-light-50" for="feedbackContactAllowed">
+                                        Open to future contact
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card bg-dark-800 border-secondary mb-4">
+                    <div class="card-body">
+                        <h6 class="text-uppercase small text-muted mb-3">Detailed Feedback</h6>
+                        <div class="p-3 bg-dark-700 rounded border border-secondary" id="feedbackContent">
+                            <p class="mb-0 text-muted fst-italic">No additional feedback provided.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card bg-dark-800 border-secondary">
+                    <div class="card-body">
+                        <h6 class="text-uppercase small text-muted mb-3">Follow-up Actions</h6>
+                        <div class="d-flex align-items-center">
+                            <div class="flex-grow-1">
+                                <div class="form-floating">
+                                    <textarea class="form-control bg-dark-700 text-light border-secondary" placeholder="Add internal notes" id="internalNotes" style="height: 100px"></textarea>
+                                    <label for="internalNotes" class="text-muted">Internal Notes</label>
+                                </div>
+                            </div>
+                            <div class="ms-3">
+                                <button class="btn btn-outline-primary">
+                                    <i class="fas fa-save me-2"></i>Save
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-dark-800 border-secondary">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Close
+                </button>
+                <button type="button" class="btn btn-primary">
+                    <i class="fas fa-download me-2"></i>Export as PDF
+                </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/exit.js') }}"></script>
+{% endblock %}

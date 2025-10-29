@@ -1,0 +1,470 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Manual Resume Review: {{ candidate.name }}</h2>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs">
+                        <li class="nav-item">
+                            <a class="nav-link active" data-bs-toggle="tab" href="#resume">Resume</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#ats">ATS Analysis</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#notes">Notes</a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="resume">
+                            <div class="resume-container">
+                                {{ candidate.resume_html|safe }}
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="ats">
+                            <h4>ATS Score: {{ "%0.1f"|format(candidate.ats_score * 100) }}%</h4>
+                            <div class="progress mb-3">
+                                <div class="progress-bar bg-success" role="progressbar" 
+                                     data-width="{{ candidate.ats_score * 100 }}"
+                                     aria-valuenow="{{ candidate.ats_score * 100 }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                            <script>
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    const progressBar = document.querySelector('.progress-bar');
+                                    if (progressBar) {
+                                        progressBar.style.width = progressBar.dataset.width + '%';
+                                    }
+                                });
+                            </script>
+                            
+                            <h5>Skills Match</h5>
+                            <ul class="list-group mb-3">
+                                {% for skill in candidate.skills %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    {{ skill.name }}
+                                    <span class="badge bg-primary rounded-pill">{{ "%0.0f"|format(skill.match * 100) }}%</span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            
+                            <h5>Experience Analysis</h5>
+                            <div class="mb-3">
+                                {% for exp in candidate.experience %}
+                                <div class="card mb-2">
+                                    <div class="card-body">
+                                        <h6 class="card-title">{{ exp.title }} at {{ exp.company }}</h6>
+                                        <p class="card-text">{{ exp.duration }}</p>
+                                        <p class="card-text">{{ exp.description }}</p>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="notes">
+                            <form id="reviewForm" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <div class="mb-3">
+                                    <label for="reviewNotes" class="form-label">Review Notes</label>
+                                    <textarea class="form-control" id="reviewNotes" rows="5">{{ candidate.review_notes or '' }}</textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Status</label>
+                                    <select class="form-select" id="reviewStatus">
+                                        <option value="pending" {% if candidate.status == 'pending' %}selected{% endif %}>Pending Review</option>
+                                        <option value="interview" {% if candidate.status == 'interview' %}selected{% endif %}>Schedule Interview</option>
+                                        <option value="rejected" {% if candidate.status == 'rejected' %}selected{% endif %}>Reject</option>
+                                        <option value="hired" {% if candidate.status == 'hired' %}selected{% endif %}>Hire</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Save Review</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('resume_screening_route') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Screening
+                </a>
+                <div>
+                    <button class="btn btn-outline-danger me-2" id="rejectBtn" 
+                            data-candidate-id="{{ candidate.id }}">
+                        <i class="fas fa-times"></i> Reject
+                    </button>
+                    <button class="btn btn-primary" id="scheduleBtn">
+                        <i class="fas fa-calendar-plus"></i> Schedule Interview
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Interview Modal -->
+<div class="modal fade" id="scheduleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark text-white border border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">Schedule Interview - {{ candidate.name }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <form id="scheduleForm" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="mb-3">
+                                <label for="interviewType" class="form-label">Interview Type</label>
+                                <select class="form-select bg-dark text-white border-secondary" id="interviewType" required>
+                                    <option value="phone">Phone Screen</option>
+                                    <option value="video" selected>Video Interview</option>
+                                    <option value="onsite">On-site Interview</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="interviewDate" class="form-label">Date & Time</label>
+                                <input type="datetime-local" class="form-control bg-dark text-white border-secondary" 
+                                       id="interviewDate" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="duration" class="form-label">Duration (minutes)</label>
+                                <select class="form-select bg-dark text-white border-secondary" id="duration" required>
+                                    <option value="30">30 minutes</option>
+                                    <option value="45" selected>45 minutes</option>
+                                    <option value="60">1 hour</option>
+                                    <option value="90">1.5 hours</option>
+                                    <option value="120">2 hours</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="interviewer" class="form-label">Interviewer</label>
+                                <select class="form-select bg-dark text-white border-secondary" id="interviewer" required>
+                                    <option value="">Select an interviewer</option>
+                                    <option value="hr1">HR Manager</option>
+                                    <option value="tech1">Technical Lead</option>
+                                    <option value="manager1">Hiring Manager</option>
+                                </select>
+                            </div>
+                            <div class="mb-3" id="meetingLinkGroup">
+                                <label for="meetingLink" class="form-label">Meeting Link</label>
+                                <div class="input-group">
+                                    <input type="url" class="form-control bg-dark text-white border-secondary" 
+                                           id="meetingLink" placeholder="https://" required>
+                                    <button class="btn btn-outline-secondary" type="button" id="generateLink">
+                                        <i class="fas fa-sync-alt"></i> Generate
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="notes" class="form-label">Notes for Candidate</label>
+                                <textarea class="form-control bg-dark text-white border-secondary" 
+                                          id="notes" rows="3" 
+                                          placeholder="Add any special instructions for the candidate..."></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-dark border-secondary h-100">
+                            <div class="card-header border-secondary">
+                                <h6 class="mb-0">Interview Schedule Preview</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="schedulePreview" class="text-center py-4">
+                                    <div class="text-muted mb-3">
+                                        <i class="fas fa-calendar-alt fa-3x mb-2"></i>
+                                        <p>Select date and time to see preview</p>
+                                    </div>
+                                </div>
+                                <hr class="border-secondary">
+                                <div class="candidate-info">
+                                    <h6>Candidate Details</h6>
+                                    <p class="mb-1"><i class="fas fa-user me-2"></i> {{ candidate.name }}</p>
+                                    <p class="mb-1"><i class="fas fa-envelope me-2"></i> {{ candidate.email }}</p>
+                                    <p class="mb-0"><i class="fas fa-phone me-2"></i> {{ candidate.phone or 'N/A' }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-primary" id="saveSchedule">
+                    <i class="fas fa-calendar-check me-1"></i> Schedule Interview
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Handle form submission
+    $('#reviewForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = {
+            notes: $('#reviewNotes').val(),
+            status: $('#reviewStatus').val(),
+            candidate_id: '{{ candidate.id }}'
+        };
+        
+        // Send data to server
+        fetch('/api/candidates/{{ candidate.id }}/review', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Review saved successfully', 'success');
+                if (formData.status === 'interview') {
+                    $('#scheduleInterviewBtn').prop('disabled', true);
+                } else if (formData.status === 'rejected') {
+                    $('#rejectBtn').prop('disabled', true);
+                }
+            } else {
+                showToast('Error saving review', 'error');
+            }
+        });
+    });
+    
+    // Initialize modal elements
+    const scheduleModal = new bootstrap.Modal(document.getElementById('scheduleModal'));
+    const scheduleForm = document.getElementById('scheduleForm');
+    const scheduleBtn = document.getElementById('scheduleBtn');
+    const saveScheduleBtn = document.getElementById('saveSchedule');
+    const rejectBtn = document.getElementById('rejectBtn');
+    const generateLinkBtn = document.getElementById('generateLink');
+    const interviewType = document.getElementById('interviewType');
+    const meetingLinkGroup = document.getElementById('meetingLinkGroup');
+    const meetingLink = document.getElementById('meetingLink');
+    const schedulePreview = document.getElementById('schedulePreview');
+    
+    // Format date for display
+    function formatDate(dateString) {
+        if (!dateString) return '';
+        const options = { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        };
+        return new Date(dateString).toLocaleDateString('en-US', options);
+    }
+    
+    // Update schedule preview
+    function updatePreview() {
+        const date = document.getElementById('interviewDate').value;
+        const duration = document.getElementById('duration').value;
+        const type = interviewType.value;
+        
+        if (!date) {
+            schedulePreview.innerHTML = `
+                <div class="text-muted mb-3">
+                    <i class="fas fa-calendar-alt fa-3x mb-2"></i>
+                    <p>Select date and time to see preview</p>
+                </div>`;
+            return;
+        }
+        
+        const endTime = new Date(new Date(date).getTime() + (duration * 60000));
+        
+        schedulePreview.innerHTML = `
+            <div class="mb-3">
+                <h5 class="mb-1">${type === 'phone' ? 'Phone Interview' : type === 'video' ? 'Video Interview' : 'On-site Interview'}</h5>
+                <div class="text-muted small mb-2">${formatDate(date)}</div>
+                <div class="badge bg-primary bg-opacity-25 text-primary mb-3">
+                    ${duration} minutes
+                </div>
+                <div class="alert alert-dark">
+                    <i class="fas ${type === 'phone' ? 'fa-phone' : type === 'video' ? 'fa-video' : 'fa-building'} me-2"></i>
+                    ${type === 'onsite' ? 'On-site at Company Office' : 'Online Meeting'}
+                </div>
+                ${type !== 'onsite' ? `
+                <div class="alert alert-dark">
+                    <i class="fas fa-link me-2"></i>
+                    ${meetingLink.value || 'Meeting link will be generated'}
+                </div>` : ''}
+            </div>`;
+    }
+    
+    // Event Listeners
+    scheduleBtn.addEventListener('click', function() {
+        // Set default date to next business day at 10 AM
+        const now = new Date();
+        const nextDay = new Date(now);
+        nextDay.setDate(now.getDate() + (now.getDay() === 5 ? 3 : now.getDay() === 6 ? 2 : 1));
+        nextDay.setHours(10, 0, 0, 0);
+        
+        // Format for datetime-local input
+        const formattedDate = nextDay.toISOString().slice(0, 16);
+        document.getElementById('interviewDate').value = formattedDate;
+        
+        // Show the modal
+        scheduleModal.show();
+        updatePreview();
+    });
+    
+    // Update preview when inputs change
+    document.getElementById('interviewDate').addEventListener('change', updatePreview);
+    document.getElementById('duration').addEventListener('change', updatePreview);
+    interviewType.addEventListener('change', function() {
+        meetingLinkGroup.style.display = this.value === 'onsite' ? 'none' : 'block';
+        updatePreview();
+    });
+    
+    // Generate meeting link
+    generateLinkBtn.addEventListener('click', function() {
+        const meetingTypes = {
+            'phone': 'Phone Call',
+            'video': 'Video Meeting',
+            'onsite': 'On-site Meeting'
+        };
+        
+        // In a real app, this would call your backend to generate a unique meeting link
+        meetingLink.value = `https://meet.smarthire.ai/${Math.random().toString(36).substr(2, 8)}`;
+        updatePreview();
+        showToast('Meeting link generated!', 'success');
+    });
+    
+    // Save schedule
+    saveScheduleBtn.addEventListener('click', function() {
+        const formData = {
+            candidateId: '{{ candidate.id }}',
+            type: interviewType.value,
+            date: document.getElementById('interviewDate').value,
+            duration: document.getElementById('duration').value,
+            interviewer: document.getElementById('interviewer').value,
+            meetingLink: interviewType.value !== 'onsite' ? meetingLink.value : null,
+            notes: document.getElementById('notes').value
+        };
+        
+        // Validate required fields
+        if (!formData.date || !formData.interviewer) {
+            showToast('Please fill in all required fields', 'error');
+            return;
+        }
+        
+        // In a real app, you would send this to your backend
+        console.log('Scheduling interview:', formData);
+        
+        // Simulate API call
+        saveScheduleBtn.disabled = true;
+        saveScheduleBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Scheduling...';
+        
+        setTimeout(() => {
+            // Show success message and close modal
+            showToast('Interview scheduled successfully!', 'success');
+            scheduleModal.hide();
+            
+            // Reset form and button
+            saveScheduleBtn.disabled = false;
+            saveScheduleBtn.innerHTML = '<i class="fas fa-calendar-check me-1"></i> Schedule Interview';
+            
+            // In a real app, you might want to update the UI or redirect
+            window.location.href = "{{ url_for('hr_dashboard') }}";
+        }, 1500);
+    });
+    
+    // Handle reject button
+    rejectBtn.addEventListener('click', function() {
+        if (confirm('Are you sure you want to reject this candidate? This action cannot be undone.')) {
+            // Get candidate ID from data attribute
+            const candidateId = rejectBtn.dataset.candidateId;
+            console.log('Rejecting candidate:', candidateId);
+            
+            // Show loading state
+            rejectBtn.disabled = true;
+            rejectBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Processing...';
+            
+            // Simulate API call
+            setTimeout(() => {
+                showToast('Candidate has been rejected', 'success');
+                window.location.href = "{{ url_for('resume_screening_route') }}";
+            }, 1000);
+        }
+    });
+    
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+function showToast(message, type = 'info') {
+    // Create toast container if it doesn't exist
+    let container = document.querySelector('.toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        container.style.zIndex = '1100';
+        document.body.appendChild(container);
+    }
+    
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${type} border-0`;
+    toast.role = 'alert';
+    toast.setAttribute('aria-live', 'assertive');
+    toast.setAttribute('aria-atomic', 'true');
+    
+    // Add animation class
+    toast.classList.add('fade');
+    
+    // Create toast content
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="${type === 'success' ? 'fas fa-check-circle' : type === 'error' ? 'fas fa-exclamation-circle' : 'fas fa-info-circle'} me-2"></i>
+                ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    `;
+    
+    // Add to container
+    container.appendChild(toast);
+    
+    // Initialize and show toast
+    const bsToast = new bootstrap.Toast(toast, {
+        animation: true,
+        autohide: true,
+        delay: 3000
+    });
+    
+    // Show the toast
+    bsToast.show();
+    
+    // Remove toast from DOM after it's hidden
+    toast.addEventListener('hidden.bs.toast', function() {
+        if (toast && toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    });
+    
+    return bsToast;
+}
+</script>
+{% endblock %}

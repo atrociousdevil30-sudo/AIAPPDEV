@@ -1,0 +1,1191 @@
+{% extends "base.html" %}
+
+{% block title %}Candidate Interview Review{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --bg-dark: #1a1a2e;
+        --bg-darker: #16213e;
+        --bg-darkest: #0f3460;
+        --primary: #4cc9f0;
+        --primary-hover: #38b6db;
+        --text-primary: #e6e6e6;
+        --text-secondary: #b3b3b3;
+        --border-color: #2a3a5f;
+        --card-bg: #1f2a4a;
+        --success: #4ade80;
+        --warning: #fbbf24;
+        --danger: #f87171;
+        --info: #60a5fa;
+    }
+
+    body {
+        background-color: var(--bg-darker);
+        color: var(--text-primary);
+    }
+
+    .card, .modal-content {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+
+    .card-header {
+        background-color: var(--bg-darkest);
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .message {
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        background-color: var(--bg-darkest);
+        border: 1px solid var(--border-color);
+    }
+    
+    .message-ai {
+        background-color: var(--bg-darkest);
+        margin-right: 2rem;
+        border-color: var(--primary);
+    }
+    
+    .message-candidate {
+        background-color: var(--bg-dark);
+        margin-left: 2rem;
+        border-color: var(--info);
+    }
+    
+    .message-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    .message-sender {
+        font-weight: 600;
+        color: var(--primary);
+    }
+    
+    .message-time {
+        color: var(--text-secondary);
+    }
+    
+    .typing-indicator {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        background-color: var(--bg-darkest);
+        border-radius: 0.5rem;
+        color: var(--text-secondary);
+    }
+    
+    .typing-dot {
+        width: 8px;
+        height: 8px;
+        margin: 0 2px;
+        background-color: var(--primary);
+        border-radius: 50%;
+        animation: typing 1.4s infinite ease-in-out;
+    }
+    
+    .typing-dot:nth-child(1) { animation-delay: 0s; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    
+    @keyframes typing {
+        0%, 60%, 100% { transform: translateY(0); }
+        30% { transform: translateY(-5px); }
+    }
+    
+    .candidate-list-container {
+        background-color: var(--bg-darker);
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        height: 100%;
+    }
+
+    .candidate-list-container .section-heading {
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 1rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .candidate-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        max-height: 600px;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+    }
+    
+    .candidate-list::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .candidate-list::-webkit-scrollbar-thumb {
+        background-color: var(--border-color);
+        border-radius: 3px;
+    }
+    
+    .candidate-list .nav-link {
+        color: var(--text-secondary);
+        background-color: var(--bg-dark);
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 0.75rem 1rem;
+        transition: all 0.2s ease-in-out;
+        display: flex;
+        align-items: center;
+    }
+
+    .candidate-list .nav-link:hover {
+        background-color: var(--bg-darkest);
+        color: var(--text-primary);
+        border-color: var(--primary);
+        transform: translateX(4px);
+    }
+
+    .candidate-list .nav-link.active {
+        background-color: var(--primary);
+        color: #111827;
+        border-color: var(--primary);
+        box-shadow: 0 4px 12px rgba(76, 201, 240, 0.2);
+    }
+
+    .sidebar .nav-link .badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+        font-weight: 500;
+    }
+
+    .sidebar .input-group-text {
+        background-color: var(--bg-darkest);
+        border-color: var(--border-color);
+        color: var(--text-secondary);
+    }
+
+    .sidebar .form-control {
+        background-color: var(--bg-darkest);
+        border-color: var(--border-color);
+        color: var(--text-primary);
+    }
+
+    .sidebar .form-control:focus {
+        background-color: var(--bg-darker);
+        color: var(--text-primary);
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.25rem rgba(76, 201, 240, 0.25);
+    }
+
+    .sidebar .btn-outline-primary {
+        color: var(--primary);
+        border-color: var(--primary);
+    }
+
+    .sidebar .btn-outline-primary:hover,
+    .sidebar .btn-outline-primary.active {
+        background-color: var(--primary);
+        color: #111827;
+        border-color: var(--primary);
+    }
+
+    .sidebar .btn-outline-success {
+        color: var(--success);
+        border-color: var(--success);
+    }
+
+    .sidebar .btn-outline-success:hover,
+    .sidebar .btn-outline-success.active {
+        background-color: var(--success);
+        color: #111827;
+        border-color: var(--success);
+    }
+
+    .sidebar .btn-outline-warning {
+        color: var(--warning);
+        border-color: var(--warning);
+    }
+
+    .sidebar .btn-outline-warning:hover,
+    .sidebar .btn-outline-warning.active {
+        background-color: var(--warning);
+        color: #111827;
+        border-color: var(--warning);
+    }
+
+    .sidebar .btn-outline-secondary {
+        color: var(--text-secondary);
+        border-color: var(--border-color);
+    }
+
+    .sidebar .btn-outline-secondary:hover,
+    .sidebar .btn-outline-secondary.active {
+        background-color: var(--bg-darkest);
+        color: var(--text-primary);
+        border-color: var(--primary);
+    }
+
+    .avatar-sm {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .status-indicator {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        border: 2px solid var(--bg-darker);
+        position: absolute;
+        bottom: 0;
+        right: 0;
+    }
+
+    .status-online {
+        background-color: var(--success);
+    }
+
+    .status-offline {
+        background-color: var(--secondary);
+    }
+
+    .status-away {
+        background-color: var(--warning);
+    }
+
+    .candidate-item {
+        transition: all 0.2s;
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .candidate-item:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .candidate-item.active {
+        background-color: rgba(76, 201, 240, 0.1);
+        border-left: 3px solid var(--primary);
+    }
+    
+    .avatar-sm {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .avatar-title {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+    }
+    
+    .sidebar .form-control {
+        background-color: var(--bg-dark);
+        border-color: var(--border-color);
+        color: var(--text-primary);
+    }
+    
+    .sidebar .form-control:focus {
+        background-color: var(--bg-dark);
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.25rem rgba(76, 201, 240, 0.1);
+    }
+    
+    .sidebar .input-group-text {
+        background-color: var(--bg-dark);
+        border-color: var(--border-color);
+        color: var(--text-secondary);
+    }
+    
+    .sidebar .btn-outline-primary {
+        color: var(--text-primary);
+        border-color: var(--border-color);
+    }
+    
+    .sidebar .btn-outline-primary.active, 
+    .sidebar .btn-outline-primary:hover {
+        background-color: var(--primary);
+        border-color: var(--primary);
+        color: #111827;
+    }
+    
+    .sidebar .btn-outline-success {
+        color: var(--success);
+        border-color: var(--success);
+    }
+    
+    .sidebar .btn-outline-success.active,
+    .sidebar .btn-outline-success:hover {
+        background-color: var(--success);
+        border-color: var(--success);
+        color: #111827;
+    }
+    
+    .sidebar .btn-outline-warning {
+        color: var(--warning);
+        border-color: var(--warning);
+    }
+    
+    .sidebar .btn-outline-warning.active,
+    .sidebar .btn-outline-warning:hover {
+        background-color: var(--warning);
+        border-color: var(--warning);
+        color: #111827;
+    }
+    
+    .sidebar .btn-outline-danger {
+        color: var(--danger);
+        border-color: var(--danger);
+    }
+    
+    .sidebar .btn-outline-danger.active,
+    .sidebar .btn-outline-danger:hover {
+        background-color: var(--danger);
+        color: #111827;
+        border-color: var(--danger);
+    }
+    
+    .badge.bg-success {
+        background-color: var(--success) !important;
+        color: #111827;
+    }
+    
+    /* ... */
+    
+    .rating-stars .bi-star-fill {
+        color: var(--warning);
+    }
+    
+    .search-container {
+        margin-bottom: 1.5rem;
+    }
+    
+    .sidebar .input-group-text {
+        background-color: var(--bg-darkest);
+        border-color: var(--border-color);
+        color: var(--text-secondary);
+    }
+    
+    .sidebar .form-control {
+        background-color: var(--bg-darkest);
+        border-color: var(--border-color);
+        color: var(--text-primary);
+    }
+    
+    .sidebar .form-control:focus {
+        box-shadow: 0 0 0 0.2rem rgba(76, 201, 240, 0.25);
+        border-color: var(--primary);
+    }
+    
+    .candidate-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background-color: var(--primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 0.75rem;
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: #111827;
+    }
+    
+    .candidate-info {
+        flex: 1;
+        text-align: left;
+        min-width: 0;
+    }
+    
+    .candidate-name {
+        display: block;
+        font-weight: 500;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .candidate-position {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .candidate-status {
+        margin-left: 0.5rem;
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+    }
+    
+    .skill-item:last-child {
+        margin-bottom: 0;
+    }
+    
+    .progress {
+        height: 0.5rem;
+        border-radius: 0.5rem;
+        background-color: var(--bg-darkest);
+    }
+
+    .progress-bar {
+        background-color: var(--primary);
+    }
+
+    .btn-primary {
+        background-color: var(--primary);
+        border-color: var(--primary);
+        color: #111827;
+    }
+
+    .btn-primary:hover {
+        background-color: var(--primary-hover);
+        border-color: var(--primary-hover);
+    }
+
+    .btn-outline-primary {
+        color: var(--primary);
+        border-color: var(--primary);
+    }
+
+    .btn-outline-primary:hover {
+        background-color: var(--primary);
+        border-color: var(--primary);
+        color: #111827;
+    }
+
+    .form-control, .form-select {
+        background-color: var(--bg-darkest);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+
+    .form-control:focus, .form-select:focus {
+        background-color: var(--bg-dark);
+        color: var(--text-primary);
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.25rem rgba(76, 201, 240, 0.25);
+    }
+
+    .form-control::placeholder {
+        color: var(--text-secondary);
+        opacity: 0.7;
+    }
+
+    .badge {
+        font-weight: 500;
+    }
+
+    .badge.bg-primary {
+        background-color: var(--primary) !important;
+        color: #111827;
+    }
+
+    .badge.bg-secondary {
+        background-color: #4b5563 !important;
+    }
+
+    .alert {
+        background-color: var(--bg-darkest);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+
+    .alert-light {
+        background-color: var(--bg-dark);
+        border-color: var(--border-color);
+    }
+
+    .text-muted {
+        color: var(--text-secondary) !important;
+    }
+
+    .border-bottom {
+        border-bottom: 1px solid var(--border-color) !important;
+    }
+
+    .border-top {
+        border-top: 1px solid var(--border-color) !important;
+    }
+
+    .border-end {
+        border-right: 1px solid var(--border-color) !important;
+    }
+
+    .nav-tabs .nav-link {
+        color: var(--text-secondary);
+    }
+
+    .nav-tabs .nav-link.active {
+        color: var(--primary);
+        background-color: transparent;
+        border-color: var(--border-color) var(--border-color) var(--bg-darker);
+    }
+
+    .nav-tabs .nav-link:hover {
+        border-color: var(--border-color) var(--border-color) var(--bg-dark);
+        color: var(--text-primary);
+    }
+
+    .btn-close {
+        filter: invert(1) grayscale(100%) brightness(200%);
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: var(--bg-dark);
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--primary);
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-hover);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1 text-white">Interview Review</h1>
+            <p class="text-muted mb-0">Review and analyze candidate interviews</p>
+        </div>
+        <!-- Action buttons moved to main content area -->
+    </div>
+
+    <div class="row g-4">
+        <!-- Candidate List -->
+        <div class="col-lg-4">
+            <div class="candidate-list-container">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h6 class="section-heading m-0">
+                        <i class="bi bi-people-fill me-2"></i>Candidate List
+                        <span class="badge bg-primary rounded-pill ms-2" id="candidateCount">0</span>
+                    </h6>
+                </div>
+                
+                <div class="search-container">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-dark border-secondary">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" 
+                               id="candidateSearch" 
+                               class="form-control form-control-sm bg-dark border-secondary text-light" 
+                               placeholder="Search candidates...">
+                    </div>
+                </div>
+                
+                <!-- Status Filter -->
+                <div class="mb-4">
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-sm btn-outline-primary active" data-status="all">All</button>
+                        <button class="btn btn-sm btn-outline-success" data-status="completed">
+                            <i class="bi bi-check-circle me-1"></i>Completed
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" data-status="in-progress">
+                            <i class="bi bi-hourglass-split me-1"></i>In Progress
+                        </button>
+                        <button class="btn btn-sm btn-outline-info" data-status="scheduled">
+                            <i class="bi bi-calendar3 me-1"></i>Scheduled
+                        </button>
+                    </div>
+                </div>
+                
+                <ul class="candidate-list" id="candidateList">
+                    <!-- Candidate list will be populated by JavaScript -->
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">Interview Review</h1>
+            </div>
+
+            <!-- Candidate Info -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <div class="mb-3">
+                                <img src="{{ url_for('static', filename='img/default-avatar.png') }}" 
+                                     class="rounded-circle" 
+                                     width="100" 
+                                     height="100" 
+                                     alt="Candidate">
+                            </div>
+                            <h5 id="candidateName">John Doe</h5>
+                            <p class="text-muted mb-1" id="candidatePosition">Senior Developer</p>
+                            <div class="d-flex justify-content-center gap-2 mb-2">
+                                <span class="badge bg-primary" id="candidateScore">85% Match</span>
+                                <span class="badge bg-secondary" id="interviewDate">Oct 25, 2023</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <ul class="nav nav-tabs card-header-tabs" id="candidateTabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button">
+                                        <i class="bi bi-file-earmark-text me-1"></i> Overview
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="resume-tab" data-bs-toggle="tab" data-bs-target="#resume" type="button">
+                                        <i class="bi bi-file-earmark-person me-1"></i> Resume
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="notes-tab" data-bs-toggle="tab" data-bs-target="#notes" type="button">
+                                        <i class="bi bi-journal-text me-1"></i> Notes
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="card-body">
+                            <div class="tab-content" id="candidateTabContent">
+                                <div class="tab-pane fade show active" id="overview">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6 class="text-muted">Contact Information</h6>
+                                            <p class="mb-1"><i class="bi bi-envelope me-2"></i> <span id="candidateEmail">john.doe@example.com</span></p>
+                                            <p class="mb-1"><i class="bi bi-phone me-2"></i> <span id="candidatePhone">(123) 456-7890</span></p>
+                                            <p class="mb-1"><i class="bi bi-geo-alt me-2"></i> <span id="candidateLocation">San Francisco, CA</span></p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6 class="text-muted">Skills</h6>
+                                            <div id="candidateSkills">
+                                                <span class="badge bg-light text-dark me-1 mb-1">Python</span>
+                                                <span class="badge bg-light text-dark me-1 mb-1">JavaScript</span>
+                                                <span class="badge bg-light text-dark me-1 mb-1">React</span>
+                                                <span class="badge bg-light text-dark me-1 mb-1">Node.js</span>
+                                                <span class="badge bg-light text-dark me-1 mb-1">AWS</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="resume">
+                                    <div class="text-center py-4">
+                                        <i class="bi bi-file-earmark-pdf display-4 text-muted mb-3"></i>
+                                        <p class="text-muted">Resume_John_Doe.pdf</p>
+                                        <button class="btn btn-outline-primary btn-sm">
+                                            <i class="bi bi-download me-1"></i> Download Resume
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="notes">
+                                    <div class="mb-3">
+                                        <label for="interviewNotes" class="form-label">Add Notes</label>
+                                        <textarea class="form-control" id="interviewNotes" rows="3" placeholder="Add your notes about this candidate..."></textarea>
+                                    </div>
+                                    <button class="btn btn-primary btn-sm">Save Notes</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interview Transcript -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Interview Transcript</h5>
+                    <div>
+                        <div class="form-check form-switch d-inline-block me-3">
+                            <input class="form-check-input" type="checkbox" id="showAnalysis" checked>
+                            <label class="form-check-label" for="showAnalysis">Show Analysis</label>
+                        </div>
+                        <button class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-play-circle me-1"></i> Play Recording
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="chat-container" id="interviewChat">
+                        <!-- Messages will be loaded here by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Evaluation -->
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0">Evaluation</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Overall Rating</label>
+                                <div class="rating-stars">
+                                    <i class="bi bi-star-fill text-warning"></i>
+                                    <i class="bi bi-star-fill text-warning"></i>
+                                    <i class="bi bi-star-fill text-warning"></i>
+                                    <i class="bi bi-star-fill text-warning"></i>
+                                    <i class="bi bi-star"></i>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Hiring Recommendation</label>
+                                <div class="btn-group w-100" role="group">
+                                    <input type="radio" class="btn-check" name="hiringDecision" id="hire" autocomplete="off" checked>
+                                    <label class="btn btn-outline-success" for="hire">
+                                        <i class="bi bi-check-circle me-1"></i> Hire
+                                    </label>
+
+                                    <input type="radio" class="btn-check" name="hiringDecision" id="maybe" autocomplete="off">
+                                    <label class="btn btn-outline-warning" for="maybe">
+                                        <i class="bi bi-question-circle me-1"></i> Maybe
+                                    </label>
+
+                                    <input type="radio" class="btn-check" name="hiringDecision" id="reject" autocomplete="off">
+                                    <label class="btn btn-outline-danger" for="reject">
+                                        <i class="bi bi-x-circle me-1"></i> Reject
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="finalComments" class="form-label">Comments</label>
+                                <textarea class="form-control" id="finalComments" rows="3" placeholder="Add your final comments..."></textarea>
+                            </div>
+                            <button class="btn btn-primary">
+                                <i class="bi bi-save me-1"></i> Save Evaluation
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0">AI Analysis</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-4">
+                                <h6 class="text-muted">Response Analysis</h6>
+                                <div class="progress mb-2" style="height: 20px;">
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: 85%;" aria-valuenow="85" aria-valuemin="0" aria-valuemax="100">85%</div>
+                                </div>
+                                <p class="small text-muted mb-0">Overall response quality and relevance</p>
+                            </div>
+                            <div class="mb-4">
+                                <h6 class="text-muted">Skills Assessment</h6>
+                                <div class="skill-item mb-2">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span>Technical Knowledge</span>
+                                        <span>90%</span>
+                                    </div>
+                                    <div class="progress" style="height: 6px;">
+                                        <div class="progress-bar bg-info" style="width: 90%"></div>
+                                    </div>
+                                </div>
+                                <div class="skill-item mb-2">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span>Problem Solving</span>
+                                        <span>80%</span>
+                                    </div>
+                                    <div class="progress" style="height: 6px;">
+                                        <div class="progress-bar bg-info" style="width: 80%"></div>
+                                    </div>
+                                </div>
+                                <div class="skill-item mb-2">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span>Communication</span>
+                                        <span>75%</span>
+                                    </div>
+                                    <div class="progress" style="height: 6px;">
+                                        <div class="progress-bar bg-info" style="width: 75%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <h6 class="text-muted">Key Insights</h6>
+                                <ul class="list-unstyled">
+                                    <li class="mb-2">
+                                        <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                        Strong technical background in Python and related technologies
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                        Demonstrated problem-solving abilities through work examples
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
+                                        Could improve on explaining complex concepts simply
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Interview Data Template (Hidden) -->
+<template id="messageTemplate">
+    <div class="message">
+        <div class="message-header">
+            <span class="message-sender"></span>
+            <span class="message-time text-muted small"></span>
+        </div>
+        <div class="message-content"></div>
+        <div class="message-analysis collapse">
+            <div class="alert alert-light mt-2 mb-0">
+                <h6 class="alert-heading">AI Analysis</h6>
+                <p class="mb-1 analysis-text"></p>
+                <div class="analysis-details small text-muted"></div>
+            </div>
+        </div>
+    </div>
+</template>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/mockInterviewData.js') }}"></script>
+<script>
+    // Initialize tooltips and candidate list
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Bootstrap tooltips with dark theme
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        
+        // Get DOM elements
+        const candidateList = document.getElementById('candidateList');
+        const candidateSearch = document.getElementById('candidateSearch');
+        const candidateCount = document.getElementById('candidateCount');
+        const statusButtons = document.querySelectorAll('[data-status]');
+        
+        // Function to render candidates
+        function renderCandidates(filteredCandidates = mockCandidates) {
+            candidateList.innerHTML = '';
+            candidateCount.textContent = filteredCandidates.length;
+            
+            filteredCandidates.forEach(candidate => {
+                const statusClass = getStatusClass(candidate.status);
+                const statusIcon = getStatusIcon(candidate.status);
+                const initials = candidate.name.split(' ').map(n => n[0]).join('').toUpperCase();
+                
+                const li = document.createElement('li');
+                li.className = 'nav-item';
+                li.innerHTML = `
+                    <a class="nav-link candidate-item ${candidate.id === 1 ? 'active' : ''}" 
+                       href="#" 
+                       data-candidate-id="${candidate.id}">
+                        <div class="candidate-avatar bg-${statusClass} bg-opacity-10 text-${statusClass}">
+                            ${initials}
+                        </div>
+                        <div class="candidate-info">
+                            <span class="candidate-name">${candidate.name}</span>
+                            <span class="candidate-position">${candidate.position}</span>
+                        </div>
+                        <span class="badge bg-${statusClass} candidate-status">
+                            ${statusIcon}
+                        </span>
+                    </a>
+                `;
+                
+                // Add click event to load candidate data
+                li.querySelector('.candidate-item').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    
+                    // Update active state
+                    document.querySelectorAll('.candidate-item').forEach(item => item.classList.remove('active'));
+                    e.currentTarget.classList.add('active');
+                    
+                    // Load candidate data
+                    const candidateId = parseInt(e.currentTarget.getAttribute('data-candidate-id'));
+                    const candidate = getCandidateById(candidateId);
+                    loadCandidateData(candidate);
+                });
+                
+                candidateList.appendChild(li);
+            });
+        }
+        
+        // Helper function to get status class
+        function getStatusClass(status) {
+            const statusMap = {
+                'Completed': 'success',
+                'In Progress': 'warning',
+                'Scheduled': 'info',
+                'Pending': 'warning',
+                'Rejected': 'danger'
+            };
+            return statusMap[status] || 'secondary';
+        }
+        
+        // Helper function to get status icon
+        function getStatusIcon(status) {
+            const iconMap = {
+                'Completed': '<i class="bi bi-check-circle me-1"></i>',
+                'In Progress': '<i class="bi bi-hourglass-split me-1"></i>',
+                'Scheduled': '<i class="bi bi-calendar3 me-1"></i>',
+                'Pending': '<i class="bi bi-hourglass me-1"></i>',
+                'Rejected': '<i class="bi bi-x-circle me-1"></i>'
+            };
+            return iconMap[status] || '';
+        }
+        
+        // Search functionality
+        candidateSearch.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filtered = mockCandidates.filter(candidate => 
+                candidate.name.toLowerCase().includes(searchTerm) || 
+                candidate.position.toLowerCase().includes(searchTerm) ||
+                candidate.skills.some(skill => skill.toLowerCase().includes(searchTerm))
+            );
+            renderCandidates(filtered);
+        });
+        
+        // Status filter functionality
+        statusButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                const status = e.currentTarget.getAttribute('data-status');
+                
+                // Update active state
+                statusButtons.forEach(btn => btn.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+                
+                // Filter candidates
+                if (status === 'all') {
+                    renderCandidates(mockCandidates);
+                } else {
+                    const filtered = mockCandidates.filter(candidate => 
+                        candidate.status.toLowerCase().includes(status)
+                    );
+                    renderCandidates(filtered);
+                }
+            });
+        });
+        
+        // Initial render
+        renderCandidates();
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl, {
+                customClass: 'dark-tooltip',
+                template: '<div class="tooltip dark-tooltip" role="tooltip"><div class="tooltip-arrow"></div><div class="tooltip-inner"></div></div>'
+            });
+        });
+        
+        // Set dark theme for modals
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            modal.classList.add('dark-modal');
+        });
+        
+        // Initialize the first candidate
+        const firstCandidate = mockCandidates[0];
+        if (firstCandidate) {
+            loadCandidateData(firstCandidate);
+            // Set first candidate as active
+            const firstCandidateItem = document.querySelector('.candidate-item');
+            if (firstCandidateItem) {
+                firstCandidateItem.classList.add('active');
+            }
+        }
+
+        // Handle candidate selection
+        document.querySelectorAll('.candidate-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                
+                // Update active state
+                document.querySelectorAll('.candidate-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+                
+                // Load candidate data
+                const candidateId = parseInt(item.getAttribute('data-candidate-id'));
+                const candidate = getCandidateById(candidateId);
+                loadCandidateData(candidate);
+                
+                // Close mobile sidebar if open
+                const sidebar = document.querySelector('.sidebar');
+                if (sidebar.classList.contains('show')) {
+                    sidebar.classList.remove('show');
+                }
+            });
+        });
+
+        // Toggle analysis visibility
+        const showAnalysisCheckbox = document.getElementById('showAnalysis');
+        if (showAnalysisCheckbox) {
+            // Set initial state
+            const analysisSections = document.querySelectorAll('.message-analysis');
+            analysisSections.forEach(section => {
+                if (showAnalysisCheckbox.checked) {
+                    section.classList.add('show');
+                } else {
+                    section.classList.remove('show');
+                }
+            });
+            
+            // Add change event listener
+            showAnalysisCheckbox.addEventListener('change', (e) => {
+                analysisSections.forEach(section => {
+                    if (e.target.checked) {
+                        section.classList.add('show');
+                    } else {
+                        section.classList.remove('show');
+                    }
+                });
+            });
+        }
+        
+        // Add dark theme to form controls
+        const formControls = document.querySelectorAll('.form-control, .form-select, .form-check-input');
+        formControls.forEach(control => {
+            control.classList.add('bg-dark', 'text-light');
+            if (control.tagName === 'SELECT') {
+                control.style.setProperty('background-image', 'url("data:image/svg+xml,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 16 16\'%3e%3cpath fill=\'none\' stroke=\'%23e6e6e6\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M2 5l6 6 6-6\'/%3e%3c/svg%3e")', 'important');
+            }
+        });
+        
+        // Style the custom file input
+        const fileInputs = document.querySelectorAll('.form-control[type="file"]');
+        fileInputs.forEach(input => {
+            input.classList.add('custom-file-input');
+        });
+    });
+    
+    // Apply dark theme to dynamically loaded form controls
+    function applyDarkThemeToFormControls() {
+        const newFormControls = document.querySelectorAll('.form-control, .form-select, .form-check-input');
+        newFormControls.forEach(control => {
+            control.classList.add('bg-dark', 'text-light');
+        });
+    }
+    
+    // Call this after loading candidate data
+    document.addEventListener('candidateLoaded', applyDarkThemeToFormControls);
+</script>
+
+<style>
+    /* Additional dark theme styles */
+    .dark-tooltip .tooltip-inner {
+        background-color: var(--bg-darkest);
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+    }
+    
+    .dark-tooltip .tooltip-arrow::before {
+        border-bottom-color: var(--border-color) !important;
+    }
+    
+    .dark-modal .modal-content {
+        background-color: var(--bg-darker);
+        border: 1px solid var(--border-color);
+    }
+    
+    .dark-modal .modal-header {
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .dark-modal .modal-footer {
+        border-top: 1px solid var(--border-color);
+    }
+    
+    .form-check-input:checked {
+        background-color: var(--primary);
+        border-color: var(--primary);
+    }
+    
+    .form-check-input {
+        background-color: var(--bg-darkest);
+        border: 1px solid var(--border-color);
+    }
+    
+    .form-switch .form-check-input:checked {
+        background-color: var(--primary);
+    }
+    
+    .form-range::-webkit-slider-runnable-track {
+        background: var(--bg-darkest);
+    }
+    
+    .form-range::-moz-range-track {
+        background: var(--bg-darkest);
+    }
+    
+    .form-range::-webkit-slider-thumb {
+        background: var(--primary);
+    }
+    
+    .form-range::-moz-range-thumb {
+        background: var(--primary);
+    }
+    
+    .form-control:disabled, .form-control[readonly] {
+        background-color: var(--bg-darkest);
+    }
+    
+    .was-validated .form-control:valid, .form-control.is-valid {
+        border-color: var(--success);
+    }
+    
+    .was-validated .form-control:invalid, .form-control.is-invalid {
+        border-color: var(--danger);
+    }
+    
+    .form-select {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23e6e6e6' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e") !important;
+    }
+    
+    .custom-file-input {
+        color: var(--text-primary);
+    }
+    
+    .custom-file-input::file-selector-button {
+        background-color: var(--primary);
+        color: #111827;
+        border: none;
+        padding: 0.375rem 0.75rem;
+        margin-right: 0.75rem;
+        border-radius: 0.25rem;
+        cursor: pointer;
+    }
+    
+    .custom-file-input:hover::file-selector-button {
+        background-color: var(--primary-hover);
+    }
+</style>
+{% endblock %}

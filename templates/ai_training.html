@@ -1,0 +1,577 @@
+{% extends "base.html" %}
+
+{% block title %}AI Training - SmartHire AI{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<style>
+    .chat-container {
+        height: 500px;
+        max-height: 100%;
+        overflow-y: auto;
+        border: 1px solid #444;
+        border-radius: 8px;
+        background-color: #2d2d2d;
+    }
+    .chat-message {
+        padding: 10px 15px;
+        margin: 10px;
+        border-radius: 15px;
+        max-width: 80%;
+        word-wrap: break-word;
+    }
+    .user-message {
+        background-color: #7b2cbf;
+        color: white;
+        margin-left: auto;
+        border-bottom-right-radius: 5px;
+    }
+    .bot-message {
+        background-color: #444;
+        color: white;
+        margin-right: auto;
+        border-bottom-left-radius: 5px;
+    }
+    .typing-indicator {
+        display: none;
+        padding: 10px 15px;
+    }
+    .typing-indicator span {
+        height: 10px;
+        width: 10px;
+        background-color: #7b2cbf;
+        border-radius: 50%;
+        display: inline-block;
+        margin: 0 2px;
+        animation: bounce 1.5s infinite ease-in-out;
+    }
+    @keyframes bounce {
+        0%, 80%, 100% { transform: translateY(0); }
+        40% { transform: translateY(-10px); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Training Data Modal -->
+    <div class="modal fade" id="trainingDataModal" tabindex="-1" aria-labelledby="trainingDataModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content bg-dark text-white">
+                <div class="modal-header border-bottom border-primary">
+                    <h5 class="modal-title" id="trainingDataModalLabel">Sample Training Data</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <h6 class="text-primary">Recruitment Process Example</h6>
+                        <div class="card bg-darker mb-3">
+                            <div class="card-header">Instructions</div>
+                            <div class="card-body">
+                                <p>When evaluating candidates for the Software Engineer position, focus on:</p>
+                                <ul>
+                                    <li>Technical skills in Python, JavaScript, and relevant frameworks</li>
+                                    <li>Problem-solving approach and algorithmic thinking</li>
+                                    <li>Experience with version control (Git) and agile methodologies</li>
+                                    <li>Communication skills and teamwork experience</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <h6 class="text-primary mt-4">Sample Q&A</h6>
+                        <div class="card bg-darker">
+                            <div class="card-header">Technical Questions</div>
+                            <div class="card-body">
+                                <p><strong>Q:</strong> Can you explain how you would optimize a slow database query?</p>
+                                <p><strong>Expected Points:</strong> Indexing, query analysis, denormalization, caching strategies</p>
+                                
+                                <p class="mt-3"><strong>Q:</strong> How do you handle merge conflicts in Git?</p>
+                                <p><strong>Expected Points:</strong> Pull before pushing, resolve conflicts, use of git commands, communication with team</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-end">
+                        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Got it!</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<div class="container-fluid py-4">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-white">AI Training & Configuration</h1>
+        <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#trainingDataModal">
+            <i class="bi bi-question-circle me-2"></i>View Training Examples
+        </button>
+    </div>
+
+    <div class="row">
+        <!-- Training Section -->
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100 bg-dark">
+                <div class="card-header border-bottom border-primary">
+                    <h5 class="mb-0">
+                        <i class="fas fa-robot me-2"></i>Train Recruitment AI
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="trainingForm" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="mb-3">
+                            <label for="trainingType" class="form-label">Training Type</label>
+                            <select class="form-select bg-dark text-white" id="trainingType">
+                                <option value="recruitment">Recruitment Process</option>
+                                <option value="exit">Exit Interview Process</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="instructions" class="form-label">Instructions for AI</label>
+                            <textarea class="form-control bg-dark text-white" id="instructions" rows="6" 
+                                placeholder="Provide detailed instructions for the AI about your recruitment/exit process, key questions to ask, and evaluation criteria..."></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="sampleQnA" class="form-label">Sample Q&A (Optional)</label>
+                            <textarea class="form-control bg-dark text-white" id="sampleQnA" rows="4" 
+                                placeholder="Example questions and expected answers to help train the AI..."></textarea>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-robot me-2"></i>Train AI Model
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Chat Interface -->
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100 bg-dark">
+                <div class="card-header border-bottom border-info d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-comments me-2"></i>AI Training Chat
+                    </h5>
+                    <span class="badge bg-success">Online</span>
+                </div>
+                <div class="card-body p-0 d-flex flex-column" style="height: 500px;">
+                    <!-- Chat Messages -->
+                    <div id="chat-messages" class="flex-grow-1 p-3 overflow-auto" style="height: 400px;">
+                        <!-- Welcome Message -->
+                        <div class="chat-message bot-message mb-3">
+                            <div class="d-flex align-items-center mb-1">
+                                <div class="bg-primary rounded-circle me-2" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-robot text-white"></i>
+                                </div>
+                                <strong>SmartHire AI</strong>
+                            </div>
+                            <div class="ms-4 ps-3">
+                                <p class="mb-0">Hello! I'm your AI training assistant. How can I help you with your recruitment process today?</p>
+                                <small class="text-muted">Just now</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Message Input -->
+                    <div class="p-3 border-top border-secondary">
+                        <form id="chat-form" class="d-flex" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="text" id="user-message" class="form-control bg-darker text-white border-secondary" 
+                                   placeholder="Type your message here..." autocomplete="off">
+                            <button type="submit" class="btn btn-primary ms-2">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Configuration -->
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100 bg-dark">
+                <div class="card-header border-bottom border-info">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cogs me-2"></i>AI Interview Settings
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="aiConfigForm" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="mb-3">
+                            <label class="form-label">AI Personality</label>
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="friendlyTone" checked>
+                                <label class="form-check-label" for="friendlyTone">Friendly & Approachable</label>
+                            </div>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="professionalTone" checked>
+                                <label class="form-check-label" for="professionalTone">Professional Tone</label>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="interviewDuration" class="form-label">Interview Duration (minutes)</label>
+                            <input type="number" class="form-control bg-dark text-white" id="interviewDuration" value="30" min="15" max="120">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="scoringCriteria" class="form-label">Scoring Criteria</label>
+                            <select class="form-select bg-dark text-white" id="scoringCriteria" multiple>
+                                <option value="communication">Communication Skills</option>
+                                <option value="technical" selected>Technical Knowledge</option>
+                                <option value="problem_solving" selected>Problem Solving</option>
+                                <option value="cultural_fit" selected>Cultural Fit</option>
+                                <option value="experience">Relevant Experience</option>
+                            </select>
+                            <div class="form-text text-muted">Hold Ctrl/Cmd to select multiple criteria</div>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-info">
+                                <i class="fas fa-save me-2"></i>Save Configuration
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Training History -->
+        <div class="col-12">
+            <div class="card border-0 shadow-sm bg-dark">
+                <div class="card-header border-bottom border-secondary">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>Training History
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Accuracy</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="trainingHistory">
+                                <tr>
+                                    <td>Oct 27, 2025</td>
+                                    <td>Recruitment Process</td>
+                                    <td><span class="badge bg-success">Completed</span></td>
+                                    <td>92%</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-info view-sample-data" data-bs-toggle="modal" data-bs-target="#sampleDataModal">
+                                            <i class="bi bi-eye"></i> View Data
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Oct 26, 2025</td>
+                                    <td>Exit Interview</td>
+                                    <td><span class="badge bg-success">Completed</span></td>
+                                    <td>88%</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-info view-sample-data" data-bs-toggle="modal" data-bs-target="#sampleDataModal">
+                                            <i class="bi bi-eye"></i> View Data
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Oct 25, 2025</td>
+                                    <td>Initial Setup</td>
+                                    <td><span class="badge bg-success">Completed</span></td>
+                                    <td>95%</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-info view-sample-data" data-bs-toggle="modal" data-bs-target="#sampleDataModal">
+                                            <i class="bi bi-eye"></i> View Data
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='js/training_modal.js') }}"></script>
+<script>
+// API endpoint for chat
+const API_ENDPOINT = '{{ url_for("chat") }}';
+
+// Add CSRF token to all AJAX requests
+const csrf_token = '{{ csrf_token }}';
+$.ajaxSetup({
+    beforeSend: function(xhr, settings) {
+        if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+            xhr.setRequestHeader("X-CSRFToken", csrf_token);
+        }
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const chatForm = document.getElementById('chat-form');
+    const chatMessages = document.getElementById('chat-messages');
+    const userMessageInput = document.getElementById('user-message');
+
+    // Auto-scroll to bottom of chat
+    function scrollToBottom() {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Add a message to the chat
+    function addMessage(message, isUser = false, timestamp = null) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `chat-message ${isUser ? 'user-message' : 'bot-message'}`;
+        
+        const time = timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        messageDiv.innerHTML = `
+            <div class="message-content">${message}</div>
+            <div class="message-time text-muted small text-end">${time}</div>
+        `;
+        
+        chatMessages.appendChild(messageDiv);
+        scrollToBottom();
+    }
+
+    // Show typing indicator
+    function showTypingIndicator() {
+        const typingIndicator = document.createElement('div');
+        typingIndicator.className = 'typing-indicator';
+        typingIndicator.id = 'typing-indicator';
+        typingIndicator.innerHTML = `
+            <div class="d-flex align-items-center">
+                <span></span>
+                <span style="animation-delay: 0.2s"></span>
+                <span style="animation-delay: 0.4s"></span>
+            </div>
+        `;
+        chatMessages.appendChild(typingIndicator);
+        scrollToBottom();
+        return typingIndicator;
+    }
+
+    // Hide typing indicator
+    function hideTypingIndicator() {
+        const indicator = document.getElementById('typing-indicator');
+        if (indicator) indicator.remove();
+    }
+
+    // Send message to the server and get response
+    async function sendMessage(message) {
+        try {
+            showTypingIndicator();
+            
+            const response = await fetch(API_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrf_token
+                },
+                body: JSON.stringify({ message: message })
+            });
+            
+            const data = await response.json();
+            hideTypingIndicator();
+            
+            if (data.error) {
+                console.error('Error from server:', data.error);
+                addMessage("I'm sorry, I encountered an error. Please try again.", false);
+            } else {
+                addMessage(data.response, false, data.timestamp);
+            }
+        } catch (error) {
+            console.error('Error sending message:', error);
+            hideTypingIndicator();
+            addMessage("I'm having trouble connecting to the server. Please check your connection and try again.", false);
+        }
+    }
+
+    // Handle form submission
+    chatForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const message = userMessageInput.value.trim();
+        
+        if (message) {
+            // Add user message to chat
+            addMessage(message, true);
+            userMessageInput.value = '';
+            
+            // Send message to server and get response
+            await sendMessage(message);
+        }
+    });
+
+    // Allow sending message with Enter key (but allow Shift+Enter for new line)
+    userMessageInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            chatForm.dispatchEvent(new Event('submit'));
+        }
+    });
+
+    // Initial welcome message
+    addMessage("Hello! I'm your AI recruitment assistant. How can I help you with your hiring process today?", false);
+});
+
+// Handle training form submission
+document.addEventListener('DOMContentLoaded', function() {
+    const trainingForm = document.getElementById('trainingForm');
+    if (trainingForm) {
+        trainingForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(trainingForm);
+            const data = {
+                question: formData.get('question'),
+                answer: formData.get('answer'),
+                category: formData.get('category')
+            };
+            
+            try {
+                const response = await fetch("{{ url_for('train_chatbot') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        training_data: [[data.question, data.category]],
+                        responses: {
+                            [data.category]: [data.answer]
+                        }
+                    })
+                });
+                
+                const result = await response.json();
+                if (response.ok) {
+                    alert('Chatbot trained successfully!');
+                    trainingForm.reset();
+                } else {
+                    throw new Error(result.error || 'Failed to train chatbot');
+                }
+            } catch (error) {
+                console.error('Error training chatbot:', error);
+                alert('Error training chatbot: ' + error.message);
+            }
+        });
+    }
+    
+    // Form submission for AI configuration
+    const configForm = document.getElementById('aiConfigForm');
+    if (configForm) {
+        configForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            // Show success message
+            const toast = `
+                <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+                    <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+                        <div class="toast-header bg-info text-white">
+                            <strong class="me-auto">Settings Updated</strong>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                        </div>
+                        <div class="toast-body">
+                            <i class="fas fa-check-circle text-info me-2"></i>
+                            AI interview settings have been updated successfully.
+                        </div>
+                    </div>
+                </div>`;
+            document.body.insertAdjacentHTML('beforeend', toast);
+            
+            // Remove toast after 5 seconds
+            setTimeout(() => {
+                const toasts = document.querySelectorAll('.toast');
+                toasts.forEach(toast => toast.remove());
+            }, 5000);
+        });
+    }
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Form submission for AI training
+    const trainingForm = document.getElementById('trainingForm');
+    if (trainingForm) {
+        trainingForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            // Show loading state
+            const submitBtn = trainingForm.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Training...';
+            
+            // Simulate API call
+            setTimeout(() => {
+                // Show success message
+                const toast = `
+                    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+                        <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+                            <div class="toast-header bg-success text-white">
+                                <strong class="me-auto">Success</strong>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                            </div>
+                            <div class="toast-body">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                AI model has been successfully trained with your instructions.
+                            </div>
+                        </div>
+                    </div>`;
+                document.body.insertAdjacentHTML('beforeend', toast);
+                
+                // Reset form and button
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                
+                // Remove toast after 5 seconds
+                setTimeout(() => {
+                    const toasts = document.querySelectorAll('.toast');
+                    toasts.forEach(toast => toast.remove());
+                }, 5000);
+            }, 2000);
+        });
+    }
+    
+    // Form submission for AI configuration
+    const configForm = document.getElementById('aiConfigForm');
+    if (configForm) {
+        configForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            // Show success message
+            const toast = `
+                <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+                    <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+                        <div class="toast-header bg-info text-white">
+                            <strong class="me-auto">Settings Updated</strong>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                        </div>
+                        <div class="toast-body">
+                            <i class="fas fa-check-circle text-info me-2"></i>
+                            AI interview settings have been updated successfully.
+                        </div>
+                    </div>
+                </div>`;
+            document.body.insertAdjacentHTML('beforeend', toast);
+            
+            // Remove toast after 5 seconds
+            setTimeout(() => {
+                const toasts = document.querySelectorAll('.toast');
+                toasts.forEach(toast => toast.remove());
+            }, 5000);
+        });
+    }
+});
+</script>
+{% endblock %}

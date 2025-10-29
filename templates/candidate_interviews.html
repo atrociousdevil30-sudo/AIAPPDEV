@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block title %}My Interviews - SmartHire AI{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('candidate_dashboard') }}">
+                <i class="fas fa-user-graduate me-2"></i>Candidate Portal
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('candidate_dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('candidate_applications') }}">
+                            <i class="fas fa-briefcase me-1"></i> My Applications
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('candidate_interviews') }}">
+                            <i class="fas fa-calendar-alt me-1"></i> Interviews
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('candidate_resume') }}">
+                            <i class="fas fa-file-alt me-1"></i> My Resume
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav me-3">
+                    <li class="nav-item">
+                        <a class="btn btn-outline-light btn-sm me-2" href="{{ url_for('select_role') }}" title="Switch Role">
+                            <i class="fas fa-exchange-alt me-1"></i> Switch Role
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle me-1"></i>
+                            <span class="d-none d-md-inline">{{ session.get('username', 'User') }}</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>Profile</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3">
+            <h1 class="h2">My Interviews</h1>
+        </div>
+        
+        <!-- Interview Tabs -->
+        <ul class="nav nav-tabs mb-4" id="interviewTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="upcoming-tab" data-bs-toggle="tab" data-bs-target="#upcoming" type="button" role="tab">
+                    <i class="fas fa-calendar-check me-1"></i> Upcoming Interviews
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="prep-tab" data-bs-toggle="tab" data-bs-target="#prep" type="button" role="tab">
+                    <i class="fas fa-graduation-cap me-1"></i> Interview Preparation
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="interviewTabsContent">
+            <!-- Upcoming Interviews Tab -->
+            <div class="tab-pane fade show active" id="upcoming" role="tabpanel" aria-labelledby="upcoming-tab">
+                <div class="row">
+                    <div class="col-12">
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Upcoming Interviews</h5>
+                        <a href="#" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-plus me-1"></i> Schedule
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group">
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h5 class="mb-1">Technical Interview - Round 2</h5>
+                                    <span class="badge bg-primary">Tomorrow</span>
+                                </div>
+                                <p class="mb-1">Senior Developer Position at Tech Corp</p>
+                                <small class="text-muted">
+                                    <i class="far fa-calendar-alt me-1"></i> Oct 28, 2023 - 2:00 PM to 3:00 PM
+                                </small>
+                                <div class="mt-2">
+                                    <button class="btn btn-sm btn-outline-primary">Join Meeting</button>
+                                    <button class="btn btn-sm btn-outline-secondary">Reschedule</button>
+                                    <button class="btn btn-sm btn-outline-danger">Cancel</button>
+                                </div>
+                            </div>
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h5 class="mb-1">HR Interview</h5>
+                                    <span class="badge bg-warning text-dark">Next Week</span>
+                                </div>
+                                <p class="mb-1">Product Manager at Design Studio</p>
+                                <small class="text-muted">
+                                    <i class="far fa-calendar-alt me-1"></i> Nov 2, 2023 - 11:00 AM to 12:00 PM
+                                </small>
+                                <div class="mt-2">
+                                    <button class="btn btn-sm btn-outline-primary">View Details</button>
+                                    <button class="btn btn-sm btn-outline-secondary">Reschedule</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Interview History</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group">
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h5 class="mb-1">Technical Screening</h5>
+                                    <small class="text-muted">Oct 20, 2023</small>
+                                </div>
+                                <p class="mb-1">Senior Developer Position at Tech Corp</p>
+                                <span class="badge bg-success">Completed</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            </div>
+        </div>
+    </div>
+    
+    <!-- Interview Preparation Tab -->
+    <div class="tab-pane fade" id="prep" role="tabpanel" aria-labelledby="prep-tab">
+        <div class="row">
+            <div class="col-12">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-graduation-cap me-2"></i>Interview Preparation Guide</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-lightbulb me-2"></i>
+                            Use this guide to prepare for your upcoming interviews and put your best foot forward.
+                        </div>
+
+                        <div class="row g-4">
+                            <!-- Pre-Interview Preparation -->
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header bg-light">
+                                        <h5 class="mb-0"><i class="fas fa-clipboard-check text-primary me-2"></i>Pre-Interview Preparation</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <ul class="list-group list-group-flush">
+                                            <li class="list-group-item">
+                                                <i class="fas fa-search me-2 text-primary"></i>
+                                                <strong>Research the company</strong> - Understand their products, services, and culture
+                                            </li>
+                                            <li class="list-group-item">
+                                                <i class="fas fa-file-alt me-2 text-primary"></i>
+                                                <strong>Review the job description</strong> - Match your skills to the requirements
+                                            </li>
+                                            <li class="list-group-item">
+                                                <i class="fas fa-laptop me-2 text-primary"></i>
+                                                <strong>Test your equipment</strong> - Camera, microphone, and internet connection
+                                            </li>
+                                            <li class="list-group-item">
+                                                <i class="fas fa-tshirt me-2 text-primary"></i>
+                                                <strong>Dress professionally</strong> - Even for video interviews
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Common Questions -->
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header bg-light">
+                                        <h5 class="mb-0"><i class="fas fa-question-circle text-primary me-2"></i>Common Questions</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="accordion" id="commonQuestions">
+                                            <div class="accordion-item">
+                                                <h2 class="accordion-header">
+                                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#question1">
+                                                        "Tell me about yourself"
+                                                    </button>
+                                                </h2>
+                                                <div id="question1" class="accordion-collapse collapse" data-bs-parent="#commonQuestions">
+                                                    <div class="accordion-body">
+                                                        Structure your answer with:
+                                                        <ul>
+                                                            <li>Current role and experience</li>
+                                                            <li>Key achievements</li>
+                                                            <li>Why you're interested in this role</li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="accordion-item">
+                                                <h2 class="accordion-header">
+                                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#question2">
+                                                        "What's your greatest strength?"
+                                                    </button>
+                                                </h2>
+                                                <div id="question2" class="accordion-collapse collapse" data-bs-parent="#commonQuestions">
+                                                    <div class="accordion-body">
+                                                        Focus on strengths relevant to the job and provide specific examples of how you've demonstrated them.
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Interview Tips -->
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header bg-light">
+                                        <h5 class="mb-0"><i class="fas fa-lightbulb text-primary me-2"></i>Interview Tips</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <h6>During the Interview</h6>
+                                                <ul class="list-group list-group-flush">
+                                                    <li class="list-group-item">
+                                                        <i class="fas fa-check-circle text-success me-2"></i>
+                                                        Maintain good eye contact and body language
+                                                    </li>
+                                                    <li class="list-group-item">
+                                                        <i class="fas fa-check-circle text-success me-2"></i>
+                                                        Listen carefully before answering
+                                                    </li>
+                                                    <li class="list-group-item">
+                                                        <i class="fas fa-check-circle text-success me-2"></i>
+                                                        Use the STAR method for behavioral questions
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <h6>Questions to Ask</h6>
+                                                <ul class="list-group list-group-flush">
+                                                    <li class="list-group-item">
+                                                        <i class="fas fa-question-circle text-primary me-2"></i>
+                                                        What does success look like in this role?
+                                                    </li>
+                                                    <li class="list-group-item">
+                                                        <i class="fas fa-question-circle text-primary me-2"></i>
+                                                        How would you describe the company culture?
+                                                    </li>
+                                                    <li class="list-group-item">
+                                                        <i class="fas fa-question-circle text-primary me-2"></i>
+                                                        What are the biggest challenges facing your team?
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}

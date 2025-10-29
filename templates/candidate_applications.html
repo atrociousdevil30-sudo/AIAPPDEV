@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}My Applications - SmartHire AI{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/applications.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>My Job Applications</h2>
+        <a href="#" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i> New Application
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h5 class="mb-0">Active Applications</h5>
+                </div>
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" class="form-control" placeholder="Search applications...">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Position</th>
+                            <th>Company</th>
+                            <th>Date Applied</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr data-application-id="1">
+                            <td>Senior Full Stack Developer</td>
+                            <td>TechNova Solutions</td>
+                            <td>Oct 25, 2023</td>
+                            <td><span class="badge bg-primary">Application Submitted</span></td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-primary view-application" data-application-id="1">View</button>
+                                <button class="btn btn-sm btn-outline-secondary withdraw-application" data-application-id="1">Withdraw</button>
+                            </td>
+                        </tr>
+                        <tr data-application-id="2">
+                            <td>Product Manager</td>
+                            <td>DesignHub Inc.</td>
+                            <td>Oct 23, 2023</td>
+                            <td><span class="badge bg-warning">Interview Scheduled</span></td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-primary view-application" data-application-id="2">View</button>
+                                <button class="btn btn-sm btn-outline-secondary withdraw-application" data-application-id="2">Withdraw</button>
+                            </td>
+                        </tr>
+                        <tr data-application-id="3">
+                            <td>Data Scientist</td>
+                            <td>AnalyticsPro</td>
+                            <td>Oct 20, 2023</td>
+                            <td><span class="badge bg-success">In Review</span></td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-primary view-application" data-application-id="3">View</button>
+                                <button class="btn btn-sm btn-outline-secondary withdraw-application" data-application-id="3">Withdraw</button>
+                            </td>
+                        </tr>
+                        <tr data-application-id="4">
+                            <td>UX/UI Designer</td>
+                            <td>CreativeMinds</td>
+                            <td>Oct 18, 2023</td>
+                            <td><span class="badge bg-info">Assessment Sent</span></td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-primary view-application" data-application-id="4">View</button>
+                                <button class="btn btn-sm btn-outline-secondary withdraw-application" data-application-id="4">Withdraw</button>
+                            </td>
+                        </tr>
+                        <tr data-application-id="5">
+                            <td>DevOps Engineer</td>
+                            <td>CloudScale Technologies</td>
+                            <td>Oct 15, 2023</td>
+                            <td><span class="badge bg-dark">Offer Received</span></td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-primary view-application" data-application-id="5">View</button>
+                                <button class="btn btn-sm btn-outline-success accept-offer" data-application-id="5">Accept Offer</button>
+                            </td>
+                        </tr>
+                        <tr data-application-id="6">
+                            <td>Marketing Specialist</td>
+                            <td>GrowthHack Media</td>
+                            <td>Oct 10, 2023</td>
+                            <td><span class="badge bg-secondary">Not Selected</span></td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-primary view-application" data-application-id="6">View</button>
+                                <button class="btn btn-sm btn-outline-danger delete-application" data-application-id="6">Delete</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Application Details Modal -->
+<div class="modal fade" id="applicationDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-file-alt me-2"></i>
+                    <span id="modal-position">Application Details</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="text-uppercase text-muted mb-3">Application Information</h6>
+                                <div class="mb-3">
+                                    <p class="text-muted mb-1">Application ID</p>
+                                    <p class="mb-0" id="modal-application-id">N/A</p>
+                                </div>
+                                <div class="mb-3">
+                                    <p class="text-muted mb-1">Date Applied</p>
+                                    <p class="mb-0" id="modal-application-date">N/A</p>
+                                </div>
+                                <div>
+                                    <p class="text-muted mb-1">Status</p>
+                                    <span class="badge" id="modal-status">N/A</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="text-uppercase text-muted mb-3">Job Details</h6>
+                                <h5 id="modal-company" class="mb-3">N/A</h5>
+                                <div class="mb-3">
+                                    <p class="text-muted mb-1">Job Type</p>
+                                    <p class="mb-0" id="modal-job-type">N/A</p>
+                                </div>
+                                <div class="mb-3">
+                                    <p class="text-muted mb-1">Location</p>
+                                    <p class="mb-0" id="modal-location">N/A</p>
+                                </div>
+                                <div>
+                                    <p class="text-muted mb-1">Salary</p>
+                                    <p class="mb-0" id="modal-salary">N/A</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4 mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="text-uppercase text-muted mb-3">Job Description</h6>
+                                <div id="modal-job-description">
+                                    <p class="mb-0">Loading job description...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="text-uppercase text-muted mb-3">Next Steps</h6>
+                                <ul class="list-unstyled" id="modal-next-steps">
+                                    <li><i class="fas fa-check-circle text-success me-2"></i> Application Submitted</li>
+                                    <li><i class="fas fa-dot-circle text-muted me-2"></i> Application Review</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="text-uppercase text-muted mb-3">Documents</h6>
+                                <div class="list-group list-group-flush" id="modal-documents">
+                                    <div class="list-group-item">
+                                        <p class="text-muted mb-0">No documents available.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="text-uppercase text-muted mb-3">Notes</h6>
+                                <div id="modal-notes">
+                                    <p class="text-muted mb-0">No notes available.</p>
+                                </div>
+                                <div class="mt-3">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" placeholder="Add a note...">
+                                        <button class="btn btn-outline-primary" type="button">
+                                            <i class="fas fa-paper-plane"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Close
+                </button>
+                <button type="button" class="btn btn-outline-danger me-auto" id="withdraw-application-btn">
+                    <i class="fas fa-undo me-1"></i> Withdraw
+                </button>
+                <button type="button" class="btn btn-primary" id="modal-primary-action">
+                    <i class="fas fa-print me-1"></i> Print
+                </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
