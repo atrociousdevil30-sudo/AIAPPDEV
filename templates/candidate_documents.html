@@ -1,0 +1,815 @@
+{% extends "candidate_base.html" %}
+
+{% block title %}My Documents - SmartHire AI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .document-card {
+        transition: all 0.3s ease;
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        overflow: hidden;
+    }
+    
+    .document-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15);
+    }
+    
+    .document-icon {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.5rem;
+        font-size: 1.5rem;
+    }
+    
+    .document-actions {
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+    
+    .document-card:hover .document-actions {
+        opacity: 1;
+    }
+    
+    .document-badge {
+        font-size: 0.75rem;
+        font-weight: 500;
+        padding: 0.25rem 0.5rem;
+        border-radius: 50px;
+    }
+    
+    .document-preview {
+        height: 200px;
+        background-color: var(--bg-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+    
+    .document-preview img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+    
+    .document-preview .file-icon {
+        font-size: 4rem;
+        color: var(--text-muted);
+    }
+    
+    .upload-dropzone {
+        border: 2px dashed var(--border-color);
+        border-radius: 0.5rem;
+        padding: 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .upload-dropzone:hover {
+        border-color: var(--primary-color);
+        background-color: rgba(123, 44, 191, 0.05);
+    }
+    
+    .upload-dropzone.dragover {
+        border-color: var(--primary-color);
+        background-color: rgba(123, 44, 191, 0.1);
+    }
+    
+    .document-category {
+        position: relative;
+        padding-left: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .document-category:before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: var(--primary-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h1 class="h3 mb-1">My Documents</h1>
+                    <p class="text-muted mb-0">Manage your resumes, cover letters, and other important documents</p>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadDocumentModal">
+                        <i class="fas fa-upload me-2"></i>Upload New
+                    </button>
+                </div>
+            </div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ url_for('candidate_dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Documents</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Documents Stats -->
+    <div class="row g-4 mb-4">
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="icon-shape icon-lg bg-primary bg-opacity-10 text-primary rounded-3 me-3">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1 text-muted">Total Documents</h6>
+                            <h3 class="mb-0">8</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="icon-shape icon-lg bg-success bg-opacity-10 text-success rounded-3 me-3">
+                            <i class="fas fa-file-contract"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1 text-muted">Active Resumes</h6>
+                            <h3 class="mb-0">2</h3>
+                        </div>
+                        <div class="bg-success bg-opacity-10 p-3 rounded">
+                            <i class="fas fa-file-pdf text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card h-100 border-start border-5 border-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Cover Letters</h6>
+                            <h3 class="mb-0">3</h3>
+                        </div>
+                        <div class="bg-info bg-opacity-10 p-3 rounded">
+                            <i class="fas fa-file-word text-info"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card h-100 border-start border-5 border-warning">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Other Documents</h6>
+                            <h3 class="mb-0">3</h3>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 p-3 rounded">
+                            <i class="fas fa-file-archive text-warning"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Documents Navigation -->
+    <div class="card mb-4">
+        <div class="card-body p-0">
+            <ul class="nav nav-tabs nav-tabs-card" id="documentsTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all" type="button" role="tab">
+                        <i class="fas fa-th-large me-2"></i>All Documents
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="resumes-tab" data-bs-toggle="tab" data-bs-target="#resumes" type="button" role="tab">
+                        <i class="fas fa-file-contract me-2"></i>Resumes
+                        <span class="badge bg-primary-soft text-primary rounded-pill ms-2">2</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="cover-letters-tab" data-bs-toggle="tab" data-bs-target="#cover-letters" type="button" role="tab">
+                        <i class="fas fa-envelope-open-text me-2"></i>Cover Letters
+                        <span class="badge bg-success-soft text-success rounded-pill ms-2">3</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="certifications-tab" data-bs-toggle="tab" data-bs-target="#certifications" type="button" role="tab">
+                        <i class="fas fa-certificate me-2"></i>Certifications
+                        <span class="badge bg-warning-soft text-warning rounded-pill ms-2">3</span>
+                    </button>
+                </li>
+            </ul>
+        </div>
+        
+        <!-- Documents Content -->
+        <div class="tab-content" id="documentsTabsContent">
+            <!-- All Documents Tab -->
+            <div class="tab-pane fade show active" id="all" role="tabpanel" aria-labelledby="all-tab">
+                <div class="row g-4">
+                    <!-- Document Card 1 -->
+                    <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+                        <div class="card document-card h-100">
+                            <div class="document-preview bg-light">
+                                <i class="fas fa-file-pdf text-danger file-icon"></i>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div class="d-flex align-items-center">
+                                        <div class="document-icon bg-danger bg-opacity-10 text-danger me-3">
+                                            <i class="fas fa-file-pdf"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0 text-truncate" style="max-width: 180px;">John_Doe_Resume_2023.pdf</h6>
+                                            <small class="text-muted">245 KB</small>
+                                        </div>
+                                    </div>
+                                    <div class="dropdown document-actions">
+                                        <button class="btn btn-sm btn-link text-muted p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#documentPreviewModal"><i class="far fa-eye me-2"></i>Preview</a></li>
+                                            <li><a class="dropdown-item" href="#"><i class="fas fa-download me-2"></i>Download</a></li>
+                                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#renameDocumentModal"><i class="far fa-edit me-2"></i>Rename</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteDocumentModal"><i class="far fa-trash-alt me-2"></i>Delete</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="document-badge bg-success-soft text-success">Active Resume</span>
+                                    <small class="text-muted">Oct 15, 2023</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Document Card 2 -->
+                    <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+                        <div class="card document-card h-100">
+                            <div class="document-preview bg-light">
+                                <i class="fas fa-file-word text-primary file-icon"></i>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div class="d-flex align-items-center">
+                                        <div class="document-icon bg-primary bg-opacity-10 text-primary me-3">
+                                            <i class="fas fa-file-word"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0 text-truncate" style="max-width: 180px;">Cover_Letter_TechCorp.docx</h6>
+                                            <small class="text-muted">45 KB</small>
+                                        </div>
+                                    </div>
+                                    <div class="dropdown document-actions">
+                                        <button class="btn btn-sm btn-link text-muted p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#documentPreviewModal"><i class="far fa-eye me-2"></i>Preview</a></li>
+                                            <li><a class="dropdown-item" href="#"><i class="fas fa-download me-2"></i>Download</a></li>
+                                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#renameDocumentModal"><i class="far fa-edit me-2"></i>Rename</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteDocumentModal"><i class="far fa-trash-alt me-2"></i>Delete</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="document-badge bg-success-soft text-success">Active</span>
+                                    <small class="text-muted">Oct 20, 2023</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Document Card 3 -->
+                    <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+                        <div class="card document-card h-100">
+                            <div class="document-preview bg-light">
+                                <i class="fas fa-certificate text-warning file-icon"></i>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div class="d-flex align-items-center">
+                                        <div class="document-icon bg-warning bg-opacity-10 text-warning me-3">
+                                            <i class="fas fa-certificate"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0 text-truncate" style="max-width: 180px;">AWS_Certified_Solutions_Architect.pdf</h6>
+                                            <small class="text-muted">1.2 MB</small>
+                                        </div>
+                                    </div>
+                                    <div class="dropdown document-actions">
+                                        <button class="btn btn-sm btn-link text-muted p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#documentPreviewModal"><i class="far fa-eye me-2"></i>Preview</a></li>
+                                            <li><a class="dropdown-item" href="#"><i class="fas fa-download me-2"></i>Download</a></li>
+                                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#renameDocumentModal"><i class="far fa-edit me-2"></i>Rename</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteDocumentModal"><i class="far fa-trash-alt me-2"></i>Delete</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="document-badge bg-success-soft text-success">Active</span>
+                                    <small class="text-muted">Jul 10, 2023</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Empty State -->
+                    <div class="col-12 text-center py-5">
+                        <div class="text-muted">
+                            <i class="fas fa-inbox fa-3x mb-3"></i>
+                            <h5 class="mb-2">No more documents</h5>
+                            <p class="mb-0">Upload more documents to see them here</p>
+                            <button class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#uploadDocumentModal">
+                                <i class="fas fa-upload me-2"></i>Upload Document
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Other Tabs (Resumes, Cover Letters, Certifications) -->
+            <div class="tab-pane fade" id="resumes" role="tabpanel" aria-labelledby="resumes-tab">
+                <!-- Similar card layout as the All Documents tab but filtered for Resumes -->
+            </div>
+            
+            <div class="tab-pane fade" id="cover-letters" role="tabpanel" aria-labelledby="cover-letters-tab">
+                <!-- Similar card layout as the All Documents tab but filtered for Cover Letters -->
+            </div>
+            
+            <div class="tab-pane fade" id="certifications" role="tabpanel" aria-labelledby="certifications-tab">
+                <!-- Similar card layout as the All Documents tab but filtered for Certifications -->
+            </div>
+        </div>
+        
+        <!-- Storage Usage -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">Storage Usage</h6>
+                    <small class="text-muted">4.2 MB of 200 MB used</small>
+                </div>
+                <div class="progress" style="height: 8px;">
+                    <div class="progress-bar bg-primary" role="progressbar" style="width: 25%;" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <small class="text-muted d-block mt-2">You can upload up to 20 documents. Maximum file size: 10MB per file.</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Document Modal -->
+<div class="modal fade" id="uploadDocumentModal" tabindex="-1" aria-labelledby="uploadDocumentModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title">Upload Document</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="uploadDocumentForm">
+                    <div class="upload-dropzone text-center py-5 mb-4" id="dropzone">
+                        <div class="mb-3">
+                            <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+                            <h5>Drag & drop files here</h5>
+                            <p class="text-muted small mb-0">or</p>
+                        </div>
+                        <label for="documentFile" class="btn btn-outline-primary">
+                            <i class="fas fa-folder-open me-2"></i>Browse Files
+                        </label>
+                        <input type="file" id="documentFile" class="d-none" required>
+                        <div class="mt-2">
+                            <small class="text-muted">Supported formats: PDF, DOC, DOCX, TXT (Max size: 10MB)</small>
+                        </div>
+                    </div>
+                    
+                    <div id="fileInfo" class="d-none">
+                        <div class="alert alert-success d-flex align-items-center mb-3">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <div>
+                                <span id="fileName">document.pdf</span> selected
+                                <span id="fileSize" class="d-block text-muted small">245 KB</span>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="documentType" class="form-label">Document Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="documentType" required>
+                                <option value="" selected disabled>Select document type</option>
+                                <option value="resume">Resume</option>
+                                <option value="cover-letter">Cover Letter</option>
+                                <option value="certification">Certification</option>
+                                <option value="transcript">Transcript</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="documentName" class="form-label">Document Name</label>
+                            <input type="text" class="form-control" id="documentName" placeholder="e.g., My_Resume_2023">
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="setAsActive" checked>
+                            <label class="form-check-label" for="setAsActive">
+                                Set as active document for this type
+                            </label>
+                        </div>
+                        
+                        <div class="alert alert-warning" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            By uploading, you confirm this document doesn't contain sensitive personal information.
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="uploadDocumentForm" class="btn btn-primary" id="uploadSubmitBtn" disabled>
+                    <span class="spinner-border spinner-border-sm d-none" id="uploadSpinner" role="status" aria-hidden="true"></span>
+                    <span id="uploadBtnText">Upload Document</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Document Preview Modal -->
+<div class="modal fade" id="documentPreviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title">Document Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center py-4">
+                    <div class="document-preview bg-light rounded-3 mx-auto mb-4" style="max-width: 600px; height: 300px;">
+                        <i class="fas fa-file-pdf text-danger file-icon" style="font-size: 5rem;"></i>
+                    </div>
+                    <h5 id="previewFileName">John_Doe_Resume_2023.pdf</h5>
+                    <p class="text-muted mb-4">245 KB • PDF</p>
+                    
+                    <div class="alert alert-info d-inline-flex align-items-center">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Preview is not available for this file type. Please download to view.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <div class="form-check me-auto">
+                    <input class="form-check-input" type="checkbox" id="setAsDefaultPreview" checked>
+                    <label class="form-check-label" for="setAsDefaultPreview">
+                        Set as default resume
+                    </label>
+                </div>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary">
+                    <i class="fas fa-download me-2"></i>Download
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rename Document Modal -->
+<div class="modal fade" id="renameDocumentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title">Rename Document</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="renameDocumentForm">
+                    <div class="mb-3">
+                        <label for="newDocumentName" class="form-label">New Name</label>
+                        <input type="text" class="form-control" id="newDocumentName" value="John_Doe_Resume_2023" required>
+                        <div class="form-text">Do not include the file extension</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="renameDocumentForm" class="btn btn-primary">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Document Modal -->
+<div class="modal fade" id="deleteDocumentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title text-danger">Delete Document</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-exclamation-triangle text-danger" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5>Are you sure?</h5>
+                    <p class="text-muted">You are about to delete <strong>John_Doe_Resume_2023.pdf</strong>. This action cannot be undone.</p>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger">
+                    <i class="fas fa-trash-alt me-2"></i>Delete Permanently
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+.dropzone {
+    border: 2px dashed #dee2e6;
+    border-radius: 0.375rem;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.dropzone:hover {
+    border-color: #0d6efd;
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+.dz-message h5 {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.avatar-sm {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.table th {
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+}
+
+.nav-tabs .nav-link {
+    font-weight: 500;
+    color: #6c757d;
+    border: none;
+    padding: 0.75rem 1.25rem;
+    position: relative;
+}
+
+.nav-tabs .nav-link.active {
+    color: #0d6efd;
+    background-color: transparent;
+    border: none;
+}
+
+.nav-tabs .nav-link.active:after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: #0d6efd;
+}
+
+{% block extra_js %}
+<script>
+// Initialize the page when DOM is fully loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Handle file selection
+    const fileInput = document.getElementById('documentFile');
+    const dropzone = document.getElementById('dropzone');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const uploadSubmitBtn = document.getElementById('uploadSubmitBtn');
+    const uploadBtnText = document.getElementById('uploadBtnText');
+    const uploadSpinner = document.getElementById('uploadSpinner');
+    
+    // Format file size
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    // Handle file selection
+    fileInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            const file = this.files[0];
+            
+            // Update file info
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            
+            // Set document name without extension
+            const docName = file.name.replace(/\.[^/.]+$/, '');
+            document.getElementById('documentName').value = docName;
+            
+            // Show file info and enable submit button
+            fileInfo.classList.remove('d-none');
+            uploadSubmitBtn.disabled = false;
+            
+            // Set document type based on file name
+            const fileExt = file.name.split('.').pop().toLowerCase();
+            const docType = document.getElementById('documentType');
+            
+            if (fileExt === 'pdf') {
+                docType.value = 'resume';
+            } else if (['doc', 'docx'].includes(fileExt)) {
+                docType.value = 'cover-letter';
+            }
+        }
+    });
+    
+    // Handle drag and drop
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropzone.addEventListener(eventName, preventDefaults, false);
+    });
+    
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropzone.addEventListener(eventName, highlight, false);
+    });
+    
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropzone.addEventListener(eventName, unhighlight, false);
+    });
+    
+    function highlight() {
+        dropzone.classList.add('dragover');
+    }
+    
+    function unhighlight() {
+        dropzone.classList.remove('dragover');
+    }
+    
+    // Handle dropped files
+    dropzone.addEventListener('drop', handleDrop, false);
+    
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        
+        if (files.length) {
+            fileInput.files = files;
+            const event = new Event('change');
+            fileInput.dispatchEvent(event);
+        }
+    }
+    
+    // Handle document upload form submission
+    document.getElementById('uploadDocumentForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Show loading state
+        uploadBtnText.textContent = 'Uploading...';
+        uploadSpinner.classList.remove('d-none');
+        uploadSubmitBtn.disabled = true;
+        
+        // In a real app, this would upload the file to the server
+        // For now, we'll just show a success message after a delay
+        setTimeout(function() {
+            // Show success toast
+            const toast = document.createElement('div');
+            toast.className = 'position-fixed bottom-0 end-0 m-3 alert alert-success alert-dismissible fade show';
+            toast.role = 'alert';
+            toast.innerHTML = `
+                <i class="fas fa-check-circle me-2"></i> Document uploaded successfully!
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            document.body.appendChild(toast);
+            
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+                const bsAlert = new bootstrap.Alert(toast);
+                bsAlert.close();
+            }, 3000);
+            
+            // Reset form and button
+            document.getElementById('uploadDocumentForm').reset();
+            fileInfo.classList.add('d-none');
+            uploadBtnText.textContent = 'Upload Document';
+            uploadSpinner.classList.add('d-none');
+            
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('uploadDocumentModal'));
+            modal.hide();
+            
+            // In a real app, you would refresh the documents list here
+        }, 1500);
+    });
+    
+    // Handle rename document form submission
+    document.getElementById('renameDocumentForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // In a real app, this would update the document name on the server
+        const newName = document.getElementById('newDocumentName').value;
+        
+        // Show success message
+        const toast = document.createElement('div');
+        toast.className = 'position-fixed bottom-0 end-0 m-3 alert alert-success alert-dismissible fade show';
+        toast.role = 'alert';
+        toast.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i> Document renamed to ${newName}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        document.body.appendChild(toast);
+        
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+            const bsAlert = new bootstrap.Alert(toast);
+            bsAlert.close();
+        }, 3000);
+        
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('renameDocumentModal'));
+        modal.hide();
+        
+        // In a real app, you would update the document name in the UI
+    });
+    
+    // Handle delete document confirmation
+    document.querySelector('#deleteDocumentModal .btn-danger')?.addEventListener('click', function() {
+        // In a real app, this would delete the document from the server
+        
+        // Show success message
+        const toast = document.createElement('div');
+        toast.className = 'position-fixed bottom-0 end-0 m-3 alert alert-success alert-dismissible fade show';
+        toast.role = 'alert';
+        toast.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i> Document deleted successfully
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        document.body.appendChild(toast);
+        
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+            const bsAlert = new bootstrap.Alert(toast);
+            bsAlert.close();
+        }, 3000);
+        
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('deleteDocumentModal'));
+        modal.hide();
+        
+        // In a real app, you would remove the document from the UI
+    });
+});
+</script>
+{% endblock %}

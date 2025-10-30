@@ -1,330 +1,2021 @@
 {% extends "base.html" %}
 
-{% block title %}Onboarding - SmartHire AI{% endblock %}
+{% block title %}SmartHire AI - Onboarding Dashboard{% endblock %}
+
+{% block styles %}
+<style>
+    .onboarding-hero {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border-radius: 1rem;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .onboarding-stats-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 0.75rem;
+        transition: all 0.3s ease;
+    }
+    
+    .onboarding-stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+    
+    .progress-thin {
+        height: 6px;
+        border-radius: 3px;
+    }
+    
+    .onboarding-step {
+        position: relative;
+        padding-left: 2rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .onboarding-step:before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.25rem;
+        width: 1.5rem;
+        height: 1.5rem;
+        border-radius: 50%;
+        background: #2d3748;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 0.75rem;
+    }
+    
+    .onboarding-step.completed:before {
+        content: '✓';
+        background: #10b981;
+    }
+    
+    .onboarding-step.active:before {
+        background: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+    }
+    
+    .document-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px dashed rgba(255, 255, 255, 0.1);
+        border-radius: 0.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .document-card:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: #3b82f6;
+    }
+    
+    .drag-drop-zone {
+        border: 2px dashed #4a5568;
+        border-radius: 0.75rem;
+        transition: all 0.3s ease;
+    }
+    
+    .drag-drop-zone.dragover {
+        border-color: #3b82f6;
+        background: rgba(59, 130, 246, 0.1);
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <!-- Page Header -->
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-white">Candidate Onboarding</h1>
-    </div>
-    
+<div class="container-fluid">
     <div class="row">
-        <!-- Left Column - Sample Candidates -->
-        <div class="col-lg-4 mb-4">
-            <div class="card border-0 shadow-sm h-100 bg-dark">
-                <div class="card-header border-bottom border-secondary py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 text-white">Sample Candidates</h5>
-                    <button type="button" class="btn btn-sm btn-outline-light" id="refreshSamples">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
+        <!-- Sidebar -->
+        <nav id="sidebar" class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+            <div class="position-sticky pt-3">
+                <div class="text-center mb-4">
+                    <h4 class="text-white">SmartHire</h4>
+                    <p class="text-muted small">Onboarding Portal</p>
                 </div>
-                <div class="card-body p-0">
-                    <div class="list-group list-group-flush">
-                        {% for candidate in sample_candidates %}
-                        <a href="#" class="list-group-item list-group-item-action border-0 py-3 bg-dark sample-candidate" 
-                           data-name="{{ candidate.name }}" 
-                           data-job="{{ candidate.job_desc }}"
-                           data-resume="{{ candidate.resume_text|replace('\n', '\\n')|replace('"', '\\"')|replace("'", "\\'") }}"
-                           style="border-bottom: 1px solid #2d2d2d !important;">
-                            <div class="d-flex align-items-center">
-                                <div class="flex-shrink-0 me-3">
-                                    <div class="avatar avatar-md">
-                                        <span class="avatar-text bg-primary">{{ candidate.name.split(' ')|map('first')|join('')|upper }}</span>
-                                    </div>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <h6 class="mb-1 text-white">{{ candidate.name }}</h6>
-                                    <p class="mb-0 text-muted small">{{ candidate.job_desc }}</p>
-                                </div>
-                                <span class="badge bg-secondary">Sample</span>
-                            </div>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="{{ url_for('hr_dashboard') }}">
+                            <i class="fas fa-home me-2"></i> Dashboard
                         </a>
-                        {% endfor %}
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('workflow_route') }}">
+                            <i class="fas fa-project-diagram me-2"></i> Workflow
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('onboarding_route') }}">
+                            <i class="fas fa-user-plus me-2"></i> Onboarding
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('hr_interviews') }}">
+                            <i class="fas fa-video me-2"></i> Interviews
+                        </a>
+                    </li>
+                </ul>
+                
+                <!-- Progress Overview -->
+                <div class="mt-5 px-3">
+                    <h6 class="text-uppercase text-muted mb-3">Onboarding Progress</h6>
+                    <div class="progress mb-3 bg-dark" style="height: 6px;">
+                        <div class="progress-bar bg-primary" role="progressbar" style="width: 65%;" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <p class="small text-muted mb-0">5 of 8 tasks completed</p>
+                </div>
+                
+                <div class="mt-4 px-3">
+                    <div class="card bg-dark border-0">
+                        <div class="card-body text-center p-3">
+                            <i class="fas fa-headset fa-2x text-primary mb-2"></i>
+                            <p class="small mb-2">Need help with onboarding?</p>
+                            <button class="btn btn-sm btn-outline-light w-100">
+                                <i class="fas fa-comment-alt me-1"></i> Chat Support
+                            </button>
+                        </div>
                     </div>
                 </div>
-                <div class="card-footer border-top border-secondary py-2">
-                    <small class="text-muted">Click on a sample to fill the form</small>
+            </div>
+        </nav>
+
+        <!-- Main content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+            <!-- Page Header -->
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom border-secondary">
+                <h1 class="h3 mb-0 text-white">Employee Onboarding</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <button class="btn btn-sm btn-outline-secondary me-2">
+                        <i class="fas fa-download me-1"></i> Export
+                    </button>
+                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#newOnboardingModal">
+                        <i class="fas fa-plus me-1"></i> New Onboarding
+                    </button>
+                </div>
+            </div>
+            <!-- Header with Welcome -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 text-white mb-1">Welcome back, <span class="text-primary">HR Team</span></h1>
+                    <p class="text-muted mb-0">Track and manage your new hires' onboarding journey</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-light">
+                        <i class="fas fa-download me-1"></i> Export
+                    </button>
+                    <button class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i> New Onboarding
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Stats Overview -->
+            <!-- Stats Overview -->
+            <div class="row g-4 mb-4">
+                <!-- New Hires This Week -->
+                <div class="col-md-6 col-xl-3">
+                    <div class="card onboarding-stats-card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-uppercase text-muted mb-1">New Hires This Week</h6>
+                                    <h3 class="mb-0 text-white">8</h3>
+                                    <p class="text-success small mb-0">
+                                        <i class="fas fa-arrow-up me-1"></i> 2 from last week
+                                    </p>
+                                </div>
+                                <div class="bg-success bg-opacity-10 p-3 rounded-circle">
+                                    <i class="fas fa-user-plus fa-2x text-success"></i>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <div class="d-flex justify-content-between small text-muted mb-1">
+                                    <span>On Track</span>
+                                    <span>75%</span>
+                                </div>
+                                <div class="progress progress-thin bg-dark">
+                                    <div class="progress-bar bg-success" style="width: 75%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Documents Pending -->
+                <div class="col-md-6 col-xl-3">
+                    <div class="card onboarding-stats-card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-uppercase text-muted mb-1">Documents Pending</h6>
+                                    <h3 class="mb-0 text-white">5</h3>
+                                    <p class="text-danger small mb-0">
+                                        <i class="fas fa-exclamation-triangle me-1"></i> 2 require attention
+                                    </p>
+                                </div>
+                                <div class="bg-danger bg-opacity-10 p-3 rounded-circle">
+                                    <i class="fas fa-file-alt fa-2x text-danger"></i>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <div class="d-flex justify-content-between small text-muted mb-1">
+                                    <span>Approval Rate</span>
+                                    <span>92%</span>
+                                </div>
+                                <div class="progress progress-thin bg-dark">
+                                    <div class="progress-bar bg-danger" style="width: 92%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Active Onboardings -->
+                <div class="col-md-6 col-xl-3">
+                    <div class="card onboarding-stats-card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-uppercase text-muted mb-1">Active Onboardings</h6>
+                                    <h3 class="mb-0 text-white">12</h3>
+                                    <p class="text-success small mb-0">
+                                        <i class="fas fa-arrow-up me-1"></i> 3 from last week
+                                    </p>
+                                </div>
+                                <div class="bg-primary bg-opacity-10 p-3 rounded-circle">
+                                    <i class="fas fa-user-clock fa-2x text-primary"></i>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <div class="d-flex justify-content-between small text-muted mb-1">
+                                    <span>Completion</span>
+                                    <span>65%</span>
+                                </div>
+                                <div class="progress progress-thin bg-dark">
+                                    <div class="progress-bar bg-primary" style="width: 65%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- New Hires -->
+                <div class="col-md-6 col-xl-3">
+                    <div class="card onboarding-stats-card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-uppercase mb-1">New Hires</h6>
+                                    <h2 class="mb-0">24</h2>
+                                    <span class="badge bg-white text-primary">+5 this month</span>
+                                </div>
+                                <i class="fas fa-user-plus fa-2x opacity-25"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- In Progress -->
+                <div class="col-md-6 col-xl-3">
+                    <div class="card bg-dark border-0 h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-uppercase text-muted mb-1">In Progress</h6>
+                                    <h3 class="mb-0 text-white">12</h3>
+                                    <div class="progress mt-2" style="height: 4px;">
+                                        <div class="progress-bar bg-warning" style="width: 65%"></div>
+                                    </div>
+                                </div>
+                                <i class="fas fa-sync-alt text-warning"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Pending Tasks -->
+                <div class="col-md-6 col-xl-3">
+                    <div class="card bg-dark border-0 h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-uppercase text-muted mb-1">Pending Tasks</h6>
+                                    <h3 class="mb-0 text-white">18</h3>
+                                    <span class="text-muted small">3 overdue</span>
+                                </div>
+                                <div class="bg-danger bg-opacity-10 p-3 rounded-circle">
+                                    <i class="fas fa-tasks text-danger"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Completion Rate -->
+                <div class="col-md-6 col-xl-3">
+                    <div class="card bg-dark border-0 h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-uppercase text-muted mb-1">Completion Rate</h6>
+                                    <h3 class="mb-0 text-white">85%</h3>
+                                    <span class="text-success small">
+                                        <i class="fas fa-arrow-up"></i> 12% from last month
+                                    </span>
+                                </div>
+                                <div class="position-relative" style="width: 60px; height: 60px;">
+                                    <svg class="circular-chart" viewBox="0 0 36 36">
+                                        <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#2e3440" stroke-width="3"/>
+                                        <path class="circle" stroke-dasharray="85, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#4e73df" stroke-width="3" stroke-linecap="round"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Onboarding Workflow -->
+                <div class="row g-4 mb-4">
+                    <!-- Steps -->
+                    <div class="col-lg-8">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Onboarding Checklist</h5>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item" href="#">Export Checklist</a></li>
+                                        <li><a class="dropdown-item" href="#">Print</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item text-danger" href="#">Reset Progress</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="onboarding-step completed">
+                                    <h6 class="text-white mb-1">Pre-arrival Setup</h6>
+                                    <p class="small text-muted mb-2">Complete all pre-employment documentation and system access requests</p>
+                                    <div class="d-flex align-items-center small text-muted">
+                                        <i class="fas fa-check-circle text-success me-1"></i>
+                                        <span>Completed 2 days ago</span>
+                                        <span class="mx-2">•</span>
+                                        <a href="#" class="text-primary">View Details</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 col-xl-3">
+                    <div class="card border-0 shadow-sm h-100 bg-dark">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-info bg-opacity-10 p-3 rounded-3 me-3">
+                                    <i class="fas fa-users text-info"></i>
+                                </div>
+                                <div>
+                                    <p class="text-muted mb-0">Active Candidates</p>
+                                    <h4 class="mb-0 text-white">24</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Onboarding Workflow -->
+            <div class="row g-4 mb-4">
+                <!-- Steps -->
+                <div class="col-lg-8">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Onboarding Checklist</h5>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="#">Export Checklist</a></li>
+                                    <li><a class="dropdown-item" href="#">Print</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="#">Reset Progress</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="onboarding-step completed">
+                                <h6 class="text-white mb-1">Pre-arrival Setup</h6>
+                                <p class="small text-muted mb-2">Complete all pre-employment documentation and system access requests</p>
+                                <div class="d-flex align-items-center small text-muted">
+                                    <i class="fas fa-check-circle text-success me-1"></i>
+                                    <span>Completed 2 days ago</span>
+                                    <span class="mx-2">•</span>
+                                    <a href="#" class="text-primary">View Details</a>
+                                </div>
+                            </div>
+                            
+                            <div class="onboarding-step completed">
+                                <h6 class="text-white mb-1">First Day Setup</h6>
+                                <p class="small text-muted mb-2">Prepare workspace, equipment, and access credentials</p>
+                                <div class="d-flex align-items-center small text-muted">
+                                    <i class="fas fa-check-circle text-success me-1"></i>
+                                    <span>Completed yesterday</span>
+                                    <span class="mx-2">•</span>
+                                    <a href="#" class="text-primary">View Details</a>
+                                </div>
+                            </div>
+                            
+                            <div class="onboarding-step active">
+                                <h6 class="text-white mb-1">Document Collection</h6>
+                                <p class="text-muted small mb-2">Gather and verify all required employee documents</p>
+                                <div class="d-flex align-items-center small text-warning">
+                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                    <span>2 of 5 documents pending</span>
+                                    <span class="mx-2">•</span>
+                                    <a href="#" class="text-primary">Upload Now</a>
+                                </div>
+                                
+                                <!-- Document Status -->
+                                <div class="row mt-3 g-3">
+                                    <div class="col-md-6">
+                                        <div class="document-card p-3">
+                                            <div class="d-flex align-items-center">
+                                                <div class="bg-primary bg-opacity-10 p-2 rounded me-3">
+                                                    <i class="fas fa-file-pdf text-primary"></i>
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="mb-0 text-white">Employment Contract</h6>
+                                                    <small class="text-success">Signed & Verified</small>
+                                                </div>
+                                                <button class="btn btn-sm btn-link text-muted">
+                                                    <i class="fas fa-download"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="document-card p-3">
+                                            <div class="d-flex align-items-center">
+                                                <div class="bg-primary bg-opacity-10 p-2 rounded me-3">
+                                                    <i class="fas fa-id-card text-primary"></i>
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="mb-0 text-white">ID Verification</h6>
+                                                    <small class="text-success">Verified</small>
+                                                </div>
+                                                <button class="btn btn-sm btn-link text-muted">
+                                                    <i class="fas fa-download"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="document-card p-3 border-warning">
+                                            <div class="d-flex align-items-center">
+                                                <div class="bg-warning bg-opacity-10 p-2 rounded me-3">
+                                                    <i class="fas fa-file-invoice text-warning"></i>
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="mb-0 text-white">Tax Forms</h6>
+                                                    <small class="text-warning">Pending Review</small>
+                                                </div>
+                                                <button class="btn btn-sm btn-link text-muted">
+                                                    <i class="fas fa-upload"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="document-card p-3">
+                                            <div class="d-flex align-items-center">
+                                                <div class="bg-primary bg-opacity-10 p-2 rounded me-3">
+                                                    <i class="fas fa-briefcase text-primary"></i>
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="mb-0 text-white">NDA Agreement</h6>
+                                                    <small class="text-success">Signed</small>
+                                                </div>
+                                                <button class="btn btn-sm btn-link text-muted">
+                                                    <i class="fas fa-download"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="document-card p-3 border-danger">
+                                            <div class="d-flex align-items-center">
+                                                <div class="bg-danger bg-opacity-10 p-2 rounded me-3">
+                                                    <i class="fas fa-file-medical text-danger"></i>
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="mb-0 text-white">Health Insurance</h6>
+                                                    <small class="text-danger">Missing</small>
+                                                </div>
+                                                <button class="btn btn-sm btn-link text-muted">
+                                                    <i class="fas fa-upload"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="document-card p-3">
+                                            <div class="d-flex align-items-center">
+                                                <div class="bg-primary bg-opacity-10 p-2 rounded me-3">
+                                                    <i class="fas fa-university text-primary"></i>
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="mb-0 text-white">Bank Details</h6>
+                                                    <small class="text-success">Verified</small>
+                                                </div>
+                                                <button class="btn btn-sm btn-link text-muted">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Document Upload -->
+                                <div class="mt-4">
+                                    <div class="drag-drop-zone p-5 text-center rounded" id="documentDropZone">
+                                        <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                                        <h5 class="text-white mb-2">Drag & drop files here</h5>
+                                        <p class="text-muted small mb-3">or</p>
+                                        <button class="btn btn-outline-primary">
+                                            <i class="fas fa-folder-open me-2"></i>Browse Files
+                                        </button>
+                                        <input type="file" class="d-none" id="documentUpload" multiple>
+                                        <p class="small text-muted mt-2 mb-0">Supports PDF, JPG, PNG up to 10MB</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="onboarding-step">
+                                <h6 class="text-muted mb-1">Training & Orientation</h6>
+                                <p class="small text-muted mb-2">Complete required training modules and orientation sessions</p>
+                                <div class="d-flex align-items-center small text-muted">
+                                    <i class="far fa-clock me-1"></i>
+                                    <span>Scheduled for tomorrow</span>
+                                </div>
+                            </div>
+                            
+                            <div class="onboarding-step">
+                                <h6 class="text-muted mb-1">Team Introduction</h6>
+                                <p class="small text-muted mb-2">Meet with team members and key stakeholders</p>
+                                <div class="d-flex align-items-center small text-muted">
+                                    <i class="far fa-calendar me-1"></i>
+                                    <span>Scheduled for Friday</span>
+                                </div>
+                            </div>
+                            
+                            <div class="onboarding-step">
+                                <h6 class="text-muted mb-1">30-Day Review</h6>
+                                <p class="small text-muted mb-0">Initial performance review and feedback session</p>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-transparent border-0 pt-0">
+                            <button class="btn btn-primary w-100">
+                                <i class="fas fa-check-circle me-2"></i>Mark Current Step as Complete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Upcoming Tasks & Team -->
+                <div class="col-lg-4">
+                    <!-- Upcoming Tasks -->
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Upcoming Tasks</h5>
+                            <a href="#" class="small text-primary">View All</a>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="list-group list-group-flush">
+                                <div class="list-group-item bg-transparent border-secondary">
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-shrink-0 me-3">
+                                            <div class="bg-primary bg-opacity-10 p-2 rounded-circle">
+                                                <i class="fas fa-video text-primary"></i>
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-0 text-white">Team Introduction Call</h6>
+                                            <small class="text-muted">Tomorrow, 10:00 AM - 11:00 AM</small>
+                                        </div>
+                                        <div class="dropdown">
+                                            <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                <li><a class="dropdown-item" href="#">Edit</a></li>
+                                                <li><a class="dropdown-item" href="#">Reschedule</a></li>
+                                                <li><a class="dropdown-item text-danger" href="#">Cancel</a></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="list-group-item bg-transparent border-secondary">
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-shrink-0 me-3">
+                                            <div class="bg-warning bg-opacity-10 p-2 rounded-circle">
+                                                <i class="fas fa-book text-warning"></i>
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-0 text-white">Complete Training Modules</h6>
+                                            <small class="text-muted">Due in 2 days</small>
+                                        </div>
+                                        <div class="dropdown">
+                                            <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                <li><a class="dropdown-item" href="#">View Details</a></li>
+                                                <li><a class="dropdown-item" href="#">Request Extension</a></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="list-group-item bg-transparent border-secondary">
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-shrink-0 me-3">
+                                            <div class="bg-info bg-opacity-10 p-2 rounded-circle">
+                                                <i class="fas fa-file-alt text-info"></i>
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-0 text-white">Submit Benefits Enrollment</h6>
+                                            <small class="text-muted">Due in 5 days</small>
+                                        </div>
+                                        <div class="dropdown">
+                                            <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                <li><a class="dropdown-item" href="#">View Details</a></li>
+                                                <li><a class="dropdown-item" href="#">Start Enrollment</a></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="list-group-item bg-transparent border-0">
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-shrink-0 me-3">
+                                            <div class="bg-success bg-opacity-10 p-2 rounded-circle">
+                                                <i class="fas fa-users text-success"></i>
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-0 text-white">Team Lunch</h6>
+                                            <small class="text-muted">Friday, 12:30 PM</small>
+                                        </div>
+                                        <div class="dropdown">
+                                            <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                <li><a class="dropdown-item" href="#">View Details</a></li>
+                                                <li><a class="dropdown-item" href="#">Add to Calendar</a></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-transparent border-0 pt-0">
+                            <button class="btn btn-outline-primary w-100">
+                                <i class="fas fa-plus me-2"></i>Add New Task
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Team Members -->
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Your Onboarding Team</h5>
+                            <a href="#" class="small text-primary">View All</a>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="list-group list-group-flush">
+                                <div class="list-group-item bg-transparent border-secondary">
+                                    <div class="d-flex align-items-center">
+                                        <img src="https://randomuser.me/api/portraits/women/32.jpg" alt="" class="rounded-circle me-3" width="40" height="40">
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-0 text-white">Sarah Johnson</h6>
+                                            <small class="text-muted">HR Manager</small>
+                                        </div>
+                                        <a href="#" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-envelope"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="list-group-item bg-transparent border-secondary">
+                                    <div class="d-flex align-items-center">
+                                        <img src="https://randomuser.me/api/portraits/men/45.jpg" alt="" class="rounded-circle me-3" width="40" height="40">
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-0 text-white">Michael Chen</h6>
+                                            <small class="text-muted">Team Lead</small>
+                                        </div>
+                                        <a href="#" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-envelope"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="list-group-item bg-transparent border-secondary">
+                                    <div class="d-flex align-items-center">
+                                        <img src="https://randomuser.me/api/portraits/women/22.jpg" alt="" class="rounded-circle me-3" width="40" height="40">
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-0 text-white">Emily Rodriguez</h6>
+                                            <small class="text-muted">IT Support</small>
+                                        </div>
+                                        <a href="#" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-envelope"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="list-group-item bg-transparent border-0">
+                                    <div class="d-flex align-items-center">
+                                        <img src="https://randomuser.me/api/portraits/men/68.jpg" alt="" class="rounded-circle me-3" width="40" height="40">
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-0 text-white">David Kim</h6>
+                                            <small class="text-muted">Mentor</small>
+                                        </div>
+                                        <a href="#" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-envelope"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-transparent border-0 pt-0">
+                            <button class="btn btn-outline-primary w-100">
+                                <i class="fas fa-plus me-2"></i>Add Team Member
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                            <h5 class="mb-0">Recent Activity</h5>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    This Week
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="#">Today</a></li>
+                                    <li><a class="dropdown-item" href="#">This Week</a></li>
+                                    <li><a class="dropdown-item" href="#">This Month</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="timeline">
+                                <!-- Timeline Item 1 -->
+                                <div class="timeline-item">
+                                    <div class="timeline-marker bg-primary">
+                                        <i class="fas fa-user-check"></i>
+                                    </div>
+                                    <div class="timeline-content">
+                                        <div class="d-flex justify-content-between">
+                                            <h6 class="mb-1">New hire completed onboarding</h6>
+                                            <small class="text-muted">2 hours ago</small>
+                                        </div>
+                                        <p class="mb-0 text-muted small">Sarah Johnson completed all onboarding tasks</p>
+                                        <span class="badge bg-primary bg-opacity-10 text-primary">Completed</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Timeline Item 2 -->
+                                <div class="timeline-item">
+                                    <div class="timeline-marker bg-warning">
+                                        <i class="fas fa-tasks"></i>
+                                    </div>
+                                    <div class="timeline-content">
+                                        <div class="d-flex justify-content-between">
+                                            <h6 class="mb-1">Document upload required</h6>
+                                            <small class="text-muted">5 hours ago</small>
+                                        </div>
+                                        <p class="mb-0 text-muted small">John Doe needs to upload tax documents</p>
+                                        <span class="badge bg-warning bg-opacity-10 text-warning">Action Required</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Timeline Item 3 -->
+                                <div class="timeline-item">
+                                    <div class="timeline-marker bg-info">
+                                        <i class="fas fa-envelope"></i>
+                                    </div>
+                                    <div class="timeline-content">
+                                        <div class="d-flex justify-content-between">
+                                            <h6 class="mb-1">Welcome email sent</h6>
+                                            <small class="text-muted">1 day ago</small>
+                                        </div>
+                                        <p class="mb-0 text-muted small">Welcome package sent to 5 new hires</p>
+                                        <span class="badge bg-info bg-opacity-10 text-info">Completed</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-center mt-3">
+                                <a href="#" class="btn btn-sm btn-outline-primary">View All Activity</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Upcoming Onboardings -->
+                <div class="col-lg-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-transparent border-0">
+                            <h5 class="mb-0">Upcoming Onboardings</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="list-group list-group-flush">
+                                <!-- Onboarding Item 1 -->
+                                <div class="list-group-item border-0">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar avatar-sm me-3">
+                                            <span class="avatar-title rounded-circle bg-primary bg-opacity-10 text-primary">
+                                                <i class="fas fa-user"></i>
+                                            </span>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-0">Michael Chen</h6>
+                                            <small class="text-muted">Starts: Tomorrow, 9:00 AM</small>
+                                        </div>
+                                        <span class="badge bg-primary bg-opacity-10 text-primary">New</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Onboarding Item 2 -->
+                                <div class="list-group-item border-0">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar avatar-sm me-3">
+                                            <span class="avatar-title rounded-circle bg-warning bg-opacity-10 text-warning">
+                                                <i class="fas fa-user"></i>
+                                            </span>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-0">Emily Rodriguez</h6>
+                                            <small class="text-muted">Starts: Mar 15, 10:00 AM</small>
+                                        </div>
+                                        <span class="badge bg-warning bg-opacity-10 text-warning">In Progress</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Onboarding Item 3 -->
+                                <div class="list-group-item border-0">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar avatar-sm me-3">
+                                            <span class="avatar-title rounded-circle bg-success bg-opacity-10 text-success">
+                                                <i class="fas fa-user"></i>
+                                            </span>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-0">David Kim</h6>
+                                            <small class="text-muted">Starts: Mar 16, 1:00 PM</small>
+                                        </div>
+                                        <span class="badge bg-success bg-opacity-10 text-success">Confirmed</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="p-3 border-top">
+                                <a href="#" class="btn btn-outline-primary w-100">View All Onboardings</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                </li>
+                                <li class="d-flex">
+                                    <span class="badge bg-warning rounded-circle p-2 me-3 mt-1"></span>
+                                    <div>
+                                        <p class="mb-0 text-dark">Jane Smith starts in 3 days</p>
+                                        <small class="text-muted">5 hours ago</small>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Upcoming Events -->
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm h-100 bg-dark">
+                        <div class="card-header bg-dark text-white border-bottom border-secondary">
+                            <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Upcoming Events</h5>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled mb-0">
+                                <li class="border-start border-primary border-3 ps-3 mb-3">
+                                    <p class="mb-0 fw-medium">New Hire Orientation</p>
+                                    <small class="text-muted d-block">Tomorrow, 10:00 AM - 12:00 PM</small>
+                                    <small class="text-muted">5 attendees</small>
+                                </li>
+                                <li class="border-start border-success border-3 ps-3">
+                                    <p class="mb-0 fw-medium">Technical Interview - Frontend Position</p>
+                                    <small class="text-muted d-block">Mar 15, 2:00 PM - 3:00 PM</small>
+                                    <small class="text-muted">With: John Doe</small>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">⚡ Quick Actions</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <button class="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-upload text-indigo-600 text-2xl mb-2"></i>
+                        <span class="text-sm font-medium text-gray-700">Upload Resume</span>
+                    </button>
+                    <button class="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-user-plus text-green-600 text-2xl mb-2"></i>
+                        <span class="text-sm font-medium text-gray-700">Add Candidate</span>
+                    </button>
+                    <button class="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-play-circle text-blue-600 text-2xl mb-2"></i>
+                        <span class="text-sm font-medium text-gray-700">Start Onboarding</span>
+                    </button>
+                    <button class="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-chart-bar text-purple-600 text-2xl mb-2"></i>
+                        <span class="text-sm font-medium text-gray-700">View Reports</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Actions -->
+        <div class="row g-4 mb-4">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <h5 class="mb-4">Quick Actions</h5>
+                        <div class="row g-3">
+                            <div class="col-md-3 col-6">
+                                <a href="#" class="card h-100 border-0 text-center p-3 hover-shadow">
+                                    <div class="avatar avatar-lg bg-primary bg-opacity-10 text-primary rounded-circle mx-auto mb-3">
+                                        <i class="fas fa-file-upload"></i>
+                                    </div>
+                                    <h6 class="mb-0">Upload Documents</h6>
+                                </a>
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <a href="#" class="card h-100 border-0 text-center p-3 hover-shadow">
+                                    <div class="avatar avatar-lg bg-success bg-opacity-10 text-success rounded-circle mx-auto mb-3">
+                                        <i class="fas fa-user-plus"></i>
+                                    </div>
+                                    <h6 class="mb-0">Add New Hire</h6>
+                                </a>
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <a href="#" class="card h-100 border-0 text-center p-3 hover-shadow">
+                                    <div class="avatar avatar-lg bg-info bg-opacity-10 text-info rounded-circle mx-auto mb-3">
+                                        <i class="fas fa-envelope"></i>
+                                    </div>
+                                    <h6 class="mb-0">Send Welcome Email</h6>
+                                </a>
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <a href="#" class="card h-100 border-0 text-center p-3 hover-shadow">
+                                    <div class="avatar avatar-lg bg-warning bg-opacity-10 text-warning rounded-circle mx-auto mb-3">
+                                        <i class="fas fa-tasks"></i>
+                                    </div>
+                                    <h6 class="mb-0">View Tasks</h6>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
         
-        <!-- Right Column - Onboarding Form -->
-        <div class="col-lg-8">
-            <div class="card border-0 shadow-sm h-100 bg-dark">
-                <div class="card-header border-bottom border-secondary py-3">
-                    <h5 class="mb-0 text-white">New Candidate Onboarding</h5>
+        <!-- Document Upload -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-0">
+                <div class="p-4 border-bottom">
+                    <h5 class="mb-0">Document Upload</h5>
                 </div>
-                <div class="card-body">
-                    <form id="resumeForm" method="POST" action="{{ url_for('onboarding_route') }}" enctype="multipart/form-data">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <div class="row mb-3">
-                            <div class="col-md-6 mb-3 mb-md-0">
-                                <label for="candidateName" class="form-label">Candidate Name</label>
-                                <input type="text" class="form-control" id="candidateName" name="candidateName" required>
+                <div class="p-5 text-center" id="dropZone">
+                    <div class="mb-4">
+                        <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                        <h4>Drag and drop files here</h4>
+                        <p class="text-muted mb-4">or</p>
+                        <input type="file" id="resumeUpload" class="d-none" accept=".pdf,.docx,.doc" multiple>
+                        <button id="browseFiles" class="btn btn-primary">
+                            <i class="fas fa-folder-open me-2"></i> Browse Files
+                </button>
+                <p class="mt-2 text-xs text-gray-500">Supports PDF, DOCX (Max 10MB)</p>
+                <div id="uploadProgress" class="mt-4 hidden">
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div id="progressBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                    </div>
+                    <p id="progressText" class="text-sm text-gray-600 mt-1">Uploading: 0%</p>
+                </div>
+            </div>
+            
+            <!-- Filters -->
+            <div class="bg-white p-4 rounded-lg shadow mb-6">
+                <div class="flex flex-wrap gap-4 items-end">
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Match Score</label>
+                        <select id="scoreFilter" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                            <option value="all">All Scores</option>
+                            <option value="80-100">Excellent (80-100%)</option>
+                            <option value="50-79">Good (50-79%)</option>
+                            <option value="0-49">Needs Review (0-49%)</option>
+                        </select>
+                    </div>
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Skills</label>
+                        <input type="text" id="skillsFilter" placeholder="Filter by skills (e.g., React, Python)" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <button id="applyFilters" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <i class="fas fa-filter mr-2"></i> Apply Filters
+                        </button>
+                    </div>
+                    <div>
+                        <button id="resetFilters" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <i class="fas fa-redo mr-2"></i> Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Resume Analysis -->
+            <div class="row g-4">
+                <!-- Resume Details -->
+                <div class="col-lg-4">
+                    <div class="card h-100 bg-dark border-secondary">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h5 class="card-title mb-0 text-white">Resume Details</h5>
+                                <span class="badge bg-success bg-opacity-10 text-success">
+                                    <i class="fas fa-check-circle me-1"></i> 85% Match
+                                </span>
                             </div>
-                            <div class="col-md-6">
-                                <label for="jobDescriptionTitle" class="form-label">Job Title</label>
-                                <input type="text" class="form-control" id="jobDescriptionTitle" name="jobDescriptionTitle" placeholder="e.g., Senior Python Developer" required>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Name</p>
+                            <p class="text-gray-900">John Doe</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Email</p>
+                            <p class="text-gray-900">john.doe@example.com</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Phone</p>
+                            <p class="text-gray-900">(555) 123-4567</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Experience</p>
+                            <p class="text-gray-900">5+ years</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Current Position</p>
+                            <p class="text-gray-900">Senior Frontend Developer at TechCorp</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Location</p>
+                            <p class="text-gray-900">San Francisco, CA</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Match Score</p>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5 mt-1">
+                                <div id="scoreBar" class="h-2.5 rounded-full" style="width: 85%; background-color: #10B981;"></div>
+                            </div>
+                            <p class="text-right text-xs text-gray-500 mt-1">85% match with job requirements</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6">
+                        <h4 class="text-sm font-medium text-gray-900 mb-2">Skills</h4>
+                        <div id="skillsContainer" class="flex flex-wrap gap-2">
+                            <span class="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">
+                                <i class="fas fa-check-circle mr-1"></i> JavaScript
+                            </span>
+                            <span class="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">
+                                <i class="fas fa-check-circle mr-1"></i> React
+                            </span>
+                            <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded">
+                                <i class="fas fa-exclamation-circle mr-1"></i> Node.js (intermediate)
+                            </span>
+                            <span class="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">
+                                <i class="fas fa-check-circle mr-1"></i> HTML5/CSS3
+                            </span>
+                            <span class="px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded">
+                                <i class="fas fa-times-circle mr-1"></i> TypeScript (missing)
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 space-y-2">
+                        <button class="btn btn-primary w-100 mb-2">
+                            <i class="fas fa-check-circle mr-2"></i> Shortlist Candidate
+                        </button>
+                        <button id="convertToOnboarding" class="btn btn-success w-100">
+                            <i class="fas fa-user-plus mr-2"></i> Convert to Onboarding
+                        </button>
+                        <button class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <i class="fas fa-download mr-2"></i> Download Resume
+                        </button>
+                    </div>
+                    
+                    <div id="onboardingSuccess" class="hidden mt-4 p-3 bg-green-50 text-green-800 text-sm rounded-md">
+                        <div class="flex items-center">
+                            <i class="fas fa-check-circle mr-2 text-green-500"></i>
+                            <span>Candidate moved to onboarding successfully!</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Resume Content -->
+                <div class="col-lg-8">
+                    <div class="card h-100 bg-dark border-secondary">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h3 class="text-lg font-medium">Resume: John_Doe_Resume.pdf</h3>
+                    </div>
+                    
+                    <div class="border border-gray-200 rounded-lg p-4 h-96 overflow-y-auto">
+                        <div class="space-y-6">
+                            <div>
+                                <h2 class="text-2xl font-bold">John Doe</h2>
+                                <p class="text-gray-600">Senior Frontend Developer</p>
+                                <p class="text-sm text-gray-500 mt-1">San Francisco, CA • (555) 123-4567 • john.doe@example.com</p>
+                            </div>
+                            
+                            <div>
+                                <h3 class="text-lg font-semibold border-b pb-1 mb-2">Summary</h3>
+                                <p class="text-gray-700">Experienced Frontend Developer with 5+ years of experience in building responsive and user-friendly web applications using React, JavaScript, and modern frontend technologies.</p>
+                            </div>
+                            
+                            <div>
+                                <h3 class="text-lg font-semibold border-b pb-1 mb-2">Experience</h3>
+                                <div class="mb-4">
+                                    <div class="flex justify-between">
+                                        <h4 class="font-medium">Senior Frontend Developer</h4>
+                                        <span class="text-sm text-gray-500">2020 - Present</span>
+                                    </div>
+                                    <p class="text-sm text-gray-600">TechCorp Inc., San Francisco, CA</p>
+                                    <ul class="list-disc list-inside text-sm text-gray-700 mt-1 space-y-1">
+                                        <li>Led a team of 5 developers to build a responsive dashboard application using React and Redux</li>
+                                        <li>Improved application performance by 40% through code optimization</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Candidate Management -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-dark text-white border-bottom border-secondary d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-users me-2"></i>Candidate Management</h5>
+                <div class="d-flex">
+                    <div class="input-group input-group-sm me-2" style="width: 250px;">
+                        <span class="input-group-text bg-dark text-white border-secondary">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" class="form-control bg-dark text-white border-secondary" placeholder="Search candidates...">
+                        <input type="text" placeholder="Search candidates..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-search text-gray-400"></i>
+                        </div>
+                    </div>
+                    <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
+                        <i class="fas fa-plus mr-2"></i> Add Candidate
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Candidates Table -->
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover mb-0">
+                        <thead class="table-dark">
+                                <tr>
+                                    <th>Candidate</th>
+                                    <th>Position</th>
+                                    <th>Status</th>
+                                    <th>Last Activity</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Candidate 1 -->
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-shrink-0 me-3">
+                                                <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="" class="rounded-circle" width="40" height="40">
+                                            </div>
+                                            <div>
+                                                <div class="fw-medium">John Cooper</div>
+                                                <div class="text-muted small">john.cooper@example.com</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="fw-medium">Senior Frontend Developer</div>
+                                        <div class="text-muted small">Engineering</div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success bg-opacity-10 text-success">Active</span>
+                                    </td>
+                                    <td class="text-muted small">2 hours ago</td>
+                                    <td class="text-end">
+                                        <a href="#" class="btn btn-sm btn-link text-primary">View</a>
+                                        <a href="#" class="btn btn-sm btn-link text-primary">Edit</a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                                            <img class="h-10 w-10 rounded-full" src="https://randomuser.me/api/portraits/men/32.jpg" alt="">
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900">Michael Chen</div>
+                                            <div class="text-sm text-gray-500">michael.chen@example.com</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">Backend Developer</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Interviewed</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Feb 25, 2023</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <a href="#" class="text-indigo-600 hover:text-indigo-900">View</a>
+                                </td>
+                            </tr>
+                            
+                            <!-- Candidate 3 -->
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-10 w-10">
+                                            <img class="h-10 w-10 rounded-full" src="https://randomuser.me/api/portraits/women/68.jpg" alt="">
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900">Emily Rodriguez</div>
+                                            <div class="text-sm text-gray-500">emily.rodriguez@example.com</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">UI/UX Designer</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Applied</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Mar 5, 2023</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <a href="#" class="text-indigo-600 hover:text-indigo-900">View</a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Onboarding Module -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-dark text-white border-bottom border-secondary d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-user-plus me-2"></i>Onboarding Module</h5>
+                <button class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus me-1"></i> New Onboarding
+                </button>
+            </div>
+            
+            <div class="card-body bg-dark">
+                <div class="border-bottom border-secondary pb-3 mb-4">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="h5 text-white mb-0">Sarah Johnson</h3>
+                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Senior Frontend Developer • Starting on Mar 15, 2023</p>
+                        </div>
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">In Progress</span>
+                    </div>
+                </div>
+                
+                <div class="px-4 py-5 sm:p-6">
+                    <div class="row g-4">
+                        <!-- Employee Profile -->
+                        <div class="col-md-4">
+                            <div class="bg-dark border border-secondary p-4 rounded">
+                                <div class="text-center">
+                                    <img class="mx-auto h-24 w-24 rounded-full" src="https://randomuser.me/api/portraits/women/44.jpg" alt="">
+                                    <h3 class="mt-2 text-lg font-medium text-gray-900">Sarah Johnson</h3>
+                                    <p class="text-sm text-gray-500">Senior Frontend Developer</p>
+                                </div>
+                                
+                                <!-- Onboarding Progress -->
+                                <div class="mt-6">
+                                    <h4 class="text-sm font-medium text-gray-900 mb-3">Onboarding Progress</h4>
+                                    <div class="space-y-4">
+                                        <div>
+                                            <div class="flex justify-between text-sm mb-1">
+                                                <span class="font-medium text-gray-700">Overall Progress</span>
+                                                <span class="text-gray-500">65%</span>
+                                            </div>
+                                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                                <div class="bg-blue-600 h-2 rounded-full" style="width: 65%"></div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div class="flex justify-between text-sm mb-1">
+                                                <span class="font-medium text-gray-700">Documents</span>
+                                                <span class="text-gray-500">3/5</span>
+                                            </div>
+                                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                                <div class="bg-green-500 h-2 rounded-full" style="width: 60%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="jobDescription" class="form-label">Job Description</label>
-                            <textarea class="form-control" id="jobDescription" name="jobDescription" rows="4" required 
-                                      placeholder="Paste the detailed job description here..."></textarea>
-                            <div class="form-text">Be specific about required skills and experience for better matching.</div>
+                        <!-- Onboarding Checklist -->
+                        <div class="col-md-8">
+                            <div class="border-b border-gray-200">
+                                <ul class="nav nav-tabs border-0">
+                                    <li class="nav-item">
+                                        <a href="#" class="nav-link active text-white">
+                                            <i class="fas fa-tasks me-1"></i> Checklist
+                                    </a>
+                                    <a href="#" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                                        Documents
+                                    </a>
+                                    <a href="#" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                                        Training
+                                    </a>
+                                </nav>
+                            </div>
+                            
+                            <!-- Pre-Joining Section -->
+                            <div class="mt-6">
+                                <h3 class="text-md font-medium text-gray-900 mb-3">Pre-Joining (Due: Mar 10, 2023)</h3>
+                                <div class="space-y-4">
+                                    <!-- Task 1 -->
+                                    <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" checked>
+                                            <span class="ml-3 text-sm font-medium text-gray-900">Signed Offer Letter</span>
+                                        </div>
+                                        <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Completed</span>
+                                    </div>
+                                    
+                                    <!-- Task 2 -->
+                                    <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" id="direct-deposit">
+                                            <label for="direct-deposit" class="ml-3 text-sm font-medium text-gray-900">Direct Deposit Setup</label>
+                                        </div>
+                                        <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Pending</span>
+                                    </div>
+                                    
+                                    <!-- Task 3 -->
+                                    <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" id="benefits">
+                                            <label for="benefits" class="ml-3 text-sm font-medium text-gray-900">Benefits Enrollment</label>
+                                        </div>
+                                        <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">In Progress</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Document Upload -->
+                            <div class="mt-4">
+                                <h5 class="text-white mb-3">Required Documents</h5>
+                                <div class="vstack gap-3">
+                                    <div class="d-flex justify-content-between align-items-center p-3 bg-dark border border-dashed border-secondary rounded">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-file-pdf text-red-500 mr-3"></i>
+                                            <div>
+                                                <p class="text-sm font-medium text-gray-900">Tax Form W-4</p>
+                                                <p class="text-xs text-gray-500">Not uploaded</p>
+                                            </div>
+                                        </div>
+                                        <button class="text-sm text-indigo-600 hover:text-indigo-900">Upload</button>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-between p-3 bg-gray-50 border border-dashed border-gray-300 rounded-lg">
+                                        <div class="flex items-center">
+                                            <i class="fas fa-file-pdf text-red-500 mr-3"></i>
+                                            <div>
+                                                <p class="text-sm font-medium text-gray-900">I-9 Form</p>
+                                                <p class="text-xs text-gray-500">Not uploaded</p>
+                                            </div>
+                                        </div>
+                                        <button class="text-sm text-indigo-600 hover:text-indigo-900">Upload</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <label for="resumeText" class="form-label mb-0">Resume Text</label>
-                                <button type="button" class="btn btn-sm btn-outline-secondary" id="clearForm">
-                                    <i class="fas fa-eraser me-1"></i>Clear Form
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Help & Resources Section -->
+    <div class="row g-4 mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm bg-gradient-primary text-white overflow-hidden">
+                <div class="card-body p-4 p-md-5">
+                    <div class="row align-items-center">
+                        <div class="col-lg-8">
+                            <h3 class="text-white mb-3">Need Help with Onboarding?</h3>
+                            <p class="mb-4">Our team is here to help you with any questions or issues you might have during the onboarding process.</p>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button class="btn btn-light">
+                                    <i class="fas fa-headset me-2"></i>Live Chat
+                                </button>
+                                <button class="btn btn-outline-light">
+                                    <i class="fas fa-envelope me-2"></i>Email Support
+                                </button>
+                                <button class="btn btn-outline-light">
+                                    <i class="fas fa-phone-alt me-2"></i>Schedule Call
                                 </button>
                             </div>
-                            <textarea class="form-control font-monospace" id="resumeText" name="resumeText" rows="10" required 
-                                      placeholder="Paste the candidate's resume text here..."></textarea>
-                            <div class="form-text">For best results, use plain text format (no images or tables).</div>
                         </div>
-                        
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <button type="submit" class="btn btn-primary px-4" id="analyzeBtn">
-                                <i class="fas fa-search me-2"></i>
-                                <span id="analyzeText">Analyze Resume</span>
-                                <span id="analyzeSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                            </button>
+                        <div class="col-lg-4 d-none d-lg-block">
+                            <img src="https://img.icons8.com/clouds/300/000000/customer-support.png" alt="Support" class="img-fluid">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Resources Section -->
+    <div class="row g-4 mt-2">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-primary bg-opacity-10 p-3 rounded-circle me-3">
+                            <i class="fas fa-book text-primary"></i>
+                        </div>
+                        <h5 class="mb-0">Onboarding Guide</h5>
+                    </div>
+                    <p class="text-muted">Comprehensive guide to help you navigate through the onboarding process smoothly.</p>
+                    <a href="#" class="btn btn-sm btn-outline-primary">View Guide</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-warning bg-opacity-10 p-3 rounded-circle me-3">
+                            <i class="fas fa-question-circle text-warning"></i>
+                        </div>
+                        <h5 class="mb-0">FAQs</h5>
+                    </div>
+                    <p class="text-muted">Find answers to commonly asked questions about the onboarding process.</p>
+                    <a href="#" class="btn btn-sm btn-outline-primary">View FAQs</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-info bg-opacity-10 p-3 rounded-circle me-3">
+                            <i class="fas fa-video text-info"></i>
+                        </div>
+                        <h5 class="mb-0">Video Tutorials</h5>
+                    </div>
+                    <p class="text-muted">Watch step-by-step video tutorials to help you complete your onboarding tasks.</p>
+                    <a href="#" class="btn btn-sm btn-outline-primary">Watch Videos</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Onboarding Modal -->
+    <div class="modal fade" id="newOnboardingModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title">Start New Onboarding</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="mb-3">
+                            <label class="form-label">Candidate Name</label>
+                            <input type="text" class="form-control bg-dark text-white border-secondary" placeholder="Enter candidate's name">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email Address</label>
+                            <input type="email" class="form-control bg-dark text-white border-secondary" placeholder="Enter email address">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Job Position</label>
+                            <select class="form-select bg-dark text-white border-secondary">
+                                <option selected disabled>Select position</option>
+                                <option>Software Engineer</option>
+                                <option>Product Manager</option>
+                                <option>UX Designer</option>
+                                <option>Data Scientist</option>
+                                <option>Marketing Specialist</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Start Date</label>
+                            <input type="date" class="form-control bg-dark text-white border-secondary">
                         </div>
                     </form>
                 </div>
-            </div>
-        </div>
-
-            <div id="resultCard" class="card border-0 shadow-sm bg-dark mt-4">
-                {% if analysis and analysis.get('candidate', {}).get('name') != 'Not specified' %}
-                <div class="card-header border-bottom border-success bg-dark">
-                    <h5 class="mb-0 text-success">
-                        <i class="fas fa-check-circle me-2"></i>Analysis Complete
-                    </h5>
-                </div>
-                {% else %}
-                <div class="card-header border-bottom border-warning bg-dark">
-                    <h5 class="mb-0 text-warning">
-                        <i class="fas fa-hourglass-half me-2"></i>Analysis Pending
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="text-center py-4">
-                        <i class="fas fa-file-upload fa-3x text-muted mb-3"></i>
-                        <p class="text-muted mb-0">Upload a resume to begin analysis</p>
-                    </div>
-                </div>
-                {% endif %}
-                {% if analysis and analysis.get('candidate', {}).get('name') != 'Not specified' %}
-                <div class="card-body">
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <h4 class="h6 text-muted mb-1">Candidate Name</h4>
-                            <p id="resultName" class="h4">{{ analysis.candidate.name }}</p>
-                            {% if analysis.candidate.email %}
-                            <p class="mb-1"><i class="fas fa-envelope me-2 text-muted"></i> {{ analysis.candidate.email }}</p>
-                            {% endif %}
-                            {% if analysis.candidate.phone %}
-                            <p class="mb-0"><i class="fas fa-phone me-2 text-muted"></i> {{ analysis.candidate.phone }}</p>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6">
-                            <h4 class="h6 text-muted mb-1">Match Score{% if analysis.job and analysis.job.title %} for {{ analysis.job.title }}{% endif %}</h4>
-                            <div class="d-flex align-items-center">
-                                <div class="progress flex-grow-1 me-3" style="height: 25px;">
-                                    <div id="scoreBar" class="progress-bar bg-success" role="progressbar" 
-                                         aria-valuenow="{{ score }}" 
-                                         aria-valuemin="0" 
-                                         aria-valuemax="100">
-                                    </div>
-                                </div>
-                                <span id="scoreValue" class="h4 mb-0">{{ score }}%</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <h4 class="h6 text-muted mb-2">Matched Skills</h4>
-                            {% if analysis and analysis.match_score and analysis.match_score.matched_skills %}
-                                <div class="d-flex flex-wrap gap-1">
-                                    {% for skill in analysis.match_score.matched_skills %}
-                                        <span class="badge bg-success bg-opacity-25 text-success">{{ skill }}</span>
-                                    {% endfor %}
-                                </div>
-                            {% else %}
-                                <p class="text-muted">No skills matched or analysis not available</p>
-                            {% endif %}
-                            
-                            <h4 class="h6 text-muted mt-3 mb-2">Missing Skills</h4>
-                            {% if analysis and analysis.match_score and analysis.match_score.missing_skills %}
-                                <div class="d-flex flex-wrap gap-1">
-                                    {% for skill in analysis.match_score.missing_skills %}
-                                        <span class="badge bg-secondary">{{ skill }}</span>
-                                    {% endfor %}
-                                </div>
-                            {% else %}
-                                <p class="text-muted">No missing skills found or analysis not available</p>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6">
-                            <h4 class="h6 text-muted mb-2">Experience Level</h4>
-                            {% if analysis and analysis.match_score and analysis.match_score.experience_match is defined %}
-                                <div class="progress mb-3" style="height: 20px;">
-                                    <div id="experienceBar" class="progress-bar bg-info" role="progressbar" 
-                                         aria-valuenow="{{ analysis.match_score.experience_match }}" 
-                                         aria-valuemin="0" 
-                                         aria-valuemax="100">
-                                    </div>
-                                </div>
-                                <p class="small text-muted mb-3">
-                                    {% if analysis.match_score.experience_level %}
-                                        {{ analysis.match_score.experience_level }} ({{ analysis.match_score.experience_match }}% match)
-                                    {% else %}
-                                        Experience level not available
-                                    {% endif %}
-                                </p>
-                            {% else %}
-                                <p class="text-muted">Experience analysis not available</p>
-                            {% endif %}
-                            
-                            {% if analysis and analysis.experience %}
-                                <h4 class="h6 text-muted mt-3 mb-2">Work Experience</h4>
-                                <ul class="list-unstyled small">
-                                    {% for exp in analysis.experience %}
-                                    <li class="mb-1">
-                                        <strong>{{ exp.title }}</strong> 
-                                        {% if exp.company %}
-                                        at {{ exp.company }}
-                                        {% endif %}
-                                        {% if exp.duration %}
-                                        <span class="text-muted">({{ exp.duration }})</span>
-                                        {% endif %}
-                                    </li>
-                                    {% endfor %}
-                                </ul>
-                            {% else %}
-                                <h4 class="h6 text-muted mt-3 mb-2">Work Experience</h4>
-                                <p class="text-muted">No work experience available</p>
-                            {% endif %}
-                        </div>
-                    </div>
-                    
-                    <div class="d-flex justify-content-between">
-                        <button class="btn btn-outline-success" id="approveInterviewBtn">
-                            <i class="fas fa-check-circle me-2"></i>Approve for Interview
-                        </button>
-                        <div>
-                            <button class="btn btn-outline-primary me-2" id="saveCandidateBtn">
-                                <i class="fas fa-save me-2"></i>Save Candidate
-                            </button>
-                            <button class="btn btn-outline-danger me-2" id="rejectCandidateBtn">
-                                <i class="fas fa-times-circle me-2"></i>Reject Candidate
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                </div>
-                {% endif %}
-            </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Create Onboarding
+                    </button>
                 </div>
             </div>
         </div>
     </div>
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<script src="{{ url_for('static', filename='js/onboarding.js') }}"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Get progress bars
-        const scoreBar = document.getElementById('scoreBar');
-        const experienceBar = document.getElementById('experienceBar');
+    
+    <!-- Document Preview Modal -->
+    <div class="modal fade" id="documentPreviewModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content bg-dark text-white">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title">Document Preview</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="ratio ratio-16x9">
+                        <iframe src="https://example.com/document.pdf" class="rounded" allowfullscreen></iframe>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-outline-secondary">
+                        <i class="fas fa-download me-2"></i>Download
+                    </button>
+                    <button type="button" class="btn btn-primary">
+                        <i class="fas fa-check me-2"></i>Approve
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
         
-        // Set progress bar values from server-side variables
-        if (scoreBar) {
-            scoreBar.style.width = '{{ score }}%';
-            scoreBar.setAttribute('aria-valuenow', '{{ score }}');
+        // Handle drag and drop for document upload
+        const dropZone = document.getElementById('documentDropZone');
+        const fileInput = document.getElementById('documentUpload');
+        
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        // Highlight drop zone when item is dragged over it
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+        
+        // Handle dropped files
+        dropZone.addEventListener('drop', handleDrop, false);
+        
+        // Handle click on drop zone to trigger file input
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        // Handle file selection via input
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
         }
         
-        if (experienceBar) {
-            experienceBar.style.width = '{{ experience_match }}%';
-            experienceBar.setAttribute('aria-valuenow', '{{ experience_match }}');
+        function highlight() {
+            dropZone.classList.add('border-primary', 'bg-opacity-10');
         }
         
-        // Add click handlers for buttons
-        const startInterviewBtn = document.getElementById('startInterviewBtn');
-        const saveCandidateBtn = document.getElementById('saveCandidateBtn');
-        const rejectCandidateBtn = document.getElementById('rejectCandidateBtn');
+        function unhighlight() {
+            dropZone.classList.remove('border-primary', 'bg-opacity-10');
+        }
         
-        const approveInterviewBtn = document.getElementById('approveInterviewBtn');
-        if (approveInterviewBtn) {
-            approveInterviewBtn.addEventListener('click', function() {
-                // Show success message with toast notification
-                const toast = document.createElement('div');
-                toast.className = 'position-fixed bottom-0 end-0 p-3';
-                toast.style.zIndex = '11';
-                toast.innerHTML = `
-                    <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
-                        <div class="toast-header bg-success text-white">
-                            <strong class="me-auto">Success</strong>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }
+        
+        function handleFiles(files) {
+            if (files.length > 0) {
+                // Show loading state
+                const originalHTML = dropZone.innerHTML;
+                dropZone.innerHTML = `
+                    <div class="d-flex flex-column align-items-center">
+                        <div class="spinner-border text-primary mb-2" role="status">
+                            <span class="visually-hidden">Loading...</span>
                         </div>
-                        <div class="toast-body">
-                            <i class="fas fa-check-circle text-success me-2"></i>
-                            The candidate has been approved for an interview. They will be notified shortly.
-                        </div>
+                        <p class="mb-0">Uploading ${files.length} file(s)...</p>
                     </div>
                 `;
-                document.body.appendChild(toast);
                 
-                // Remove the toast after 5 seconds
+                // Simulate file upload (replace with actual upload logic)
                 setTimeout(() => {
-                    toast.remove();
-                }, 5000);
-            });
-        }
-        
-        if (saveCandidateBtn) {
-            saveCandidateBtn.addEventListener('click', function() {
-                alert('Candidate saved successfully!');
-            });
-        }
-        
-        if (rejectCandidateBtn) {
-            rejectCandidateBtn.addEventListener('click', function() {
-                if (confirm('Are you sure you want to reject this candidate? This action cannot be undone.')) {
-                    // Show rejection success message
-                    const toast = document.createElement('div');
-                    toast.className = 'position-fixed bottom-0 end-0 p-3';
-                    toast.style.zIndex = '11';
-                    toast.innerHTML = `
-                        <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
-                            <div class="toast-header bg-danger text-white">
-                                <strong class="me-auto">Candidate Rejected</strong>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
-                            </div>
-                            <div class="toast-body">
-                                <i class="fas fa-times-circle text-danger me-2"></i>
-                                The candidate has been rejected and moved to the rejected candidates list.
-                            </div>
+                    // Show success message
+                    dropZone.innerHTML = `
+                        <div class="d-flex flex-column align-items-center text-center">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <h5 class="text-white mb-2">Upload Successful!</h5>
+                            <p class="text-muted mb-0">${files.length} file(s) have been uploaded successfully.</p>
+                            <button class="btn btn-sm btn-outline-primary mt-3" onclick="location.reload()">
+                                <i class="fas fa-sync-alt me-1"></i>Refresh Page
+                            </button>
                         </div>
                     `;
-                    document.body.appendChild(toast);
+                }, 2000);
+            }
+        }
+        
+        // Show document preview when clicking on a document
+        document.querySelectorAll('.document-preview').forEach(item => {
+            item.addEventListener('click', event => {
+                const documentModal = new bootstrap.Modal(document.getElementById('documentPreviewModal'));
+                documentModal.show();
+            });
+        });
+    </script>
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h3 class="text-white mb-2">Need help with onboarding?</h3>
+                    <p class="text-white-50 mb-4">Our team is here to help you with any questions about the onboarding process.</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="#" class="btn btn-light">
+                            <i class="fas fa-question-circle me-2"></i> Help Center
+                        </a>
+                        <a href="#" class="btn btn-outline-light">
+                            <i class="fas fa-comment-alt me-2"></i> Contact Support
+                        </a>
+                    </div>
+                </div>
+                <div class="col-md-4 d-none d-md-block">
+                    <img src="https://img.icons8.com/ios/200/000000/customer-support.png" alt="Support" class="img-fluid">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample candidate data (in a real app, this would come from your API)
+        const candidates = [
+            {
+                id: 1,
+                name: 'John Doe',
+                email: 'john.doe@example.com',
+                phone: '(555) 123-4567',
+                experience: '5+ years',
+                position: 'Senior Frontend Developer at TechCorp',
+                location: 'San Francisco, CA',
+                score: 85,
+                skills: [
+                    { name: 'JavaScript', match: true, level: 'expert' },
+                    { name: 'React', match: true, level: 'expert' },
+                    { name: 'Node.js', match: true, level: 'intermediate' },
+                    { name: 'HTML5/CSS3', match: true, level: 'expert' },
+                    { name: 'TypeScript', match: false, level: 'beginner' }
+                ],
+                resumeFile: 'John_Doe_Resume.pdf',
+                status: 'new',
+                appliedDate: '2023-03-10'
+            },
+            // Add more sample candidates as needed
+        ];
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize file upload elements
+            const dropZone = document.getElementById('dropZone');
+            const resumeUpload = document.getElementById('resumeUpload');
+            const browseBtn = document.getElementById('browseFiles');
+            const uploadProgress = document.getElementById('uploadProgress');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const convertBtn = document.getElementById('convertToOnboarding');
+            const onboardingSuccess = document.getElementById('onboardingSuccess');
+            const scoreFilter = document.getElementById('scoreFilter');
+            const skillsFilter = document.getElementById('skillsFilter');
+            const applyFiltersBtn = document.getElementById('applyFilters');
+            const resetFiltersBtn = document.getElementById('resetFilters');
+
+            // Set up drag and drop
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, highlight, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, unhighlight, false);
+            });
+
+            function highlight() {
+                dropZone.classList.add('border-indigo-500', 'bg-indigo-50');
+            }
+
+            function unhighlight() {
+                dropZone.classList.remove('border-indigo-500', 'bg-indigo-50');
+            }
+
+            // Handle dropped files
+            dropZone.addEventListener('drop', handleDrop, false);
+
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                handleFiles(files);
+            }
+
+            // Handle file selection via button
+            if (browseBtn && resumeUpload) {
+                browseBtn.addEventListener('click', () => resumeUpload.click());
+                resumeUpload.addEventListener('change', (e) => handleFiles(e.target.files));
+            }
+
+            // Process uploaded files
+            async function handleFiles(files) {
+                if (files.length === 0) return;
+                
+                uploadProgress.classList.remove('hidden');
+                
+                // In a real app, you would upload the file to your server here
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    await uploadFile(file);
+                }
+                
+                // Simulate processing
+                simulateProcessing().then(() => {
+                    // In a real app, you would fetch the parsed data from your API
+                    // and update the UI with the new candidate
+                    updateCandidateUI(candidates[0]);
+                    uploadProgress.classList.add('hidden');
+                });
+            }
+
+            function uploadFile(file) {
+                return new Promise((resolve) => {
+                    const formData = new FormData();
+                    formData.append('resume', file);
                     
-                    // Remove the toast after 5 seconds
-                    setTimeout(() => {
-                        toast.remove();
-                    }, 5000);
+                    // Simulate upload progress
+                    let progress = 0;
+                    const interval = setInterval(() => {
+                        progress += 10;
+                        if (progress > 90) {
+                            clearInterval(interval);
+                            resolve();
+                            return;
+                        }
+                        updateProgress(progress);
+                    }, 100);
+                    
+                    // In a real app, you would use fetch to send the file to your API
+                    // fetch('/api/parse_resume', {
+                    //     method: 'POST',
+                    //     body: formData,
+                    //     onUploadProgress: (progressEvent) => {
+                    //         const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    //         updateProgress(progress);
+                    //     }
+                    // })
+                    // .then(response => response.json())
+                    // .then(data => {
+                    //     updateCandidateUI(data);
+                    //     uploadProgress.classList.add('hidden');
+                    // })
+                    // .catch(error => {
+                    //     console.error('Error:', error);
+                    //     uploadProgress.classList.add('hidden');
+                    // });
+                });
+            }
+
+            function updateProgress(percent) {
+                progressBar.style.width = `${percent}%`;
+                progressText.textContent = `Uploading: ${percent}%`;
+            }
+
+            function simulateProcessing() {
+                return new Promise((resolve) => {
+                    let progress = 90;
+                    const interval = setInterval(() => {
+                        progress += 2;
+                        updateProgress(progress);
+                        if (progress >= 100) {
+                            clearInterval(interval);
+                            setTimeout(resolve, 500);
+                        }
+                    }, 50);
+                });
+            }
+
+            // Update the UI with candidate data
+            function updateCandidateUI(candidate) {
+                // Update basic info
+                document.querySelector('.text-2xl.font-bold').textContent = candidate.name;
+                document.querySelector('.text-gray-600').textContent = candidate.position;
+                
+                // Update match score and badge
+                const scoreBar = document.getElementById('scoreBar');
+                const matchBadge = document.getElementById('matchBadge');
+                
+                // Set color based on score
+                let scoreColor, badgeColor, badgeText;
+                if (candidate.score >= 80) {
+                    scoreColor = '#10B981'; // green-500
+                    badgeColor = 'bg-green-100 text-green-800';
+                    badgeText = 'Excellent Match';
+                } else if (candidate.score >= 50) {
+                    scoreColor = '#F59E0B'; // yellow-500
+                    badgeColor = 'bg-yellow-100 text-yellow-800';
+                    badgeText = 'Good Match';
+                } else {
+                    scoreColor = '#EF4444'; // red-500
+                    badgeColor = 'bg-red-100 text-red-800';
+                    badgeText = 'Needs Review';
+                }
+                
+                scoreBar.style.width = `${candidate.score}%`;
+                scoreBar.style.backgroundColor = scoreColor;
+                
+                matchBadge.className = `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeColor}`;
+                matchBadge.innerHTML = `<i class="fas ${candidate.score >= 80 ? 'fa-check-circle' : candidate.score >= 50 ? 'fa-exclamation-circle' : 'fa-exclamation-triangle'} mr-1"></i> ${candidate.score}% ${badgeText}`;
+                
+                // Update skills
+                const skillsContainer = document.getElementById('skillsContainer');
+                skillsContainer.innerHTML = '';
+                
+                candidate.skills.forEach(skill => {
+                    let skillClass, icon;
+                    if (skill.match) {
+                        skillClass = 'bg-green-100 text-green-800';
+                        icon = 'check-circle';
+                    } else {
+                        skillClass = 'bg-red-100 text-red-800';
+                        icon = 'times-circle';
+                    }
+                    
+                    const skillEl = document.createElement('span');
+                    skillEl.className = `px-2 py-1 ${skillClass} text-xs font-medium rounded flex items-center`;
+                    skillEl.innerHTML = `<i class="fas fa-${icon} mr-1"></i> ${skill.name}${skill.level ? ` (${skill.level})` : ''}`;
+                    
+                    skillsContainer.appendChild(skillEl);
+                });
+                
+                // Update other candidate details
+                document.querySelector('p.text-gray-900:nth-of-type(1)').textContent = candidate.name;
+                document.querySelector('p.text-gray-900:nth-of-type(2)').textContent = candidate.email;
+                document.querySelector('p.text-gray-900:nth-of-type(3)').textContent = candidate.phone;
+                document.querySelector('p.text-gray-900:nth-of-type(4)').textContent = candidate.experience;
+                document.querySelector('p.text-gray-900:nth-of-type(5)').textContent = candidate.position;
+                document.querySelector('p.text-gray-900:nth-of-type(6)').textContent = candidate.location;
+                document.querySelector('p.text-right.text-xs').textContent = `${candidate.score}% match with job requirements`;
+            }
+
+            // Convert to onboarding
+            convertBtn.addEventListener('click', function() {
+                // In a real app, you would send a request to your backend
+                // fetch(`/api/candidates/${candidateId}/convert`, {
+                //     method: 'POST',
+                //     headers: {
+                //         'Content-Type': 'application/json',
+                //     },
+                //     body: JSON.stringify({
+                //         // Any additional data needed for onboarding
+                //     })
+                // })
+                // .then(response => response.json())
+                // .then(data => {
+                //     showSuccessMessage();
+                // })
+                // .catch(error => {
+                //     console.error('Error:', error);
+                // });
+                
+                // For demo purposes, just show the success message
+                showSuccessMessage();
+            });
+            
+            function showSuccessMessage() {
+                onboardingSuccess.classList.remove('hidden');
+                setTimeout(() => {
+                    onboardingSuccess.classList.add('hidden');
+                }, 5000);
+            }
+            
+            // Apply filters
+            applyFiltersBtn.addEventListener('click', applyFilters);
+            resetFiltersBtn.addEventListener('click', resetFilters);
+            
+            function applyFilters() {
+                const scoreRange = scoreFilter.value;
+                const skillsQuery = skillsFilter.value.toLowerCase();
+                
+                // In a real app, you would fetch filtered data from your API
+                // fetch(`/api/candidates?score=${scoreRange}&skills=${encodeURIComponent(skillsQuery)}`)
+                //     .then(response => response.json())
+                //     .then(data => {
+                //         // Update the UI with filtered candidates
+                //     });
+                
+                // For demo, just log the filter values
+                console.log('Applying filters:', { scoreRange, skillsQuery });
+                alert(`Filters applied:\nScore: ${scoreRange}\nSkills: ${skillsQuery || 'Any'}`);
+            }
+            
+            function resetFilters() {
+                scoreFilter.value = 'all';
+                skillsFilter.value = '';
+                // In a real app, you would fetch all candidates again
+                // fetch('/api/candidates')
+                //     .then(response => response.json())
+                //     .then(data => {
+                //         // Update the UI with all candidates
+                //     });
+                
+                console.log('Filters reset');
+            }
+            // Toggle task completion
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const parent = this.closest('.flex.items-center.justify-between');
+                    if (this.checked) {
+                        parent.querySelector('span').classList.remove('bg-yellow-100', 'text-yellow-800');
+                        parent.querySelector('span').classList.add('bg-green-100', 'text-green-800');
+                        parent.querySelector('span').textContent = 'Completed';
+                    } else {
+                        parent.querySelector('span').classList.remove('bg-green-100', 'text-green-800');
+                        parent.querySelector('span').classList.add('bg-yellow-100', 'text-yellow-800');
+                        parent.querySelector('span').textContent = 'Pending';
+                    }
+                });
+            });
+            
+            // File upload functionality
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.style.display = 'none';
+            fileInput.accept = '.pdf,.doc,.docx';
+            
+            document.querySelectorAll('button:contains("Upload")').forEach(button => {
+                button.addEventListener('click', function() {
+                    fileInput.click();
+                });
+            });
+            
+            fileInput.addEventListener('change', function(e) {
+                if (this.files && this.files[0]) {
+                    const fileName = this.files[0].name;
+                    // Update UI to show file was uploaded
+                    const uploadButton = document.querySelector('button:contains("Upload")');
+                    uploadButton.textContent = 'Change';
+                    uploadButton.previousElementSibling.querySelector('p:first-child').textContent = fileName;
+                    uploadButton.previousElementSibling.querySelector('p:last-child').textContent = 'Uploaded';
+                    uploadButton.previousElementSibling.querySelector('p:last-child').classList.add('text-green-600');
                 }
             });
-        }
-    });
-</script>
+        });
+    </script>
 {% endblock %}

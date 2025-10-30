@@ -1,242 +1,549 @@
-{% extends "base.html" %}
+{% extends "candidate_base.html" %}
 
 {% block title %}My Applications - SmartHire AI{% endblock %}
 
-{% block extra_js %}
-<script src="{{ url_for('static', filename='js/applications.js') }}"></script>
+{% block extra_css %}
+<style>
+    .application-card {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        border: none;
+        border-radius: 0.5rem;
+        overflow: hidden;
+    }
+    .application-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1) !important;
+    }
+    .status-badge {
+        padding: 0.35em 0.65em;
+        font-size: 0.75em;
+        font-weight: 600;
+        border-radius: 0.25rem;
+    }
+    .application-company-logo {
+        width: 48px;
+        height: 48px;
+        object-fit: contain;
+        background: var(--card-bg);
+        border-radius: 0.5rem;
+        padding: 0.25rem;
+    }
+    .application-details {
+        min-height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    .application-actions {
+        margin-top: auto;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>My Job Applications</h2>
-        <a href="#" class="btn btn-primary">
-            <i class="fas fa-plus me-1"></i> New Application
-        </a>
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h1 class="h3 mb-1">My Applications</h1>
+                    <p class="text-muted mb-0">Track and manage all your job applications in one place</p>
+                </div>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newApplicationModal">
+                    <i class="fas fa-plus me-2"></i>New Application
+                </button>
+            </div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ url_for('candidate_dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Applications</li>
+                </ol>
+            </nav>
+        </div>
     </div>
 
-    <div class="card">
-        <div class="card-header">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <h5 class="mb-0">Active Applications</h5>
+    <!-- Application Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body p-3">
+                    <form class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label for="statusFilter" class="form-label small text-muted mb-1">Status</label>
+                            <select class="form-select form-select-sm" id="statusFilter">
+                                <option value="" selected>All Statuses</option>
+                                <option value="applied">Applied</option>
+                                <option value="review">Under Review</option>
+                                <option value="interview">Interview</option>
+                                <option value="offer">Offer</option>
+                                <option value="hired">Hired</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="dateFilter" class="form-label small text-muted mb-1">Date Applied</label>
+                            <select class="form-select form-select-sm" id="dateFilter">
+                                <option value="" selected>All Time</option>
+                                <option value="today">Today</option>
+                                <option value="week">This Week</option>
+                                <option value="month">This Month</option>
+                                <option value="year">This Year</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="searchFilter" class="form-label small text-muted mb-1">Search Applications</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-transparent"><i class="fas fa-search text-muted"></i></span>
+                                <input type="text" class="form-control" id="searchFilter" placeholder="Search by company, position...">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="resetFilters">
+                                <i class="fas fa-undo me-1"></i> Reset
+                            </button>
+                        </div>
+                    </form>
                 </div>
-                <div class="col-md-6">
-                    <div class="input-group">
-                        <span class="input-group-text">
-                            <i class="fas fa-search"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Applications Grid View -->
+    <div class="row g-4">
+        <!-- Application Card 1 -->
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card h-100 application-card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="d-flex align-items-center">
+                            <img src="https://via.placeholder.com/48" alt="Company Logo" class="application-company-logo me-3">
+                            <div>
+                                <h5 class="mb-0">Senior Frontend Developer</h5>
+                                <p class="text-muted mb-0">TechCorp Inc.</p>
+                            </div>
+                        </div>
+                        <span class="badge bg-soft-success text-success status-badge">
+                            <i class="fas fa-check-circle me-1"></i> Applied
                         </span>
-                        <input type="text" class="form-control" placeholder="Search applications...">
+                    </div>
+                    
+                    <div class="application-details">
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center text-muted mb-2">
+                                <i class="fas fa-calendar-day me-2"></i>
+                                <span>Applied on Oct 25, 2023</span>
+                            </div>
+                            <div class="d-flex align-items-center text-muted mb-2">
+                                <i class="fas fa-map-marker-alt me-2"></i>
+                                <span>San Francisco, CA (Remote)</span>
+                            </div>
+                            <div class="d-flex align-items-center text-muted">
+                                <i class="fas fa-briefcase me-2"></i>
+                                <span>Full-time</span>
+                            </div>
+                        </div>
+                        
+                        <div class="application-actions">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <a href="#" class="btn btn-sm btn-outline-primary">
+                                    <i class="far fa-eye me-1"></i> View
+                                </a>
+                                <a href="#" class="btn btn-sm btn-outline-secondary">
+                                    <i class="far fa-edit me-1"></i> Edit
+                                </a>
+                                <a href="#" class="btn btn-sm btn-outline-danger">
+                                    <i class="far fa-trash-alt me-1"></i> Withdraw
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Position</th>
-                            <th>Company</th>
-                            <th>Date Applied</th>
-                            <th>Status</th>
-                            <th class="text-end">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr data-application-id="1">
-                            <td>Senior Full Stack Developer</td>
-                            <td>TechNova Solutions</td>
-                            <td>Oct 25, 2023</td>
-                            <td><span class="badge bg-primary">Application Submitted</span></td>
-                            <td class="text-end">
-                                <button class="btn btn-sm btn-outline-primary view-application" data-application-id="1">View</button>
-                                <button class="btn btn-sm btn-outline-secondary withdraw-application" data-application-id="1">Withdraw</button>
-                            </td>
-                        </tr>
-                        <tr data-application-id="2">
-                            <td>Product Manager</td>
-                            <td>DesignHub Inc.</td>
-                            <td>Oct 23, 2023</td>
-                            <td><span class="badge bg-warning">Interview Scheduled</span></td>
-                            <td class="text-end">
-                                <button class="btn btn-sm btn-outline-primary view-application" data-application-id="2">View</button>
-                                <button class="btn btn-sm btn-outline-secondary withdraw-application" data-application-id="2">Withdraw</button>
-                            </td>
-                        </tr>
-                        <tr data-application-id="3">
-                            <td>Data Scientist</td>
-                            <td>AnalyticsPro</td>
-                            <td>Oct 20, 2023</td>
-                            <td><span class="badge bg-success">In Review</span></td>
-                            <td class="text-end">
-                                <button class="btn btn-sm btn-outline-primary view-application" data-application-id="3">View</button>
-                                <button class="btn btn-sm btn-outline-secondary withdraw-application" data-application-id="3">Withdraw</button>
-                            </td>
-                        </tr>
-                        <tr data-application-id="4">
-                            <td>UX/UI Designer</td>
-                            <td>CreativeMinds</td>
-                            <td>Oct 18, 2023</td>
-                            <td><span class="badge bg-info">Assessment Sent</span></td>
-                            <td class="text-end">
-                                <button class="btn btn-sm btn-outline-primary view-application" data-application-id="4">View</button>
-                                <button class="btn btn-sm btn-outline-secondary withdraw-application" data-application-id="4">Withdraw</button>
-                            </td>
-                        </tr>
-                        <tr data-application-id="5">
-                            <td>DevOps Engineer</td>
-                            <td>CloudScale Technologies</td>
-                            <td>Oct 15, 2023</td>
-                            <td><span class="badge bg-dark">Offer Received</span></td>
-                            <td class="text-end">
-                                <button class="btn btn-sm btn-outline-primary view-application" data-application-id="5">View</button>
-                                <button class="btn btn-sm btn-outline-success accept-offer" data-application-id="5">Accept Offer</button>
-                            </td>
-                        </tr>
-                        <tr data-application-id="6">
-                            <td>Marketing Specialist</td>
-                            <td>GrowthHack Media</td>
-                            <td>Oct 10, 2023</td>
-                            <td><span class="badge bg-secondary">Not Selected</span></td>
-                            <td class="text-end">
-                                <button class="btn btn-sm btn-outline-primary view-application" data-application-id="6">View</button>
-                                <button class="btn btn-sm btn-outline-danger delete-application" data-application-id="6">Delete</button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+        
+        <!-- Application Card 2 -->
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card h-100 application-card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="d-flex align-items-center">
+                            <img src="https://via.placeholder.com/48" alt="Company Logo" class="application-company-logo me-3">
+                            <div>
+                                <h5 class="mb-0">Backend Engineer</h5>
+                                <p class="text-muted mb-0">DataSystems</p>
+                            </div>
+                        </div>
+                        <span class="badge bg-soft-info text-info status-badge">
+                            <i class="fas fa-comments me-1"></i> Interview
+                        </span>
+                    </div>
+                    
+                    <div class="application-details">
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center text-muted mb-2">
+                                <i class="fas fa-calendar-day me-2"></i>
+                                <span>Applied on Oct 18, 2023</span>
+                            </div>
+                            <div class="d-flex align-items-center text-muted mb-2">
+                                <i class="fas fa-calendar-check me-2"></i>
+                                <span>Interview: Nov 2, 2:00 PM</span>
+                            </div>
+                            <div class="d-flex align-items-center text-muted">
+                                <i class="fas fa-video me-2"></i>
+                                <span>Virtual Interview</span>
+                            </div>
+                        </div>
+                        
+                        <div class="application-actions">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <a href="#" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-video me-1"></i> Join Meeting
+                                </a>
+                                <a href="#" class="btn btn-sm btn-outline-secondary">
+                                    <i class="far fa-calendar-plus me-1"></i> Add to Calendar
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Application Card 3 -->
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card h-100 application-card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="d-flex align-items-center">
+                            <img src="https://via.placeholder.com/48" alt="Company Logo" class="application-company-logo me-3">
+                            <div>
+                                <h5 class="mb-0">Product Manager</h5>
+                                <p class="text-muted mb-0">InnoTech Solutions</p>
+                            </div>
+                        </div>
+                        <span class="badge bg-soft-warning text-warning status-badge">
+                            <i class="fas fa-clock me-1"></i> Under Review
+                        </span>
+                    </div>
+                    
+                    <div class="application-details">
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center text-muted mb-2">
+                                <i class="fas fa-calendar-day me-2"></i>
+                                <span>Applied on Oct 15, 2023</span>
+                            </div>
+                            <div class="d-flex align-items-center text-muted mb-2">
+                                <i class="fas fa-map-marker-alt me-2"></i>
+                                <span>New York, NY (Hybrid)</span>
+                            </div>
+                            <div class="d-flex align-items-center text-muted">
+                                <i class="fas fa-briefcase me-2"></i>
+                                <span>Full-time</span>
+                            </div>
+                        </div>
+                        
+                        <div class="application-actions">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <a href="#" class="btn btn-sm btn-outline-primary">
+                                    <i class="far fa-eye me-1"></i> View
+                                </a>
+                                <a href="#" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-envelope me-1"></i> Contact
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Application Details Modal -->
-<div class="modal fade" id="applicationDetailsModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fas fa-file-alt me-2"></i>
-                    <span id="modal-position">Application Details</span>
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="row g-4 mb-4">
-                    <div class="col-md-6">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h6 class="text-uppercase text-muted mb-3">Application Information</h6>
-                                <div class="mb-3">
-                                    <p class="text-muted mb-1">Application ID</p>
-                                    <p class="mb-0" id="modal-application-id">N/A</p>
-                                </div>
-                                <div class="mb-3">
-                                    <p class="text-muted mb-1">Date Applied</p>
-                                    <p class="mb-0" id="modal-application-date">N/A</p>
-                                </div>
-                                <div>
-                                    <p class="text-muted mb-1">Status</p>
-                                    <span class="badge" id="modal-status">N/A</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h6 class="text-uppercase text-muted mb-3">Job Details</h6>
-                                <h5 id="modal-company" class="mb-3">N/A</h5>
-                                <div class="mb-3">
-                                    <p class="text-muted mb-1">Job Type</p>
-                                    <p class="mb-0" id="modal-job-type">N/A</p>
-                                </div>
-                                <div class="mb-3">
-                                    <p class="text-muted mb-1">Location</p>
-                                    <p class="mb-0" id="modal-location">N/A</p>
-                                </div>
-                                <div>
-                                    <p class="text-muted mb-1">Salary</p>
-                                    <p class="mb-0" id="modal-salary">N/A</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row g-4 mb-4">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-body">
-                                <h6 class="text-uppercase text-muted mb-3">Job Description</h6>
-                                <div id="modal-job-description">
-                                    <p class="mb-0">Loading job description...</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row g-4">
-                    <div class="col-md-6">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h6 class="text-uppercase text-muted mb-3">Next Steps</h6>
-                                <ul class="list-unstyled" id="modal-next-steps">
-                                    <li><i class="fas fa-check-circle text-success me-2"></i> Application Submitted</li>
-                                    <li><i class="fas fa-dot-circle text-muted me-2"></i> Application Review</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h6 class="text-uppercase text-muted mb-3">Documents</h6>
-                                <div class="list-group list-group-flush" id="modal-documents">
-                                    <div class="list-group-item">
-                                        <p class="text-muted mb-0">No documents available.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row mt-4">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-body">
-                                <h6 class="text-uppercase text-muted mb-3">Notes</h6>
-                                <div id="modal-notes">
-                                    <p class="text-muted mb-0">No notes available.</p>
-                                </div>
-                                <div class="mt-3">
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" placeholder="Add a note...">
-                                        <button class="btn btn-outline-primary" type="button">
-                                            <i class="fas fa-paper-plane"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i> Close
-                </button>
-                <button type="button" class="btn btn-outline-danger me-auto" id="withdraw-application-btn">
-                    <i class="fas fa-undo me-1"></i> Withdraw
-                </button>
-                <button type="button" class="btn btn-primary" id="modal-primary-action">
-                    <i class="fas fa-print me-1"></i> Print
-                </button>
+    <!-- Pagination -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <nav aria-label="Application pagination">
+                <ul class="pagination justify-content-center mb-0">
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" tabindex="-1" aria-disabled="true">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                    <li class="page-item"><a class="page-link" href="#">2</a></li>
+                    <li class="page-item"><a class="page-link" href="#">3</a></li>
+                    <li class="page-item">
+                        <a class="page-link" href="#">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
         </div>
     </div>
 </div>
 
 {% endblock %}
+
+{% block extra_js %}
+<script>
+// Initialize when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Filter applications
+    const statusFilter = document.getElementById('statusFilter');
+    const searchFilter = document.getElementById('searchFilter');
+    const resetFiltersBtn = document.getElementById('resetFilters');
+    
+    // Add event listeners for filters
+    if (statusFilter) {
+        statusFilter.addEventListener('change', filterApplications);
+    }
+    
+    if (searchFilter) {
+        searchFilter.addEventListener('input', filterApplications);
+    }
+    
+    if (resetFiltersBtn) {
+        resetFiltersBtn.addEventListener('click', resetFilters);
+    }
+    
+    // Filter applications based on selected filters
+    function filterApplications() {
+        const status = statusFilter ? statusFilter.value.toLowerCase() : '';
+        const searchTerm = searchFilter ? searchFilter.value.toLowerCase() : '';
+        const applicationCards = document.querySelectorAll('.application-card');
+        let visibleCount = 0;
+        
+        applicationCards.forEach(card => {
+            const cardStatus = card.getAttribute('data-status') || '';
+            const cardText = card.textContent.toLowerCase();
+            
+            const statusMatch = !status || cardStatus === status || (status === 'applied' && cardStatus === '');
+            const searchMatch = !searchTerm || cardText.includes(searchTerm);
+            
+            if (statusMatch && searchMatch) {
+                card.style.display = '';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+        
+        // Show/hide empty state
+        const emptyState = document.getElementById('emptyState');
+        if (emptyState) {
+            if (visibleCount === 0) {
+                emptyState.classList.remove('d-none');
+            } else {
+                emptyState.classList.add('d-none');
+            }
+        }
+    }
+    
+    // Reset all filters
+    function resetFilters() {
+        if (statusFilter) statusFilter.value = '';
+        if (searchFilter) searchFilter.value = '';
+        filterApplications();
+    }
+    
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Initialize popovers
+    var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+    popoverTriggerList.map(function (popoverTriggerEl) {
+        return new bootstrap.Popover(popoverTriggerEl);
+    });
+
+    // Handle new application form submission
+    const newApplicationForm = document.getElementById('newApplicationForm');
+    if (newApplicationForm) {
+        newApplicationForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Show success message
+            const toast = document.createElement('div');
+            toast.className = 'toast show align-items-center text-white bg-success';
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Application submitted successfully!
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            `;
+            
+            const toastContainer = document.querySelector('.toast-container');
+            if (toastContainer) {
+                toastContainer.innerHTML = '';
+                toastContainer.appendChild(toast);
+                
+                // Close the modal after a delay
+                const modal = bootstrap.Modal.getInstance(document.getElementById('newApplicationModal'));
+                if (modal) {
+                    setTimeout(() => {
+                        modal.hide();
+                        // Reset form
+                        this.reset();
+                        // Hide success message
+                        setTimeout(() => toast.remove(), 3000);
+                    }, 1500);
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+
+<!-- New Application Modal -->
+<div class="modal fade" id="newApplicationModal" tabindex="-1" aria-labelledby="newApplicationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title" id="newApplicationModalLabel">New Job Application</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newApplicationForm">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="jobTitle" class="form-label small text-muted mb-1">Job Title <span class="text-danger">*</span></label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-transparent"><i class="fas fa-briefcase text-muted"></i></span>
+                                <input type="text" class="form-control" id="jobTitle" placeholder="e.g. Senior Frontend Developer" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="companyName" class="form-label small text-muted mb-1">Company Name <span class="text-danger">*</span></label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-transparent"><i class="fas fa-building text-muted"></i></span>
+                                <input type="text" class="form-control" id="companyName" placeholder="e.g. TechCorp Inc." required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="location" class="form-label small text-muted mb-1">Location</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-transparent"><i class="fas fa-map-marker-alt text-muted"></i></span>
+                                <input type="text" class="form-control" id="location" placeholder="e.g. San Francisco, CA (Remote)">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="jobType" class="form-label small text-muted mb-1">Job Type</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-transparent"><i class="fas fa-clock text-muted"></i></span>
+                                <select class="form-select" id="jobType">
+                                    <option value="full-time">Full-time</option>
+                                    <option value="part-time">Part-time</option>
+                                    <option value="contract">Contract</option>
+                                    <option value="internship">Internship</option>
+                                    <option value="temporary">Temporary</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="appliedDate" class="form-label small text-muted mb-1">Date Applied <span class="text-danger">*</span></label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-transparent"><i class="far fa-calendar text-muted"></i></span>
+                                <input type="date" class="form-control" id="appliedDate" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="applicationStatus" class="form-label small text-muted mb-1">Status</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-transparent"><i class="fas fa-info-circle text-muted"></i></span>
+                                <select class="form-select" id="applicationStatus">
+                                    <option value="applied">Applied</option>
+                                    <option value="review">Under Review</option>
+                                    <option value="interview">Interview</option>
+                                    <option value="offer">Offer</option>
+                                    <option value="hired">Hired</option>
+                                    <option value="rejected">Rejected</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label for="jobDescription" class="form-label small text-muted mb-1">Job Description</label>
+                            <div class="input-group input-group-sm mb-2">
+                                <span class="input-group-text bg-transparent align-items-start pt-2"><i class="fas fa-file-alt text-muted mt-1"></i></span>
+                                <textarea class="form-control" id="jobDescription" rows="4" placeholder="Paste the job description here..."></textarea>
+                            </div>
+                            <div class="d-flex justify-content-end">
+                                <button type="button" class="btn btn-sm btn-outline-secondary me-2">
+                                    <i class="fas fa-magic me-1"></i> AI Analysis
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-upload me-1"></i> Upload PDF
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label for="notes" class="form-label small text-muted mb-1">Notes</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-transparent align-items-start pt-2"><i class="far fa-edit text-muted mt-1"></i></span>
+                                <textarea class="form-control" id="notes" rows="3" placeholder="Add any additional notes about this application..."></textarea>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="followUp">
+                                <label class="form-check-label small text-muted" for="followUp">
+                                    Set follow-up reminder
+                                </label>
+                            </div>
+                            <div class="form-text small text-muted">
+                                <i class="far fa-bell me-1"></i> We'll remind you to follow up on this application.
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+                <button type="submit" form="newApplicationForm" class="btn btn-primary">
+                    <i class="fas fa-paper-plane me-1"></i> Save Application
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Legend Popover -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1050">
+    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="popover" data-bs-placement="left" data-bs-html="true" 
+            data-bs-content='
+                <div class="d-flex align-items-center mb-2">
+                    <span class="badge bg-soft-primary text-primary me-2">Applied</span>
+                    <small class="text-muted">Application submitted</small>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <span class="badge bg-soft-warning text-warning me-2">Under Review</span>
+                    <small class="text-muted">Application is being reviewed</small>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <span class="badge bg-soft-info text-info me-2">Interview</span>
+                    <small class="text-muted">Interview scheduled</small>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <span class="badge bg-soft-success text-success me-2">Hired</span>
+                    <small class="text-muted">Application accepted</small>
+                </div>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-soft-danger text-danger me-2">Rejected</span>
+                    <small class="text-muted">Application not selected</small>
+                </div>
+            '>
+        <i class="fas fa-question-circle me-1"></i> Status Legend
+    </button>
+</div>

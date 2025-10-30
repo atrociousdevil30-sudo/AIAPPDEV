@@ -1,0 +1,1710 @@
+{% extends "candidate_base.html" %}
+
+{% block title %}My Profile - SmartHire AI{% endblock %}
+
+{% block extra_css %}
+<style>
+    .profile-header {
+        background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+        border-radius: 0.5rem;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .profile-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 200px;
+        height: 100%;
+        background: linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 100%);
+    }
+    
+    .profile-avatar, .avatar {
+        width: 150px;
+        height: 150px;
+        object-fit: cover;
+    }
+    
+    .profile-stats {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 0.5rem;
+        padding: 1.25rem;
+        margin-top: 1.5rem;
+    }
+    
+    .stat-item {
+        text-align: center;
+        padding: 0.5rem;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--primary-color);
+        margin-bottom: 0.25rem;
+    }
+    
+    .stat-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-muted);
+    }
+    
+    .skill-tag {
+        display: inline-block;
+        background: rgba(123, 44, 191, 0.2);
+        color: var(--primary-color);
+        padding: 0.35rem 0.75rem;
+        border-radius: 50px;
+        margin: 0.25rem;
+        font-size: 0.85rem;
+        transition: all 0.3s ease;
+    }
+    
+    .skill-tag:hover {
+        background: var(--primary-color);
+        color: white;
+    }
+    
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+    
+    .timeline:before {
+        content: '';
+        position: absolute;
+        left: 10px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #e9ecef;
+    }
+    
+    .timeline-item {
+        position: relative;
+        padding-bottom: 20px;
+        padding-left: 20px;
+    }
+    
+    .timeline-item:last-child {
+        padding-bottom: 0;
+    }
+    
+    .timeline-item:before {
+        content: '';
+        position: absolute;
+        left: -30px;
+        top: 5px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #0d6efd;
+        border: 2px solid #fff;
+        z-index: 1;
+    }
+    
+    .skill-progress {
+        height: 8px;
+        border-radius: 4px;
+    }
+    
+    /* Print-specific styles */
+    @media print {
+        .no-print, .no-print * {
+            display: none !important;
+        }
+        
+        body {
+            background: #fff !important;
+            color: #000 !important;
+            font-size: 12pt;
+        }
+        
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+        }
+        
+        .container-fluid {
+            padding: 0 !important;
+        }
+        
+        .progress {
+            height: 6px !important;
+        }
+    }
+    
+    .timeline-date {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-bottom: 0.25rem;
+    }
+    
+    .timeline-title {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+    
+    .timeline-company {
+        color: var(--primary-color);
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+    
+    .progress {
+        height: 6px;
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    .progress-bar {
+        background-color: var(--primary-color);
+    }
+    
+    .social-icon {
+        width: 36px;
+        height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-muted);
+        margin-right: 0.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .social-icon:hover {
+        background: var(--primary-color);
+        color: white;
+        transform: translateY(-2px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h1 class="h3 mb-1">My Profile</h1>
+                    <p class="text-muted mb-0">Manage your professional profile and personal information</p>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-outline-secondary me-2" onclick="window.print()">
+                        <i class="fas fa-print me-1"></i>Print
+                    </button>
+                    <button type="button" class="btn btn-primary" id="saveProfileBtn">
+                        <i class="fas fa-save me-1"></i>Save Changes
+                    </button>
+                </div>
+            </div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ url_for('candidate_dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Profile</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Profile Header -->
+    <div class="profile-header mb-4">
+        <div class="row align-items-center">
+            <div class="col-md-2 text-center text-md-start">
+                <div class="position-relative d-inline-block">
+                    <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile Picture" 
+                         class="profile-avatar rounded-circle shadow">
+                    <button class="btn btn-sm btn-primary rounded-circle position-absolute bottom-0 end-0" 
+                            style="width: 32px; height: 32px;"
+                            data-bs-toggle="tooltip" 
+                            data-bs-placement="top" 
+                            title="Update Photo">
+                        <i class="fas fa-camera"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-6 mt-3 mt-md-0">
+                <h2 class="mb-1">John M. Doe</h2>
+                <p class="lead text-muted mb-2">Senior Software Engineer</p>
+                <div class="d-flex flex-wrap align-items-center">
+                    <span class="badge bg-primary-soft text-primary me-2 mb-2">
+                        <i class="fas fa-map-marker-alt me-1"></i> San Francisco, CA
+                    </span>
+                    <span class="badge bg-success-soft text-success me-2 mb-2">
+                        <i class="fas fa-briefcase me-1"></i> Open to Work
+                    </span>
+                    <span class="badge bg-info-soft text-info mb-2">
+                        <i class="fas fa-star me-1"></i> Top Performer
+                    </span>
+                </div>
+            </div>
+            <div class="col-md-4 mt-3 mt-md-0">
+                <div class="profile-stats">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="stat-value">12</div>
+                            <div class="stat-label">Applications</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-value">5</div>
+                            <div class="stat-label">Interviews</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-value">2</div>
+                            <div class="stat-label">Offers</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Column -->
+        <div class="col-lg-4">
+            <!-- Contact Information -->
+            <div class="card mb-4">
+                <div class="card-header bg-transparent border-bottom">
+                    <h5 class="mb-0">Contact Information</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="icon-shape icon-sm bg-primary bg-opacity-10 text-primary rounded-circle me-3">
+                                    <i class="fas fa-envelope"></i>
+                                </div>
+                                <div>
+                                    <small class="text-muted mb-0">Email</small>
+                                    <p class="mb-0">john.doe@example.com</p>
+                                </div>
+                            </div>
+                        </li>
+                        <li class="mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="icon-shape icon-sm bg-info bg-opacity-10 text-info rounded-circle me-3">
+                                    <i class="fas fa-phone"></i>
+                                </div>
+                                <div>
+                                    <small class="text-muted mb-0">Phone</small>
+                                    <p class="mb-0">(555) 123-4567</p>
+                                </div>
+                            </div>
+                        </li>
+                        <li class="mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="icon-shape icon-sm bg-warning bg-opacity-10 text-warning rounded-circle me-3">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                </div>
+                                <div>
+                                    <small class="text-muted mb-0">Location</small>
+                                    <p class="mb-0">San Francisco, CA, USA</p>
+                                </div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="d-flex align-items-center">
+                                <div class="icon-shape icon-sm bg-success bg-opacity-10 text-success rounded-circle me-3">
+                                    <i class="fas fa-link"></i>
+                                </div>
+                                <div>
+                                    <small class="text-muted mb-0">Portfolio</small>
+                                    <p class="mb-0">johndoe.dev</p>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                    <hr class="my-4">
+                    <div class="d-flex justify-content-center">
+                        <a href="#" class="social-icon me-2" data-bs-toggle="tooltip" title="LinkedIn">
+                            <i class="fab fa-linkedin-in"></i>
+                        </a>
+                        <a href="#" class="social-icon me-2" data-bs-toggle="tooltip" title="GitHub">
+                            <i class="fab fa-github"></i>
+                        </a>
+                        <a href="#" class="social-icon me-2" data-bs-toggle="tooltip" title="Twitter">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="social-icon" data-bs-toggle="tooltip" title="Dribbble">
+                            <i class="fab fa-dribbble"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Skills -->
+            <div class="card mb-4">
+                <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Skills & Expertise</h5>
+                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addSkillModal">
+                        <i class="fas fa-plus me-1"></i> Add
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>JavaScript</span>
+                            <span class="text-muted">Expert</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" style="width: 90%" aria-valuenow="90" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>React</span>
+                            <span class="text-muted">Advanced</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" style="width: 80%" aria-valuenow="80" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Node.js</span>
+                            <span class="text-muted">Advanced</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" style="width: 85%" aria-valuenow="85" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    <div class="mb-0">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>UI/UX Design</span>
+                            <span class="text-muted">Intermediate</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" style="width: 65%" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <h6 class="small text-uppercase text-muted mb-2">Additional Skills</h6>
+                        <div class="d-flex flex-wrap">
+                            <span class="skill-tag">TypeScript</span>
+                            <span class="skill-tag">Redux</span>
+                            <span class="skill-tag">GraphQL</span>
+                            <span class="skill-tag">REST APIs</span>
+                            <span class="skill-tag">MongoDB</span>
+                            <span class="skill-tag">Docker</span>
+                            <span class="skill-tag">AWS</span>
+                            <span class="skill-tag">CI/CD</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Languages -->
+            <div class="card mb-4">
+                <div class="card-header bg-transparent border-bottom">
+                    <h5 class="mb-0">Languages</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>English</span>
+                            <span class="text-muted">Native</span>
+                        </div>
+                        <div class="progress" style="height: 4px;">
+                            <div class="progress-bar" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Spanish</span>
+                            <span class="text-muted">Professional</span>
+                        </div>
+                        <div class="progress" style="height: 4px;">
+                            <div class="progress-bar" role="progressbar" style="width: 70%" aria-valuenow="70" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    <div class="mb-0">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>French</span>
+                            <span class="text-muted">Basic</span>
+                        </div>
+                        <div class="progress" style="height: 4px;">
+                            <div class="progress-bar" role="progressbar" style="width: 40%" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Column -->
+            <div class="col-lg-8">
+                <!-- About Me -->
+                <div class="card mb-4">
+                    <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">About Me</h5>
+                        <button class="btn btn-sm btn-outline-primary" id="editAboutBtn">
+                            <i class="fas fa-edit me-1"></i> Edit
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="aboutContent">
+                            <p class="mb-0">Results-driven Senior Software Engineer with over 7 years of experience in developing scalable web applications. Specialized in JavaScript, React, and Node.js with a strong focus on creating efficient and maintainable code. Passionate about mentoring junior developers and contributing to open-source projects.</p>
+                        </div>
+                        <div id="aboutForm" style="display: none;">
+                            <div class="mb-3">
+                                <textarea class="form-control" rows="4" id="aboutText">Results-driven Senior Software Engineer with over 7 years of experience in developing scalable web applications. Specialized in JavaScript, React, and Node.js with a strong focus on creating efficient and maintainable code. Passionate about mentoring junior developers and contributing to open-source projects.</textarea>
+                            </div>
+                            <div class="d-flex justify-content-end">
+                                <button class="btn btn-outline-secondary btn-sm me-2" id="cancelAboutEdit">Cancel</button>
+                                <button class="btn btn-primary btn-sm" id="saveAbout">Save Changes</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Work Experience -->
+                <div class="card mb-4">
+                    <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Work Experience</h5>
+                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addExperienceModal">
+                            <i class="fas fa-plus me-1"></i> Add Experience
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="timeline">
+                            <!-- Experience Item 1 -->
+                            <div class="timeline-item">
+                                <div class="timeline-dot"></div>
+                                <div class="timeline-content">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="timeline-title mb-0">Senior Frontend Developer</h6>
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="tooltip" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <span class="timeline-company">TechCorp Inc.</span>
+                                    <div class="timeline-date mb-2">Jan 2021 - Present · 2 yrs 6 mos</div>
+                                    <p class="mb-0 small">Leading the frontend development team, implementing new features, and optimizing application performance. Mentoring junior developers and collaborating with cross-functional teams to deliver high-quality products.</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Experience Item 2 -->
+                            <div class="timeline-item">
+                                <div class="timeline-dot"></div>
+                                <div class="timeline-content">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="timeline-title mb-0">Frontend Developer</h6>
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="tooltip" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <span class="timeline-company">WebSolutions Ltd.</span>
+                                    <div class="timeline-date mb-2">Mar 2018 - Dec 2020 · 2 yrs 10 mos</div>
+                                    <p class="mb-0 small">Developed and maintained responsive web applications using React and Redux. Collaborated with designers and backend developers to implement new features and improve user experience.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Education -->
+                <div class="card mb-4">
+                    <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Education</h5>
+                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addEducationModal">
+                            <i class="fas fa-plus me-1"></i> Add Education
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="timeline">
+                            <!-- Education Item 1 -->
+                            <div class="timeline-item">
+                                <div class="timeline-dot"></div>
+                                <div class="timeline-content">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="timeline-title mb-0">Master of Science in Computer Science</h6>
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="tooltip" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <span class="timeline-company">Stanford University</span>
+                                    <div class="timeline-date mb-2">2016 - 2018</div>
+                                    <p class="mb-0 small">Specialized in Artificial Intelligence and Machine Learning. Graduated with honors.</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Education Item 2 -->
+                            <div class="timeline-item">
+                                <div class="timeline-dot"></div>
+                                <div class="timeline-content">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="timeline-title mb-0">Bachelor of Science in Computer Science</h6>
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="tooltip" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <span class="timeline-company">University of California, Berkeley</span>
+                                    <div class="timeline-date mb-2">2012 - 2016</div>
+                                    <p class="mb-0 small">Major in Computer Science with minor in Mathematics. Dean's List all semesters.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Certifications -->
+                <div class="card mb-4">
+                    <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Certifications</h5>
+                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addCertificationModal">
+                            <i class="fas fa-plus me-1"></i> Add Certification
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-4">
+                            <!-- Certification 1 -->
+                            <div class="col-md-6">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h6 class="mb-1">AWS Certified Solutions Architect</h6>
+                                            <p class="text-muted small mb-2">Amazon Web Services</p>
+                                        </div>
+                                        <img src="https://via.placeholder.com/40" alt="AWS" class="rounded" width="40" height="40">
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="badge bg-light text-dark">Issued: May 2022</span>
+                                        <div>
+                                            <a href="#" class="text-primary me-2" data-bs-toggle="tooltip" title="View">
+                                                <i class="far fa-eye"></i>
+                                            </a>
+                                            <a href="#" class="text-danger" data-bs-toggle="tooltip" title="Remove">
+                                                <i class="far fa-trash-alt"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Certification 2 -->
+                            <div class="col-md-6">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h6 class="mb-1">Professional Scrum Master I</h6>
+                                            <p class="text-muted small mb-2">Scrum.org</p>
+                                        </div>
+                                        <img src="https://via.placeholder.com/40" alt="Scrum" class="rounded" width="40" height="40">
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="badge bg-light text-dark">Issued: Nov 2021</span>
+                                        <div>
+                                            <a href="#" class="text-primary me-2" data-bs-toggle="tooltip" title="View">
+                                                <i class="far fa-eye"></i>
+                                            </a>
+                                            <a href="#" class="text-danger" data-bs-toggle="tooltip" title="Remove">
+                                                <i class="far fa-trash-alt"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Experience Modal -->
+<div class="modal fade" id="addExperienceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title">Add Work Experience</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addExperienceForm">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="jobTitle" class="form-label">Job Title <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="jobTitle" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="companyName" class="form-label">Company <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="companyName" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Start Date <span class="text-danger">*</span></label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <select class="form-select" required>
+                                        <option value="" selected disabled>Month</option>
+                                        <option value="1">January</option>
+                                        <option value="2">February</option>
+                                        <option value="3">March</option>
+                                        <option value="4">April</option>
+                                        <option value="5">May</option>
+                                        <option value="6">June</option>
+                                        <option value="7">July</option>
+                                        <option value="8">August</option>
+                                        <option value="9">September</option>
+                                        <option value="10">October</option>
+                                        <option value="11">November</option>
+                                        <option value="12">December</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <select class="form-select" required>
+                                        <option value="" selected disabled>Year</option>
+                                        {% for year in range(now.year, now.year - 30, -1) %}
+                                        <option value="{{ year }}">{{ year }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">End Date</label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <select class="form-select">
+                                        <option value="" selected disabled>Month</option>
+                                        <option value="1">January</option>
+                                        <option value="2">February</option>
+                                        <option value="3">March</option>
+                                        <option value="4">April</option>
+                                        <option value="5">May</option>
+                                        <option value="6">June</option>
+                                        <option value="7">July</option>
+                                        <option value="8">August</option>
+                                        <option value="9">September</option>
+                                        <option value="10">October</option>
+                                        <option value="11">November</option>
+                                        <option value="12">December</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <select class="form-select">
+                                        <option value="" selected disabled>Year</option>
+                                        {% for year in range(now.year, now.year - 30, -1) %}
+                                        <option value="{{ year }}">{{ year }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="currentJob">
+                                <label class="form-check-label" for="currentJob">
+                                    I currently work here
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label for="jobDescription" class="form-label">Description</label>
+                            <textarea class="form-control" id="jobDescription" rows="4" placeholder="Briefly describe your role and responsibilities"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="addExperienceForm" class="btn btn-primary">Save Experience</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Education Modal -->
+<div class="modal fade" id="addEducationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title">Add Education</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addEducationForm">
+                    <div class="mb-3">
+                        <label for="schoolName" class="form-label">School/University <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="schoolName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="degree" class="form-label">Degree <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="degree" placeholder="e.g. Bachelor of Science in Computer Science" required>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="fieldOfStudy" class="form-label">Field of Study</label>
+                            <input type="text" class="form-control" id="fieldOfStudy" placeholder="e.g. Computer Science">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="grade" class="form-label">Grade</label>
+                            <input type="text" class="form-control" id="grade" placeholder="e.g. 3.8/4.0">
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <label for="startYear" class="form-label">Start Year <span class="text-danger">*</span></label>
+                            <select class="form-select" id="startYear" required>
+                                <option value="" selected disabled>Select year</option>
+                                {% for year in range(now.year, now.year - 50, -1) %}
+                                <option value="{{ year }}">{{ year }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="endYear" class="form-label">End Year (or expected) <span class="text-danger">*</span></label>
+                            <select class="form-select" id="endYear" required>
+                                <option value="" selected disabled>Select year</option>
+                                {% for year in range(now.year, now.year + 6) %}
+                                <option value="{{ year }}" {% if year == now.year %}selected{% endif %}>{{ year }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-check mt-3">
+                        <input class="form-check-input" type="checkbox" id="currentlyStudying">
+                        <label class="form-check-label" for="currentlyStudying">
+                            I currently study here
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="addEducationForm" class="btn btn-primary">Save Education</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Certification Modal -->
+<div class="modal fade" id="addCertificationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title">Add Certification</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addCertificationForm">
+                    <div class="mb-3">
+                        <label for="certificationName" class="form-label">Certification Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="certificationName" placeholder="e.g. AWS Certified Solutions Architect" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="issuingOrg" class="form-label">Issuing Organization <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="issuingOrg" placeholder="e.g. Amazon Web Services" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="issueDate" class="form-label">Issue Date</label>
+                            <input type="month" class="form-control" id="issueDate">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="expiryDate" class="form-label">Expiration Date</label>
+                            <input type="month" class="form-control" id="expiryDate">
+                        </div>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="noExpiry">
+                        <label class="form-check-label" for="noExpiry">
+                            This credential does not expire
+                        </label>
+                    </div>
+                    <div class="mb-3">
+                        <label for="credentialId" class="form-label">Credential ID (optional)</label>
+                        <input type="text" class="form-control" id="credentialId" placeholder="e.g. ABC123456789">
+                    </div>
+                    <div class="mb-3">
+                        <label for="credentialUrl" class="form-label">Credential URL (optional)</label>
+                        <input type="url" class="form-control" id="credentialUrl" placeholder="https://">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="addCertificationForm" class="btn btn-primary">Save Certification</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Skill Modal -->
+<div class="modal fade" id="addSkillModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title">Add Skill</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addSkillForm">
+                    <div class="mb-3">
+                        <label for="skillName" class="form-label">Skill Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="skillName" placeholder="e.g. JavaScript" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="skillLevel" class="form-label">Proficiency Level <span class="text-danger">*</span></label>
+                        <select class="form-select" id="skillLevel" required>
+                            <option value="" selected disabled>Select level</option>
+                            <option value="beginner">Beginner</option>
+                            <option value="intermediate">Intermediate</option>
+                            <option value="advanced">Advanced</option>
+                            <option value="expert">Expert</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="yearsOfExperience" class="form-label">Years of Experience</label>
+                        <input type="number" class="form-control" id="yearsOfExperience" min="0" max="50" step="0.5" placeholder="e.g. 3.5">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="addSkillForm" class="btn btn-primary">Add Skill</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Save profile button
+document.addEventListener('DOMContentLoaded', function() {
+    const saveProfileBtn = document.getElementById('saveProfileBtn');
+    if (saveProfileBtn) {
+        saveProfileBtn.addEventListener('click', function() {
+            // Here you would typically save all profile data to the server
+            
+            // Show success message
+            const toast = document.createElement('div');
+            toast.className = 'position-fixed bottom-0 end-0 m-3 alert alert-success alert-dismissible fade show';
+            toast.role = 'alert';
+            toast.innerHTML = `
+                <i class="fas fa-check-circle me-2"></i> Profile saved successfully!
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            document.body.appendChild(toast);
+            
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+                const bsAlert = new bootstrap.Alert(toast);
+                bsAlert.close();
+            }, 3000);
+        });
+    }
+
+    // About section edit functionality
+    document.getElementById('editAboutBtn')?.addEventListener('click', function() {
+        document.getElementById('aboutContent').style.display = 'none';
+        document.getElementById('aboutForm').style.display = 'block';
+    });
+
+    document.getElementById('cancelAboutEdit')?.addEventListener('click', function() {
+        document.getElementById('aboutContent').style.display = 'block';
+        document.getElementById('aboutForm').style.display = 'none';
+    });
+
+    document.getElementById('saveAbout')?.addEventListener('click', function() {
+        // In a real app, this would save to the server
+        const newHeadline = document.getElementById('headline')?.value;
+        const newAboutText = document.getElementById('aboutText')?.value;
+        
+        // Update the displayed content
+        const aboutContent = document.getElementById('aboutContent');
+        aboutContent.innerHTML = `<p>${newAboutText}</p>`;
+        aboutContent.style.display = 'block';
+        document.getElementById('aboutForm').style.display = 'none';
+        
+        // Show success message
+        const toast = new bootstrap.Toast(document.getElementById('saveToast'));
+        toast.show();
+    });
+
+    // Print functionality
+    function printProfile() {
+        window.print();
+    }
+});
+</script>
+{% endblock %}
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>JavaScript</span>
+                            <span>Advanced</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-primary" role="progressbar" style="width: 80%;" 
+                                 aria-valuenow="80" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>React</span>
+                            <span>Advanced</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-primary" role="progressbar" style="width: 75%;" 
+                                 aria-valuenow="75" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Django</span>
+                            <span>Intermediate</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-primary" role="progressbar" style="width: 65%;" 
+                                 aria-valuenow="65" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    <div class="mb-0">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>AWS</span>
+                            <span>Intermediate</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-primary" role="progressbar" style="width: 60%;" 
+                                 aria-valuenow="60" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-white text-center">
+                    <a href="#" class="text-primary">View all skills (12+)</a>
+                </div>
+            </div>
+            
+            <!-- Languages -->
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Languages</h5>
+                </div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0">English</h6>
+                            <small class="text-muted">Native or Bilingual</small>
+                        </div>
+                        <span class="badge bg-primary rounded-pill">Fluent</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0">Spanish</h6>
+                            <small class="text-muted">Professional Working</small>
+                        </div>
+                        <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill">Intermediate</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0">French</h6>
+                            <small class="text-muted">Elementary</small>
+                        </div>
+                        <span class="badge bg-light text-muted rounded-pill">Basic</span>
+                    </li>
+                </ul>
+                <div class="card-footer bg-white">
+                    <a href="#" class="btn btn-sm btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#addLanguageModal">
+                        <i class="fas fa-plus me-2"></i>Add Language
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column -->
+        <div class="col-lg-8">
+            <!-- About Me -->
+            <div class="card mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">About Me</h5>
+                    <button class="btn btn-sm btn-outline-secondary" id="editAboutBtn">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="aboutContent">
+                        <p>Results-driven Senior Software Engineer with over 7 years of experience in developing scalable web applications. Specialized in Python, JavaScript, and cloud technologies. Passionate about clean code, agile methodologies, and mentoring junior developers.</p>
+                        <p>Currently seeking opportunities to leverage my skills in a challenging environment where I can contribute to innovative projects and continue to grow as a professional.</p>
+                    </div>
+                    <div id="aboutForm" style="display: none;">
+                        <div class="mb-3">
+                            <label for="headline" class="form-label">Professional Headline</label>
+                            <input type="text" class="form-control mb-3" id="headline" value="Senior Software Engineer">
+                            
+                            <label for="aboutText" class="form-label">About You</label>
+                            <textarea class="form-control" id="aboutText" rows="5">Results-driven Senior Software Engineer with over 7 years of experience in developing scalable web applications. Specialized in Python, JavaScript, and cloud technologies. Passionate about clean code, agile methodologies, and mentoring junior developers.
+                            
+Currently seeking opportunities to leverage my skills in a challenging environment where I can contribute to innovative projects and continue to grow as a professional.</textarea>
+                            <div class="form-text">Briefly describe your experience, skills, and what you're looking for.</div>
+                        </div>
+                        <div class="d-flex justify-content-end">
+                            <button class="btn btn-outline-secondary me-2" id="cancelAboutEdit">Cancel</button>
+                            <button class="btn btn-primary" id="saveAbout">Save Changes</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Experience -->
+            <div class="card mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Work Experience</h5>
+                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addExperienceModal">
+                        <i class="fas fa-plus"></i> Add Experience
+                    </button>
+                </div>
+                <div class="list-group list-group-flush">
+                    <!-- Experience Item 1 -->
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="me-3">
+                                <div class="avatar-sm bg-primary bg-opacity-10 text-primary rounded d-flex align-items-center justify-content-center" 
+                                     style="width: 40px; height: 40px;">
+                                    <i class="fas fa-briefcase"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <h6 class="mb-0">Senior Software Engineer</h6>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-link text-muted p-0" type="button" id="expDropdown1" 
+                                                data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="expDropdown1">
+                                            <li><a class="dropdown-item" href="#"><i class="far fa-edit me-2"></i>Edit</a></li>
+                                            <li><a class="dropdown-item text-danger" href="#"><i class="far fa-trash-alt me-2"></i>Delete</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <p class="mb-1">TechNova Inc.</p>
+                                <p class="text-muted small mb-1">Jan 2020 - Present · 3 yrs 10 mos</p>
+                                <p class="small mb-0">Leading a team of developers to build scalable web applications using Python, Django, and React. Responsible for architecture decisions, code reviews, and mentoring junior developers.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Experience Item 2 -->
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="me-3">
+                                <div class="avatar-sm bg-primary bg-opacity-10 text-primary rounded d-flex align-items-center justify-content-center" 
+                                     style="width: 40px; height: 40px;">
+                                    <i class="fas fa-briefcase"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <h6 class="mb-0">Software Engineer</h6>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-link text-muted p-0" type="button" id="expDropdown2" 
+                                                data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="expDropdown2">
+                                            <li><a class="dropdown-item" href="#"><i class="far fa-edit me-2"></i>Edit</a></li>
+                                            <li><a class="dropdown-item text-danger" href="#"><i class="far fa-trash-alt me-2"></i>Delete</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <p class="mb-1">WebCraft Solutions</p>
+                                <p class="text-muted small mb-1">Mar 2017 - Dec 2019 · 2 yrs 10 mos</p>
+                                <p class="small mb-0">Developed and maintained web applications using Python and JavaScript. Collaborated with cross-functional teams to deliver high-quality software solutions.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Education -->
+            <div class="card mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Education</h5>
+                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addEducationModal">
+                        <i class="fas fa-plus"></i> Add Education
+                    </button>
+                </div>
+                <div class="list-group list-group-flush">
+                    <!-- Education Item 1 -->
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="me-3">
+                                <div class="avatar-sm bg-info bg-opacity-10 text-info rounded d-flex align-items-center justify-content-center" 
+                                     style="width: 40px; height: 40px;">
+                                    <i class="fas fa-graduation-cap"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <h6 class="mb-0">Master of Science in Computer Science</h6>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-link text-muted p-0" type="button" id="eduDropdown1" 
+                                                data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="eduDropdown1">
+                                            <li><a class="dropdown-item" href="#"><i class="far fa-edit me-2"></i>Edit</a></li>
+                                            <li><a class="dropdown-item text-danger" href="#"><i class="far fa-trash-alt me-2"></i>Delete</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <p class="mb-1">Stanford University</p>
+                                <p class="text-muted small mb-1">2015 - 2017</p>
+                                <p class="small mb-0">Specialized in Artificial Intelligence and Machine Learning. Thesis on "Advanced Neural Networks for Natural Language Processing".</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Education Item 2 -->
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="me-3">
+                                <div class="avatar-sm bg-info bg-opacity-10 text-info rounded d-flex align-items-center justify-content-center" 
+                                     style="width: 40px; height: 40px;">
+                                    <i class="fas fa-graduation-cap"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <h6 class="mb-0">Bachelor of Science in Computer Science</h6>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-link text-muted p-0" type="button" id="eduDropdown2" 
+                                                data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="eduDropdown2">
+                                            <li><a class="dropdown-item" href="#"><i class="far fa-edit me-2"></i>Edit</a></li>
+                                            <li><a class="dropdown-item text-danger" href="#"><i class="far fa-trash-alt me-2"></i>Delete</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <p class="mb-1">University of California, Berkeley</p>
+                                <p class="text-muted small mb-1">2011 - 2015</p>
+                                <p class="small mb-0">Graduated with honors. Minor in Mathematics. President of Computer Science Club.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Certifications -->
+            <div class="card mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Certifications</h5>
+                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addCertificationModal">
+                        <i class="fas fa-plus"></i> Add Certification
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <!-- Certification 1 -->
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="d-flex align-items-start">
+                                    <div class="flex-shrink-0 me-3">
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/5/5f/AWS_Logo_White.png" 
+                                             alt="AWS Certified Solutions Architect" 
+                                             style="height: 40px; width: auto;">
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-1">AWS Certified Solutions Architect - Professional</h6>
+                                        <p class="small text-muted mb-1">Amazon Web Services</p>
+                                        <p class="small text-muted mb-0">Issued: Jun 2022 · Expires: Jun 2025</p>
+                                        <a href="#" class="small">View Certificate</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Certification 2 -->
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <div class="d-flex align-items-start">
+                                    <div class="flex-shrink-0 me-3">
+                                        <div class="bg-light rounded p-2">
+                                            <i class="fab fa-google text-danger fa-2x"></i>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-1">Google Cloud Professional Data Engineer</h6>
+                                        <p class="small text-muted mb-1">Google Cloud</p>
+                                        <p class="small text-muted mb-0">Issued: Mar 2021 · No Expiration</p>
+                                        <a href="#" class="small">View Certificate</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Skill Modal -->
+<div class="modal fade" id="addSkillModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Skill</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addSkillForm">
+                    <div class="mb-3">
+                        <label for="skillName" class="form-label">Skill Name</label>
+                        <input type="text" class="form-control" id="skillName" placeholder="e.g., React, Python, Project Management" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="skillLevel" class="form-label">Proficiency Level</label>
+                        <select class="form-select" id="skillLevel" required>
+                            <option value="">Select level</option>
+                            <option value="beginner">Beginner</option>
+                            <option value="intermediate">Intermediate</option>
+                            <option value="advanced">Advanced</option>
+                            <option value="expert">Expert</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="yearsOfExperience" class="form-label">Years of Experience</label>
+                        <input type="number" class="form-control" id="yearsOfExperience" min="0" max="50" step="0.5" placeholder="e.g., 3.5">
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="addToResume" checked>
+                        <label class="form-check-label" for="addToResume">
+                            Include this skill in my resume
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="addSkillForm" class="btn btn-primary">Add Skill</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Language Modal -->
+<div class="modal fade" id="addLanguageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Language</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addLanguageForm">
+                    <div class="mb-3">
+                        <label for="language" class="form-label">Language</label>
+                        <select class="form-select" id="language" required>
+                            <option value="">Select a language</option>
+                            <option value="english">English</option>
+                            <option value="spanish">Spanish</option>
+                            <option value="french">French</option>
+                            <option value="german">German</option>
+                            <option value="chinese">Chinese</option>
+                            <option value="japanese">Japanese</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="proficiency" class="form-label">Proficiency Level</label>
+                        <select class="form-select" id="proficiency" required>
+                            <option value="">Select proficiency level</option>
+                            <option value="elementary">Elementary Proficiency</option>
+                            <option value="limited">Limited Working Proficiency</option>
+                            <option value="professional">Professional Working Proficiency</option>
+                            <option value="full">Full Professional Proficiency</option>
+                            <option value="native">Native or Bilingual Proficiency</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="addLanguageForm" class="btn btn-primary">Add Language</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Experience Modal -->
+<div class="modal fade" id="addExperienceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Work Experience</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addExperienceForm">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="jobTitle" class="form-label">Job Title*</label>
+                            <input type="text" class="form-control" id="jobTitle" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="companyName" class="form-label">Company*</label>
+                            <input type="text" class="form-control" id="companyName" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="employmentType" class="form-label">Employment Type</label>
+                            <select class="form-select" id="employmentType">
+                                <option value="full-time">Full-time</option>
+                                <option value="part-time">Part-time</option>
+                                <option value="self-employed">Self-employed</option>
+                                <option value="freelance">Freelance</option>
+                                <option value="contract">Contract</option>
+                                <option value="internship">Internship</option>
+                                <option value="apprenticeship">Apprenticeship</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="location" class="form-label">Location</label>
+                            <input type="text" class="form-control" id="location" placeholder="e.g., San Francisco, CA">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Start Date*</label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <select class="form-select" id="startMonth" required>
+                                        <option value="">Month</option>
+                                        <option value="1">January</option>
+                                        <option value="2">February</option>
+                                        <option value="3">March</option>
+                                        <option value="4">April</option>
+                                        <option value="5">May</option>
+                                        <option value="6">June</option>
+                                        <option value="7">July</option>
+                                        <option value="8">August</option>
+                                        <option value="9">September</option>
+                                        <option value="10">October</option>
+                                        <option value="11">November</option>
+                                        <option value="12">December</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <select class="form-select" id="startYear" required>
+                                        <option value="">Year</option>
+                                        {% for year in range(2023, 1990, -1) %}
+                                        <option value="{{ year }}">{{ year }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">End Date</label>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="currentJob">
+                                <label class="form-check-label" for="currentJob">
+                                    I currently work here
+                                </label>
+                            </div>
+                            <div class="row g-2" id="endDateFields">
+                                <div class="col-6">
+                                    <select class="form-select" id="endMonth">
+                                        <option value="">Month</option>
+                                        <option value="1">January</option>
+                                        <option value="2">February</option>
+                                        <option value="3">March</option>
+                                        <option value="4">April</option>
+                                        <option value="5">May</option>
+                                        <option value="6">June</option>
+                                        <option value="7">July</option>
+                                        <option value="8">August</option>
+                                        <option value="9">September</option>
+                                        <option value="10">October</option>
+                                        <option value="11">November</option>
+                                        <option value="12">December</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <select class="form-select" id="endYear">
+                                        <option value="">Year</option>
+                                        {% for year in range(2023, 1990, -1) %}
+                                        <option value="{{ year }}">{{ year }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="jobDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="jobDescription" rows="4" placeholder="Describe your role and responsibilities"></textarea>
+                        <div class="form-text">Highlight your achievements and contributions in this role.</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="addExperienceForm" class="btn btn-primary">Save Experience</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Education Modal -->
+<div class="modal fade" id="addEducationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Education</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addEducationForm">
+                    <div class="mb-3">
+                        <label for="school" class="form-label">School*</label>
+                        <input type="text" class="form-control" id="school" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="degree" class="form-label">Degree</label>
+                        <input type="text" class="form-control" id="degree" placeholder="e.g., Bachelor's">
+                    </div>
+                    <div class="mb-3">
+                        <label for="fieldOfStudy" class="form-label">Field of Study</label>
+                        <input type="text" class="form-control" id="fieldOfStudy" placeholder="e.g., Computer Science">
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="startYear" class="form-label">Start Year</label>
+                            <select class="form-select" id="startYear">
+                                <option value="">Year</option>
+                                {% for year in range(2023, 1970, -1) %}
+                                <option value="{{ year }}">{{ year }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="endYear" class="form-label">End Year (or expected)</label>
+                            <select class="form-select" id="endYear">
+                                <option value="">Year</option>
+                                {% for year in range(2030, 2010, -1) %}
+                                <option value="{{ year }}" {% if year == 2023 %}selected{% endif %}>{{ year }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="grade" class="form-label">Grade</label>
+                        <input type="text" class="form-control" id="grade" placeholder="e.g., 3.8/4.0">
+                    </div>
+                    <div class="mb-3">
+                        <label for="activities" class="form-label">Activities and Societies</label>
+                        <textarea class="form-control" id="activities" rows="2" placeholder="e.g., Computer Science Club, Basketball Team"></textarea>
+                        <div class="form-text">Separate with commas</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" rows="3" placeholder="Include any additional information about your education"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="addEducationForm" class="btn btn-primary">Save Education</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Certification Modal -->
+<div class="modal fade" id="addCertificationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Certification</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addCertificationForm">
+                    <div class="mb-3">
+                        <label for="certificationName" class="form-label">Certification Name*</label>
+                        <input type="text" class="form-control" id="certificationName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="issuingOrganization" class="form-label">Issuing Organization*</label>
+                        <input type="text" class="form-control" id="issuingOrganization" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="issueDate" class="form-label">Issue Date</label>
+                            <input type="month" class="form-control" id="issueDate">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="expirationDate" class="form-label">Expiration Date</label>
+                            <input type="month" class="form-control" id="expirationDate">
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="noExpiration">
+                                <label class="form-check-label" for="noExpiration">
+                                    This credential does not expire
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="credentialId" class="form-label">Credential ID</label>
+                        <input type="text" class="form-control" id="credentialId" placeholder="e.g., ABC123">
+                    </div>
+                    <div class="mb-3">
+                        <label for="credentialUrl" class="form-label">Credential URL</label>
+                        <input type="url" class="form-control" id="credentialUrl" placeholder="https://">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="addCertificationForm" class="btn btn-primary">Add Certification</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Toast -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="profileToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <strong class="me-auto">Profile Updated</strong>
+            <small>Just now</small>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-check-circle text-success me-3" style="font-size: 1.5rem;"></i>
+                <div>
+                    <h6 class="mb-1">Profile Saved Successfully</h6>
+                    <p class="mb-0">Your changes have been saved.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+// Initialize tooltips
+var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+});
+
+// Toggle about section edit mode
+document.getElementById('editAboutBtn')?.addEventListener('click', function() {
+    document.getElementById('aboutContent').style.display = 'none';
+    document.getElementById('aboutForm').style.display = 'block';
+});
+
+document.getElementById('cancelAboutEdit')?.addEventListener('click', function() {
+    document.getElementById('aboutContent').style.display = 'block';
+    document.getElementById('aboutForm').style.display = 'none';
+});
+
+document.getElementById('saveAbout')?.addEventListener('click', function() {
+    // In a real app, this would save to the server
+    const newHeadline = document.getElementById('headline')?.value;
+    const newAboutText = document.getElementById('aboutText')?.value;
+    
+    if (newAboutText) {
+        const aboutContentPara = document.querySelector('#aboutContent p:first-child');
+        if (aboutContentPara) aboutContentPara.textContent = newAboutText;
+    }
+    
+    if (newHeadline) {
+        const headlineElement = document.querySelector('.card-body h4');
+        if (headlineElement) headlineElement.textContent = newHeadline;
+    }
+    
+    // Show success message
+    const toast = new bootstrap.Toast(document.getElementById('profileToast'));
+    toast.show();
+    
+    // Hide the form
+    document.getElementById('aboutContent').style.display = 'block';
+    document.getElementById('aboutForm').style.display = 'none';
+});
+
+// Handle current job checkbox
+const currentJobCheckbox = document.getElementById('currentJob');
+const endDateFields = document.getElementById('endDateFields');
+
+if (currentJobCheckbox && endDateFields) {
+    currentJobCheckbox.addEventListener('change', function() {
+        endDateFields.style.display = this.checked ? 'none' : 'flex';
+    });
+}
+
+// Handle form submissions
+const forms = ['addSkillForm', 'addLanguageForm', 'addExperienceForm', 'addEducationForm', 'addCertificationForm'];
+forms.forEach(formId => {
+    const form = document.getElementById(formId);
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // In a real app, this would submit to the server
+            const toast = new bootstrap.Toast(document.getElementById('profileToast'));
+            toast.show();
+            
+            // Close the modal
+            const modalElement = document.querySelector('#' + formId)?.closest('.modal');
+            if (modalElement) {
+                const modal = bootstrap.Modal.getInstance(modalElement);
+                if (modal) modal.hide();
+            }
+            
+            // Reset form
+            this.reset();
+        });
+    }
+});
+
+// Save profile button
+document.getElementById('saveProfileBtn')?.addEventListener('click', function() {
+    // In a real app, this would save all form data to the server
+    const toast = new bootstrap.Toast(document.getElementById('profileToast'));
+    toast.show();
+    
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+// Print functionality
+function printProfile() {
+    window.print();
+}
+</script>
+{% endblock %}

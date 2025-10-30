@@ -1,236 +1,680 @@
 {% extends "base.html" %}
 
-{% block title %}Exit Interviews{% endblock %}
+{% block title %}Exit Interview - {{ employee_info.name }}{% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="container-fluid py-4">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">Exit Interview</h1>
+            <p class="text-muted mb-0">Complete your offboarding process</p>
+        </div>
+        <div>
+            <a href="{{ url_for('onboarding_route') }}" class="btn btn-outline-light me-2">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
+            <a href="#" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#helpModal">
+                <i class="fas fa-question-circle me-2"></i>Help
+            </a>
+        </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="card mb-4 border-0 shadow-sm bg-dark-800">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">Offboarding Progress</h6>
+                <span class="badge bg-primary">Step 1 of 4</span>
+            </div>
+            <div class="progress bg-dark" style="height: 8px;">
+                <div class="progress-bar bg-primary" role="progressbar" style="width: 25%;" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
-        <div class="col-lg-6">
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h2 class="h5 mb-0">Exit Interview Form</h2>
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Exit Survey Section -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-dark-800 border-0">
+                    <h5 class="mb-0"><i class="fas fa-clipboard-check text-primary me-2"></i>Exit Interview Survey</h5>
                 </div>
                 <div class="card-body">
-                    <form id="exitForm" method="POST">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <div class="mb-3">
-                            <label for="employeeName" class="form-label">Your Name</label>
-                            <input type="text" class="form-control" id="employeeName" required>
-                        </div>
+                    <form id="exitSurveyForm" method="POST" action="{{ url_for('exit_route') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         
-                        <div class="mb-3">
-                            <label for="reasonLeaving" class="form-label">Reason for Leaving</label>
-                            <select class="form-select" id="reasonLeaving" required>
-                                <option value="" selected disabled>Select a reason...</option>
-                                <option value="career_advancement">Career Advancement</option>
-                                <option value="better_opportunity">Better Opportunity</option>
-                                <option value="relocation">Relocation</option>
-                                <option value="work_environment">Work Environment</option>
-                                <option value="compensation">Compensation</option>
-                                <option value="personal_reasons">Personal Reasons</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="additionalFeedback" class="form-label">Additional Feedback</label>
-                            <textarea class="form-control" id="additionalFeedback" rows="4" required></textarea>
-                            <div class="form-text">Your feedback is valuable to us. Please be honest and constructive.</div>
-                        </div>
-                        
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="contactForDetails" checked>
-                            <label class="form-check-label" for="contactForDetails">I'm open to being contacted for additional details</label>
-                        </div>
-                        
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-primary" id="submitExitForm">
-                                <span id="submitText">Submit Feedback</span>
-                                <span id="submitSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                            </button>
+                        <!-- Survey Navigation -->
+                        <ul class="nav nav-pills mb-4" id="surveyTabs" role="tablist">
+                            {% for section in exit_survey.sections %}
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link {% if loop.first %}active{% endif %}" 
+                                        id="tab-{{ section.id }}" 
+                                        data-bs-toggle="pill" 
+                                        data-bs-target="#{{ section.id }}" 
+                                        type="button" 
+                                        role="tab">
+                                    {{ section.title }}
+                                </button>
+                            </li>
+                            {% endfor %}
+                        </ul>
+
+                        <!-- Survey Content -->
+                        <div class="tab-content" id="surveyTabsContent">
+                            {% for section in exit_survey.sections %}
+                            <div class="tab-pane fade {% if loop.first %}show active{% endif %}" 
+                                 id="{{ section.id }}" 
+                                 role="tabpanel" 
+                                 aria-labelledby="tab-{{ section.id }}">
+                                
+                                <h6 class="mb-4">{{ section.title }}</h6>
+                                
+                                {% for question in section.questions %}
+                                <div class="mb-4">
+                                    <label class="form-label">
+                                        {{ question.question }}
+                                        {% if question.required %}<span class="text-danger">*</span>{% endif %}
+                                    </label>
+                                    
+                                    {% if question.type == 'rating' %}
+                                    <div class="rating-input">
+                                        {% for option in question.options %}
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" 
+                                                   type="radio" 
+                                                   name="{{ question.id }}" 
+                                                   id="{{ question.id }}_{{ loop.index }}" 
+                                                   value="{{ option.split(' - ')[0] }}"
+                                                   {% if question.required %}required{% endif %}>
+                                            <label class="form-check-label" for="{{ question.id }}_{{ loop.index }}">
+                                                {{ option }}
+                                            </label>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    
+                                    {% elif question.type == 'multiselect' %}
+                                    <div class="row">
+                                        {% for option in question.options %}
+                                        <div class="col-md-6 mb-2">
+                                            <div class="form-check">
+                                                <input class="form-check-input" 
+                                                       type="checkbox" 
+                                                       name="{{ question.id }}[]" 
+                                                       id="{{ question.id }}_{{ loop.index }}" 
+                                                       value="{{ option }}">
+                                                <label class="form-check-label" for="{{ question.id }}_{{ loop.index }}">
+                                                    {{ option }}
+                                                </label>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    
+                                    {% else %}
+                                    <textarea class="form-control bg-dark-700 border-secondary text-light" 
+                                              name="{{ question.id }}" 
+                                              id="{{ question.id }}" 
+                                              rows="3" 
+                                              {% if question.placeholder %}placeholder="{{ question.placeholder }}"{% endif %}
+                                              {% if question.required %}required{% endif %}></textarea>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                                
+                                <div class="d-flex justify-content-between mt-5">
+                                    <button type="button" class="btn btn-outline-light {% if loop.first %}invisible{% endif %}" 
+                                            {% if not loop.first %}onclick="navigateTab('surveyTabs', '{{ loop.previtem.id }}')"{% endif %}>
+                                        <i class="fas fa-arrow-left me-2"></i>Previous
+                                    </button>
+                                    
+                                    {% if not loop.last %}
+                                    <button type="button" class="btn btn-primary ms-auto" 
+                                            onclick="navigateTab('surveyTabs', '{{ loop.nextitem.id }}')">
+                                        Next<i class="fas fa-arrow-right ms-2"></i>
+                                    </button>
+                                    {% else %}
+                                    <button type="submit" class="btn btn-success ms-auto" id="submitSurveyBtn">
+                                        <span class="spinner-border spinner-border-sm d-none me-2" id="submitSpinner" role="status"></span>
+                                        Submit Survey
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
                         </div>
                     </form>
                 </div>
             </div>
-        </div>
-        
-        <div class="col-lg-6">
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="h5 mb-0">Your Feedback Matters</h2>
+
+            <!-- Knowledge Transfer Section -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-dark-800 border-0 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-exchange-alt text-primary me-2"></i>Knowledge Transfer</h5>
+                    <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#knowledgeTransferModal">
+                        <i class="fas fa-plus me-1"></i> Add
+                    </button>
                 </div>
                 <div class="card-body">
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle me-2"></i>
-                        Your responses will be kept confidential and used to improve our workplace.
-                    </div>
-                    
-                    <h5 class="h6 text-muted mt-4 mb-3">Why We Value Your Feedback</h5>
-                    <ul class="list-unstyled">
-                        <li class="mb-2">
-                            <i class="bi bi-check-circle-fill text-success me-2"></i>
-                            Helps us improve employee experience
-                        </li>
-                        <li class="mb-2">
-                            <i class="bi bi-check-circle-fill text-success me-2"></i>
-                            Identifies areas for organizational growth
-                        </li>
-                        <li class="mb-2">
-                            <i class="bi bi-check-circle-fill text-success me-2"></i>
-                            Informs better management practices
-                        </li>
-                        <li class="mb-2">
-                            <i class="bi bi-check-circle-fill text-success me-2"></i>
-                            Contributes to a better workplace for remaining team members
-                        </li>
-                    </ul>
-                    
-                    <div class="alert alert-light mt-4">
-                        <h6 class="alert-heading">Thank You</h6>
-                        <p class="mb-0 small">We appreciate your time and contributions to our organization. We wish you the best in your future endeavors.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h2 class="h5 mb-0">Previous Exit Feedback</h2>
-                </div>
-                <div class="card-body">
+                    {% if knowledge_transfer_templates|length > 0 %}
                     <div class="table-responsive">
-                        <table class="table table-hover" id="feedbackTable">
+                        <table class="table table-hover align-middle">
                             <thead>
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Name</th>
-                                    <th>Reason for Leaving</th>
-                                    <th>Sentiment</th>
+                                    <th>Document</th>
+                                    <th>Description</th>
+                                    <th>Type</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="feedbackTableBody">
-                                <!-- Feedback will be loaded here via JavaScript -->
+                            <tbody>
+                                {% for template in knowledge_transfer_templates %}
                                 <tr>
-                                    <td colspan="5" class="text-center">
-                                        <div class="spinner-border text-primary" role="status">
-                                            <span class="visually-hidden">Loading...</span>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-file-{{ template.file_type }} text-primary me-2"></i>
+                                            {{ template.name }}
                                         </div>
                                     </td>
+                                    <td class="text-muted small">{{ template.description }}</td>
+                                    <td><span class="badge bg-secondary">{{ template.file_type|upper }}</span></td>
+                                    <td>
+                                        <a href="{{ template.download_url }}" class="btn btn-sm btn-outline-light">
+                                            <i class="fas fa-download me-1"></i> Download
+                                        </a>
+                                    </td>
                                 </tr>
+                                {% endfor %}
                             </tbody>
                         </table>
                     </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <div class="mb-3">
+                            <i class="fas fa-folder-open fa-3x text-muted"></i>
+                        </div>
+                        <h5>No knowledge transfer documents found</h5>
+                        <p class="text-muted">Add templates to help with the knowledge transfer process.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Employee Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-dark-800 border-0">
+                    <h5 class="mb-0"><i class="fas fa-user-tie text-primary me-2"></i>Employee Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <div class="avatar avatar-xl bg-primary bg-opacity-10 text-primary rounded-circle mb-3">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <h5 class="mb-1">{{ employee_info.name }}</h5>
+                        <p class="text-muted mb-2">{{ employee_info.position }}</p>
+                        <span class="badge bg-primary bg-opacity-10 text-primary">Employee ID: {{ employee_info.employee_id }}</span>
+                    </div>
+                    
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item bg-transparent border-secondary">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Department</span>
+                                <span>{{ employee_info.department }}</span>
+                            </div>
+                        </div>
+                        <div class="list-group-item bg-transparent border-secondary">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Manager</span>
+                                <span>{{ employee_info.manager }}</span>
+                            </div>
+                        </div>
+                        <div class="list-group-item bg-transparent border-secondary">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Start Date</span>
+                                <span>{{ employee_info.start_date }}</span>
+                            </div>
+                        </div>
+                        <div class="list-group-item bg-transparent border-secondary">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Last Working Day</span>
+                                <span class="fw-bold">{{ employee_info.last_working_day }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Offboarding Checklist -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-dark-800 border-0 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-tasks text-primary me-2"></i>{{ offboarding_checklist.title }}</h5>
+                    <span class="badge bg-primary">{{ offboarding_checklist['items']|selectattr('status', 'equalto', 'completed')|list|length }}/{{ offboarding_checklist['items']|length }} Complete</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for item in offboarding_checklist['items'] %}
+                        <div class="list-group-item bg-transparent border-secondary">
+                            <div class="d-flex align-items-start">
+                                <div class="form-check me-2">
+                                    <input class="form-check-input task-checkbox" 
+                                           type="checkbox" 
+                                           id="task-{{ item.id }}" 
+                                           data-task-id="{{ item.id }}"
+                                           {% if item.status == 'completed' %}checked{% endif %}>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <label class="form-check-label {% if item.status == 'completed' %}text-muted text-decoration-line-through{% endif %}" 
+                                               for="task-{{ item.id }}">
+                                            {{ item.task }}
+                                        </label>
+                                        <span class="badge bg-{% if item.status == 'completed' %}success{% elif item.status == 'in_progress' %}info{% elif item.status == 'pending' %}warning{% else %}secondary{% endif %} ms-2">
+                                            {{ item.status|replace('_', ' ')|title }}
+                                        </span>
+                                    </div>
+                                    
+                                    {% if item.notes %}
+                                    <div class="mt-2 small text-muted">
+                                        <i class="fas fa-info-circle me-1"></i> {{ item.notes }}
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <div class="d-flex justify-content-between mt-2">
+                                        <small class="text-muted">
+                                            <i class="far fa-user me-1"></i> {{ item.assigned_to }}
+                                        </small>
+                                        <small class="text-muted">
+                                            <i class="far fa-calendar-alt me-1"></i> Due: {{ item.due_date }}
+                                            {% if item.due_date < current_date and item.status != 'completed' %}
+                                            <span class="badge bg-danger ms-1">Overdue</span>
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                    
+                                    {% set progress_data = {
+                                        'completed': {'width': '100%', 'class': 'bg-success'},
+                                        'in_progress': {'width': '50%', 'class': 'bg-info'},
+                                        'pending': {'width': '25%', 'class': 'bg-warning'},
+                                        'not_started': {'width': '0%', 'class': 'bg-secondary'}
+                                    }[item.status] %}
+                                    <div class="progress progress-thin mt-2">
+                                        <div class="progress-bar {{ progress_data.class }}" 
+                                             role="progressbar" 
+                                             style="width: {{ progress_data.width }}"
+                                             aria-valuenow="{{ progress_data.width|replace('%', '') }}" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="card-footer bg-dark-800 border-0">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="small text-muted">
+                            <i class="fas fa-info-circle me-1"></i> 
+                            {% set completed = offboarding_checklist['items']|selectattr('status', 'equalto', 'completed')|list|length %}
+                            {% set total = offboarding_checklist['items']|length %}
+                            {{ (completed / total * 100)|round|int }}% complete
+                        </span>
+                        <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#offboardingHelpModal">
+                            <i class="fas fa-question-circle me-1"></i> Help
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Exit Interview Schedule -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-dark-800 border-0">
+                    <h5 class="mb-0"><i class="far fa-calendar-alt text-primary me-2"></i>Exit Interview</h5>
+                </div>
+                <div class="card-body">
+                    {% if exit_interview.status == 'scheduled' %}
+                    <div class="text-center mb-3">
+                        <div class="mb-3">
+                            <i class="far fa-calendar-check fa-3x text-primary"></i>
+                        </div>
+                        <h5 class="mb-1">Scheduled</h5>
+                        <p class="text-muted">Your exit interview has been scheduled</p>
+                    </div>
+                    
+                    <div class="list-group list-group-flush mb-3">
+                        <div class="list-group-item bg-transparent border-secondary">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Date</span>
+                                <span>{{ exit_interview.scheduled_date }}</span>
+                            </div>
+                        </div>
+                        <div class="list-group-item bg-transparent border-secondary">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Time</span>
+                                <span>{{ exit_interview.scheduled_time }}</span>
+                            </div>
+                        </div>
+                        <div class="list-group-item bg-transparent border-secondary">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Location</span>
+                                <span>{{ exit_interview.location }}</span>
+                            </div>
+                        </div>
+                        <div class="list-group-item bg-transparent border-secondary">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">With</span>
+                                <span>{{ exit_interview.interviewer }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info bg-dark-700 border-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        {{ exit_interview.prep_notes }}
+                    </div>
+                    
+                    <button class="btn btn-outline-light w-100" data-bs-toggle="modal" data-bs-target="#rescheduleModal">
+                        <i class="far fa-calendar-alt me-2"></i> Reschedule
+                    </button>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <div class="mb-3">
+                            <i class="far fa-calendar-plus fa-3x text-muted"></i>
+                        </div>
+                        <h5>No Interview Scheduled</h5>
+                        <p class="text-muted mb-3">Schedule your exit interview with HR</p>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#scheduleInterviewModal">
+                            <i class="far fa-calendar-alt me-2"></i> Schedule Interview
+                        </button>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Feedback Detail Modal -->
-<div class="modal fade" id="feedbackModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content bg-dark text-light border-0">
-            <div class="modal-header bg-dark border-secondary">
-                <h5 class="modal-title d-flex align-items-center text-light">
-                    <i class="fas fa-comment-alt me-2 text-primary"></i>
-                    <span>Exit Interview Feedback</span>
-                </h5>
+<!-- Schedule Interview Modal -->
+<div class="modal fade" id="scheduleInterviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark-800 border-0">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">Schedule Exit Interview</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body bg-dark">
-                <div class="row g-3 mb-4">
-                    <div class="col-md-6">
-                        <div class="card h-100 bg-dark-800 border-secondary">
-                            <div class="card-body">
-                                <h6 class="text-uppercase small text-muted mb-3">Employee Information</h6>
-                                <div class="d-flex align-items-center mb-3">
-                                    <div class="avatar avatar-lg bg-primary bg-opacity-25 text-primary rounded-circle me-3 d-flex align-items-center justify-content-center">
-                                        <i class="fas fa-user"></i>
-                                    </div>
-                                    <div>
-                                        <h5 class="mb-0 text-light" id="feedbackEmployeeName">-</h5>
-                                        <span class="text-muted small" id="feedbackDate">-</span>
-                                    </div>
-                                </div>
-                                <div class="d-flex justify-content-between border-top border-secondary pt-3">
-                                    <div>
-                                        <p class="small text-muted mb-1">Department</p>
-                                        <p class="mb-0 text-light" id="feedbackDepartment">-</p>
-                                    </div>
-                                    <div>
-                                        <p class="small text-muted mb-1">Employment Duration</p>
-                                        <p class="mb-0 text-light" id="feedbackDuration">-</p>
-                                    </div>
-                                </div>
-                            </div>
+            <div class="modal-body">
+                <form id="scheduleInterviewForm">
+                    <div class="mb-3">
+                        <label class="form-label">Preferred Date</label>
+                        <input type="date" class="form-control bg-dark-700 border-secondary text-light" min="{{ employee_info.last_working_day }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Preferred Time</label>
+                        <select class="form-select bg-dark-700 border-secondary text-light">
+                            <option>Morning (9:00 AM - 12:00 PM)</option>
+                            <option>Afternoon (1:00 PM - 4:00 PM)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Location</label>
+                        <select class="form-select bg-dark-700 border-secondary text-light">
+                            <option>In-Person at Office</option>
+                            <option>Video Call (Zoom/Teams)</option>
+                            <option>Phone Call</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Additional Notes</label>
+                        <textarea class="form-control bg-dark-700 border-secondary text-light" rows="3" placeholder="Any special requirements or notes..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmSchedule">
+                    <span class="spinner-border spinner-border-sm d-none" id="scheduleSpinner" role="status"></span>
+                    Schedule Interview
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Knowledge Transfer Modal -->
+<div class="modal fade" id="knowledgeTransferModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark-800 border-0">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">Add Knowledge Transfer Item</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="knowledgeTransferForm">
+                    <div class="mb-3">
+                        <label class="form-label">Title</label>
+                        <input type="text" class="form-control bg-dark-700 border-secondary text-light" placeholder="E.g., Project Handover, Process Documentation">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control bg-dark-700 border-secondary text-light" rows="3" placeholder="Provide a brief description of the knowledge being transferred"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Type</label>
+                            <select class="form-select bg-dark-700 border-secondary text-light">
+                                <option>Document</option>
+                                <option>Video</option>
+                                <option>Meeting Notes</option>
+                                <option>Code Repository</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Priority</label>
+                            <select class="form-select bg-dark-700 border-secondary text-light">
+                                <option>High</option>
+                                <option>Medium</option>
+                                <option>Low</option>
+                            </select>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="card h-100 bg-dark-800 border-secondary">
-                            <div class="card-body">
-                                <h6 class="text-uppercase small text-muted mb-3">Exit Details</h6>
-                                <div class="mb-3">
-                                    <p class="small text-muted mb-1">Reason for Leaving</p>
-                                    <div class="badge bg-primary bg-opacity-25 text-primary p-2 w-100 text-start border border-primary border-opacity-25" id="feedbackReason">
-                                        <i class="fas fa-sign-out-alt me-2"></i>
-                                        <span>-</span>
-                                    </div>
-                                </div>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="feedbackContactAllowed" disabled>
-                                    <label class="form-check-label small text-light-50" for="feedbackContactAllowed">
-                                        Open to future contact
-                                    </label>
-                                </div>
+                    <div class="mb-3">
+                        <label class="form-label">Upload Files</label>
+                        <div class="file-upload-wrapper">
+                            <input type="file" class="form-control bg-dark-700 border-secondary text-light" multiple>
+                            <div class="form-text">Max file size: 10MB. Supported formats: PDF, DOCX, XLSX, PPTX, TXT</div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Assigned To</label>
+                        <select class="form-select bg-dark-700 border-secondary text-light">
+                            <option>Select a team member...</option>
+                            <option>Sarah Johnson (Team Lead)</option>
+                            <option>Michael Chen (Senior Developer)</option>
+                            <option>Priya Patel (Product Manager)</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveKnowledgeItem">
+                    <span class="spinner-border spinner-border-sm d-none" id="saveSpinner" role="status"></span>
+                    Save Item
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Offboarding Help Modal -->
+<div class="modal fade" id="offboardingHelpModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark-800 border-0">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">Offboarding Assistance</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <h6 class="mb-3">Need help with your offboarding?</h6>
+                <p class="text-muted">Our HR team is here to assist you with the offboarding process. Please reach out to:</p>
+                
+                <div class="card bg-dark-700 border-secondary mb-3">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="avatar avatar-lg bg-primary bg-opacity-10 text-primary rounded-circle me-3 d-flex align-items-center justify-content-center">
+                                <i class="fas fa-headset"></i>
                             </div>
+                            <div>
+                                <h6 class="mb-0">HR Support Team</h6>
+                                <span class="text-muted small">hr-support@company.com</span>
+                            </div>
+                        </div>
+                        <div class="d-flex">
+                            <a href="#" class="btn btn-sm btn-outline-light me-2">
+                                <i class="fas fa-envelope me-1"></i> Email
+                            </a>
+                            <a href="#" class="btn btn-sm btn-outline-light">
+                                <i class="fas fa-phone-alt me-1"></i> Call (555) 123-4567
+                            </a>
                         </div>
                     </div>
                 </div>
                 
-                <div class="card bg-dark-800 border-secondary mb-4">
-                    <div class="card-body">
-                        <h6 class="text-uppercase small text-muted mb-3">Detailed Feedback</h6>
-                        <div class="p-3 bg-dark-700 rounded border border-secondary" id="feedbackContent">
-                            <p class="mb-0 text-muted fst-italic">No additional feedback provided.</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="card bg-dark-800 border-secondary">
-                    <div class="card-body">
-                        <h6 class="text-uppercase small text-muted mb-3">Follow-up Actions</h6>
-                        <div class="d-flex align-items-center">
-                            <div class="flex-grow-1">
-                                <div class="form-floating">
-                                    <textarea class="form-control bg-dark-700 text-light border-secondary" placeholder="Add internal notes" id="internalNotes" style="height: 100px"></textarea>
-                                    <label for="internalNotes" class="text-muted">Internal Notes</label>
-                                </div>
-                            </div>
-                            <div class="ms-3">
-                                <button class="btn btn-outline-primary">
-                                    <i class="fas fa-save me-2"></i>Save
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                <div class="alert alert-info bg-dark-700 border-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Our working hours are Monday to Friday, 9:00 AM to 6:00 PM EST.
                 </div>
             </div>
-            <div class="modal-footer bg-dark-800 border-secondary">
-                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-2"></i>Close
-                </button>
-                <button type="button" class="btn btn-primary">
-                    <i class="fas fa-download me-2"></i>Export as PDF
-                </button>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Close</button>
+            </div>
         </div>
     </div>
 </div>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Custom progress bar height */
+    .progress-thin {
+        height: 4px !important;
+    }
+</style>
+{% endblock %}
+
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/exit.js') }}"></script>
+<script>
+// Navigation between survey tabs
+function navigateTab(tabGroupId, tabId) {
+    const tabGroup = document.getElementById(tabGroupId);
+    const tab = tabGroup.querySelector(`[data-bs-target="#${tabId}"]`);
+    if (tab) {
+        const tabInstance = new bootstrap.Tab(tab);
+        tabInstance.show();
+    }
+}
+
+// Handle form submission
+const exitSurveyForm = document.getElementById('exitSurveyForm');
+if (exitSurveyForm) {
+    exitSurveyForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const submitSpinner = this.querySelector('#submitSpinner');
+        
+        submitBtn.disabled = true;
+        submitSpinner.classList.remove('d-none');
+        
+        // Simulate form submission
+        setTimeout(() => {
+            // In a real app, you would submit the form data to the server here
+            console.log('Form submitted:', new FormData(exitSurveyForm));
+            
+            // Show success message
+            const toast = new bootstrap.Toast(document.getElementById('submissionToast'));
+            toast.show();
+            
+            submitBtn.disabled = false;
+            submitSpinner.classList.add('d-none');
+            
+            // Reset form
+            exitSurveyForm.reset();
+        }, 1500);
+    });
+}
+
+// Handle task completion
+const taskCheckboxes = document.querySelectorAll('.task-checkbox');
+taskCheckboxes.forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        const taskId = this.dataset.taskId;
+        const isCompleted = this.checked;
+        
+        // In a real app, you would update the task status on the server here
+        console.log(`Task ${taskId} ${isCompleted ? 'completed' : 'marked incomplete'}`);
+        
+        // Update UI
+        const label = this.nextElementSibling;
+        if (isCompleted) {
+            label.classList.add('text-muted', 'text-decoration-line-through');
+        } else {
+            label.classList.remove('text-muted', 'text-decoration-line-through');
+        }
+        
+        // Update progress
+        updateProgress();
+    });
+});
+
+// Update progress bar
+function updateProgress() {
+    const totalTasks = taskCheckboxes.length;
+    const completedTasks = document.querySelectorAll('.task-checkbox:checked').length;
+    const progress = Math.round((completedTasks / totalTasks) * 100);
+    
+    const progressBar = document.querySelector('.progress-bar');
+    if (progressBar) {
+        progressBar.style.width = `${progress}%`;
+        progressBar.setAttribute('aria-valuenow', progress);
+    }
+}
+
+// Initialize tooltips
+const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+});
+
+// Handle schedule interview form
+const confirmScheduleBtn = document.getElementById('confirmSchedule');
+if (confirmScheduleBtn) {
+    confirmScheduleBtn.addEventListener('click', function() {
+        const spinner = this.querySelector('.spinner-border');
+        this.disabled = true;
+        spinner.classList.remove('d-none');
+        
+        // Simulate API call
+        setTimeout(() => {
+            // Show success message
+            const toast = new bootstrap.Toast(document.getElementById('scheduleToast'));
+            toast.show();
+            
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('scheduleInterviewModal'));
+            modal.hide();
+            
+            // Reset button state
+            this.disabled = false;
+            spinner.classList.add('d-none');
+        }, 1000);
+    });
+}
+</script>
 {% endblock %}

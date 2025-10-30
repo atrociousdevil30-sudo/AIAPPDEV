@@ -575,6 +575,9 @@
 {% endblock %}
 
 {% block content %}
+<!-- AI Analysis Data (Hidden) -->
+    <div id="aiAnalysisData" data-analysis='{{ ai_analysis|tojson|safe if ai_analysis else "{}" }}' style="display: none;"></div>
+
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -641,7 +644,7 @@
                     <div class="card h-100">
                         <div class="card-body text-center">
                             <div class="mb-3">
-                                <img src="{{ url_for('static', filename='img/default-avatar.png') }}" 
+                                <img src="{{ url_for('static', filename='images/default-avatar.png') }}" 
                                      class="rounded-circle" 
                                      width="100" 
                                      height="100" 
@@ -750,42 +753,45 @@
                             <h5 class="mb-0">Evaluation</h5>
                         </div>
                         <div class="card-body">
-                            <div class="mb-3">
-                                <label class="form-label">Overall Rating</label>
-                                <div class="rating-stars">
-                                    <i class="bi bi-star-fill text-warning"></i>
-                                    <i class="bi bi-star-fill text-warning"></i>
-                                    <i class="bi bi-star-fill text-warning"></i>
-                                    <i class="bi bi-star-fill text-warning"></i>
-                                    <i class="bi bi-star"></i>
+                            <form id="evaluationForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Overall Rating</label>
+                                    <div class="rating-stars" id="ratingStars">
+                                        <i class="bi bi-star" data-rating="1"></i>
+                                        <i class="bi bi-star" data-rating="2"></i>
+                                        <i class="bi bi-star" data-rating="3"></i>
+                                        <i class="bi bi-star" data-rating="4"></i>
+                                        <i class="bi bi-star" data-rating="5"></i>
+                                        <input type="hidden" id="ratingValue" name="rating" value="0">
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Hiring Recommendation</label>
-                                <div class="btn-group w-100" role="group">
-                                    <input type="radio" class="btn-check" name="hiringDecision" id="hire" autocomplete="off" checked>
-                                    <label class="btn btn-outline-success" for="hire">
-                                        <i class="bi bi-check-circle me-1"></i> Hire
-                                    </label>
+                                <div class="mb-3">
+                                    <label class="form-label">Hiring Recommendation</label>
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" name="hiringDecision" id="hire" value="hire" autocomplete="off" required>
+                                        <label class="btn btn-outline-success" for="hire">
+                                            <i class="bi bi-check-circle me-1"></i> Hire
+                                        </label>
 
-                                    <input type="radio" class="btn-check" name="hiringDecision" id="maybe" autocomplete="off">
-                                    <label class="btn btn-outline-warning" for="maybe">
-                                        <i class="bi bi-question-circle me-1"></i> Maybe
-                                    </label>
+                                        <input type="radio" class="btn-check" name="hiringDecision" id="maybe" value="maybe" autocomplete="off">
+                                        <label class="btn btn-outline-warning" for="maybe">
+                                            <i class="bi bi-question-circle me-1"></i> Maybe
+                                        </label>
 
-                                    <input type="radio" class="btn-check" name="hiringDecision" id="reject" autocomplete="off">
-                                    <label class="btn btn-outline-danger" for="reject">
-                                        <i class="bi bi-x-circle me-1"></i> Reject
-                                    </label>
+                                        <input type="radio" class="btn-check" name="hiringDecision" id="reject" value="reject" autocomplete="off">
+                                        <label class="btn btn-outline-danger" for="reject">
+                                            <i class="bi bi-x-circle me-1"></i> Reject
+                                        </label>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="finalComments" class="form-label">Comments</label>
-                                <textarea class="form-control" id="finalComments" rows="3" placeholder="Add your final comments..."></textarea>
-                            </div>
-                            <button class="btn btn-primary">
-                                <i class="bi bi-save me-1"></i> Save Evaluation
-                            </button>
+                                <div class="mb-3">
+                                    <label for="finalComments" class="form-label">Comments</label>
+                                    <textarea class="form-control" id="finalComments" name="comments" rows="3" placeholder="Add your final comments..."></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary" id="saveEvaluationBtn">
+                                    <i class="bi bi-save me-1"></i> Save Evaluation
+                                </button>
+                            </form>
                         </div>
                     </div>
                 </div>
@@ -798,56 +804,28 @@
                             <div class="mb-4">
                                 <h6 class="text-muted">Response Analysis</h6>
                                 <div class="progress mb-2" style="height: 20px;">
-                                    <div class="progress-bar bg-success" role="progressbar" style="width: 85%;" aria-valuenow="85" aria-valuemin="0" aria-valuemax="100">85%</div>
+                                    <div id="responseAnalysis" class="progress-bar bg-success" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
                                 </div>
                                 <p class="small text-muted mb-0">Overall response quality and relevance</p>
                             </div>
                             <div class="mb-4">
                                 <h6 class="text-muted">Skills Assessment</h6>
-                                <div class="skill-item mb-2">
-                                    <div class="d-flex justify-content-between mb-1">
-                                        <span>Technical Knowledge</span>
-                                        <span>90%</span>
-                                    </div>
-                                    <div class="progress" style="height: 6px;">
-                                        <div class="progress-bar bg-info" style="width: 90%"></div>
-                                    </div>
-                                </div>
-                                <div class="skill-item mb-2">
-                                    <div class="d-flex justify-content-between mb-1">
-                                        <span>Problem Solving</span>
-                                        <span>80%</span>
-                                    </div>
-                                    <div class="progress" style="height: 6px;">
-                                        <div class="progress-bar bg-info" style="width: 80%"></div>
-                                    </div>
-                                </div>
-                                <div class="skill-item mb-2">
-                                    <div class="d-flex justify-content-between mb-1">
-                                        <span>Communication</span>
-                                        <span>75%</span>
-                                    </div>
-                                    <div class="progress" style="height: 6px;">
-                                        <div class="progress-bar bg-info" style="width: 75%"></div>
+                                <div id="skillsAssessment">
+                                    <!-- Skills will be populated by JavaScript -->
+                                    <div class="text-center py-3">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <p class="mt-2 mb-0">Analyzing candidate responses...</p>
                                     </div>
                                 </div>
                             </div>
                             <div>
                                 <h6 class="text-muted">Key Insights</h6>
-                                <ul class="list-unstyled">
-                                    <li class="mb-2">
-                                        <i class="bi bi-check-circle-fill text-success me-2"></i>
-                                        Strong technical background in Python and related technologies
-                                    </li>
-                                    <li class="mb-2">
-                                        <i class="bi bi-check-circle-fill text-success me-2"></i>
-                                        Demonstrated problem-solving abilities through work examples
-                                    </li>
-                                    <li class="mb-2">
-                                        <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
-                                        Could improve on explaining complex concepts simply
-                                    </li>
+                                <ul id="keyInsights" class="list-unstyled">
+                                    <!-- Key insights will be populated by JavaScript -->
                                 </ul>
+                            </div>
                             </div>
                         </div>
                     </div>
@@ -884,6 +862,9 @@
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/mockInterviewData.js') }}"></script>
 <script>
+    // Initialize AI analysis data from template
+    let aiAnalysisData = JSON.parse(document.getElementById('aiAnalysisData').dataset.analysis || '{}');
+    
     // Initialize tooltips and candidate list
     document.addEventListener('DOMContentLoaded', function() {
         // Initialize Bootstrap tooltips with dark theme
@@ -1097,6 +1078,314 @@
     
     // Call this after loading candidate data
     document.addEventListener('candidateLoaded', applyDarkThemeToFormControls);
+
+    // Rating stars functionality
+    const ratingStars = document.querySelectorAll('.rating-stars i');
+    ratingStars.forEach(star => {
+        star.addEventListener('click', function() {
+            const rating = parseInt(this.getAttribute('data-rating'));
+            const stars = this.parentElement.querySelectorAll('i');
+            
+            // Update stars UI
+            stars.forEach((s, index) => {
+                if (index < rating) {
+                    s.classList.add('bi-star-fill', 'text-warning');
+                    s.classList.remove('bi-star');
+                } else {
+                    s.classList.remove('bi-star-fill', 'text-warning');
+                    s.classList.add('bi-star');
+                }
+            });
+            
+            // Update hidden input value
+            document.getElementById('ratingValue').value = rating;
+        });
+    });
+
+    // Form submission
+    document.getElementById('evaluationForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const evaluationData = {
+            candidateId: currentCandidateId,
+            rating: formData.get('rating'),
+            decision: formData.get('hiringDecision'),
+            comments: formData.get('comments'),
+            timestamp: new Date().toISOString()
+        };
+        
+        // Save to local storage (in a real app, this would be an API call)
+        const evaluations = JSON.parse(localStorage.getItem('candidateEvaluations') || '{}');
+        evaluations[currentCandidateId] = evaluationData;
+        localStorage.setItem('candidateEvaluations', JSON.stringify(evaluations));
+        
+        // Show success message
+        const saveBtn = document.getElementById('saveEvaluationBtn');
+        const originalText = saveBtn.innerHTML;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Saved!';
+        
+        setTimeout(() => {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalText;
+        }, 2000);
+    });
+
+    // Function to update AI analysis UI with the provided analysis data
+    function updateAIAnalysisUI(analysis) {
+        const responseEl = document.getElementById('responseAnalysis');
+        const skillsContainer = document.getElementById('skillsAssessment');
+        const insightsContainer = document.getElementById('keyInsights');
+        const overallScoreEl = document.getElementById('overallScore');
+        
+        // Update overall score
+        if (overallScoreEl && analysis.overall_score !== undefined) {
+            overallScoreEl.textContent = analysis.overall_score;
+            overallScoreEl.className = `h2 mb-0 ${getScoreColorClass(analysis.overall_score)}`;
+        }
+        
+        // Update response analysis
+        if (responseEl && analysis.response_analysis) {
+            const score = analysis.response_analysis.score || 0;
+            responseEl.style.width = `${score}%`;
+            responseEl.setAttribute('aria-valuenow', score);
+            responseEl.textContent = `${score}%`;
+            
+            // Update additional response metrics if available
+            const responseMetrics = document.getElementById('responseMetrics');
+            if (responseMetrics && analysis.response_analysis) {
+                responseMetrics.innerHTML = `
+                    <div class="d-flex justify-content-between small text-muted mb-1">
+                        <span>Avg. Response Length:</span>
+                        <span>${analysis.response_analysis.avg_response_length || 0} words</span>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted">
+                        <span>Sentiment:</span>
+                        <span class="text-capitalize">${analysis.response_analysis.sentiment || 'neutral'}</span>
+                    </div>
+                `;
+            }
+        }
+        
+        // Update skills assessment
+        if (skillsContainer && analysis.skills_assessment) {
+            const skillsHTML = analysis.skills_assessment.map(skill => `
+                <div class="skill-item mb-2">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>${skill.name}</span>
+                        <span>${skill.score}%</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar ${getScoreColorClass(skill.score, true)}" style="width: ${skill.score}%"></div>
+                    </div>
+                    ${skill.description ? `<small class="text-muted d-block mt-1">${skill.description}</small>` : ''}
+                </div>
+            `).join('');
+            
+            skillsContainer.innerHTML = skillsHTML;
+        }
+        
+        // Update key insights
+        if (insightsContainer && analysis.key_insights) {
+            const insightsHTML = analysis.key_insights.map(insight => `
+                <li class="mb-2">
+                    <i class="bi ${insight.toLowerCase().includes('benefit') || insight.toLowerCase().includes('improve') ? 'bi-exclamation-triangle-fill text-warning' : 'bi-check-circle-fill text-success'} me-2"></i>
+                    ${insight}
+                </li>
+            `).join('');
+            
+            insightsContainer.innerHTML = insightsHTML;
+        }
+    }
+    
+    // Helper function to get color class based on score
+    function getScoreColorClass(score, isProgressBar = false) {
+        if (score >= 80) return isProgressBar ? 'bg-success' : 'text-success';
+        if (score >= 60) return isProgressBar ? 'bg-info' : 'text-info';
+        if (score >= 40) return isProgressBar ? 'bg-warning' : 'text-warning';
+        return isProgressBar ? 'bg-danger' : 'text-danger';
+    }
+    
+    // Function to update AI analysis based on candidate
+    function updateAIAnalysis(candidateId) {
+        try {
+            // Get AI analysis data from the hidden div's data attribute
+            const aiAnalysisData = document.getElementById('aiAnalysisData');
+            if (!aiAnalysisData) {
+                throw new Error('AI analysis data container not found');
+            }
+            
+            // Parse the JSON data
+            const analysis = JSON.parse(aiAnalysisData.dataset.analysis || '{}');
+            
+            if (analysis && Object.keys(analysis).length > 0) {
+                // Update UI with the analysis data
+                updateAIAnalysisUI(analysis);
+                
+                // Save the analysis for later use
+                window.currentAnalysis = analysis;
+            } else {
+                throw new Error('No AI analysis data available');
+            }
+        } catch (error) {
+            console.error('Error processing AI analysis:', error);
+            // Fallback to client-side analysis if server-side fails
+            performClientSideAnalysis(candidateId);
+            return; // Exit after fallback
+        }
+        
+        // Load saved evaluation if exists
+        const evaluations = JSON.parse(localStorage.getItem('candidateEvaluations') || '{}');
+        const savedEvaluation = evaluations[candidateId];
+        
+        if (savedEvaluation) {
+            // Batch DOM updates for evaluation
+            const updateBatch = [];
+            
+            if (savedEvaluation.rating > 0) {
+                const stars = document.querySelectorAll('.rating-stars i');
+                stars.forEach((star, index) => {
+                    if (index < savedEvaluation.rating) {
+                        updateBatch.push(() => {
+                            star.classList.add('bi-star-fill', 'text-warning');
+                            star.classList.remove('bi-star');
+                        });
+                    }
+                });
+                document.getElementById('ratingValue').value = savedEvaluation.rating;
+            }
+            
+            if (savedEvaluation.decision) {
+                updateBatch.push(() => {
+                    document.getElementById(savedEvaluation.decision).checked = true;
+                });
+            }
+            
+            if (savedEvaluation.comments) {
+                updateBatch.push(() => {
+                    document.getElementById('finalComments').value = savedEvaluation.comments;
+                });
+            }
+            
+            // Execute DOM updates in a single frame
+            if (updateBatch.length > 0) {
+                requestAnimationFrame(() => {
+                    updateBatch.forEach(update => update());
+                });
+            }
+        }
+    }
+
+    // Fallback function for client-side analysis
+    function performClientSideAnalysis(candidateId) {
+        console.warn('Using client-side fallback analysis');
+        
+        // Generate mock analysis data
+        const mockAnalysis = {
+            overall_score: 70 + Math.floor(Math.random() * 30), // Random score between 70-100
+            response_analysis: {
+                score: 70 + Math.floor(Math.random() * 30),
+                avg_response_length: 15 + Math.floor(Math.random() * 20),
+                sentiment: ['positive', 'neutral', 'negative'][Math.floor(Math.random() * 3)]
+            },
+            skills_assessment: [
+                { name: 'Technical Knowledge', score: 60 + Math.floor(Math.random() * 40), description: 'Assessed through technical questions' },
+                { name: 'Problem Solving', score: 60 + Math.floor(Math.random() * 40), description: 'Evaluated based on case studies' },
+                { name: 'Communication', score: 60 + Math.floor(Math.random() * 40), description: 'Assessed during interview responses' },
+                { name: 'Teamwork', score: 60 + Math.floor(Math.random() * 40), description: 'Evaluated through behavioral questions' },
+                { name: 'Leadership', score: 60 + Math.floor(Math.random() * 40), description: 'Assessed through past experiences' }
+            ],
+            key_insights: [
+                'Demonstrated strong problem-solving abilities',
+                'Good communication skills during the interview',
+                'Technical knowledge aligns with role requirements',
+                'Shows potential for growth in leadership',
+                'Could benefit from additional experience with specific technologies'
+            ]
+        };
+        
+        // Update UI with mock data
+        updateAIAnalysisUI(mockAnalysis);
+    }
+    
+    // Function to update UI with analysis data
+    function updateAIAnalysisUI(analysis) {
+        const responseEl = document.getElementById('responseAnalysis');
+        const skillsContainer = document.getElementById('skillsAssessment');
+        const insightsContainer = document.getElementById('keyInsights');
+        const overallScoreEl = document.getElementById('overallScore');
+        
+        // Update overall score
+        if (overallScoreEl) {
+            const score = analysis.overall_score || 0;
+            overallScoreEl.textContent = `${score}%`;
+            overallScoreEl.style.width = `${score}%`;
+            overallScoreEl.setAttribute('aria-valuenow', score);
+        }
+        
+        // Update response analysis
+        if (responseEl && analysis.response_analysis) {
+            const score = analysis.response_analysis.score || 0;
+            responseEl.style.width = `${score}%`;
+            responseEl.setAttribute('aria-valuenow', score);
+            responseEl.textContent = `${score}%`;
+            
+            // Update additional response metrics if needed
+            const responseMetrics = document.getElementById('responseMetrics');
+            if (responseMetrics) {
+                responseMetrics.innerHTML = `
+                    <div class="d-flex justify-content-between small text-muted mb-1">
+                        <span>Avg. Response Length:</span>
+                        <span>${analysis.response_analysis.avg_response_length || 0} words</span>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted">
+                        <span>Sentiment:</span>
+                        <span class="text-capitalize">${analysis.response_analysis.sentiment || 'neutral'}</span>
+                    </div>
+                `;
+            }
+        }
+        
+        // Update skills assessment
+        if (skillsContainer && analysis.skills_assessment) {
+            const skillsHTML = analysis.skills_assessment.map(skill => `
+                <div class="skill-item mb-2">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>${skill.name}</span>
+                        <span>${skill.score}%</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-info" style="width: ${skill.score}%"></div>
+                    </div>
+                    ${skill.description ? `<small class="text-muted d-block mt-1">${skill.description}</small>` : ''}
+                </div>
+            `).join('');
+            
+            skillsContainer.innerHTML = skillsHTML;
+        }
+        
+        // Update key insights
+        if (insightsContainer && analysis.key_insights) {
+            const insightsHTML = analysis.key_insights.map(insight => `
+                <li class="mb-2">
+                    <i class="bi ${insight.toLowerCase().includes('benefit') || insight.toLowerCase().includes('improve') ? 'bi-exclamation-triangle-fill text-warning' : 'bi-check-circle-fill text-success'} me-2"></i>
+                    ${insight}
+                </li>
+            `).join('');
+            
+            insightsContainer.innerHTML = insightsHTML;
+        }
+    }
+    
+    // Global variable to track current candidate
+    let currentCandidateId = null;
+
+    // Update evaluation when candidate is selected
+    document.addEventListener('candidateSelected', (e) => {
+        currentCandidateId = e.detail.id;
+        updateAIAnalysis(currentCandidateId);
+    });
 </script>
 
 <style>

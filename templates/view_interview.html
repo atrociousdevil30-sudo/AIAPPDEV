@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Interview Details - SmartHire AI{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-white">Interview Details</h1>
+        <a href="{{ url_for('hr_interviews') }}" class="btn btn-outline-light">
+            <i class="bi bi-arrow-left me-2"></i>Back to Interviews
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-4">
+                        <div>
+                            <h4 class="mb-2">{{ interview.candidate_name }}</h4>
+                            <p class="text-muted mb-1">{{ interview.position }}</p>
+                            <span class="badge bg-{{ 'success' if interview.status == 'Scheduled' else 'secondary' if interview.status == 'Completed' else 'danger' }}">
+                                {{ interview.status }}
+                            </span>
+                        </div>
+                        <div class="text-end">
+                            <h5 class="mb-1">Interview Type</h5>
+                            <span class="badge bg-primary">{{ interview.interview_type }}</span>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted">Scheduled Time</h6>
+                            <p class="mb-0">
+                                <i class="bi bi-calendar-event me-2"></i>
+                                {{ interview.scheduled_time|datetimeformat('%B %d, %Y') }}
+                                at {{ interview.scheduled_time|datetimeformat('%I:%M %p') }}
+                            </p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted">Interviewer</h6>
+                            <p class="mb-0">
+                                <i class="bi bi-person me-2"></i>
+                                {{ interview.interviewer }}
+                            </p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted">Duration</h6>
+                            <p class="mb-0">
+                                <i class="bi bi-clock me-2"></i>
+                                {{ interview.duration }} minutes
+                            </p>
+                        </div>
+                        {% if interview.meeting_link %}
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted">Meeting Link</h6>
+                            <p class="mb-0">
+                                <i class="bi bi-link-45deg me-2"></i>
+                                <a href="{{ interview.meeting_link }}" target="_blank">Join Meeting</a>
+                            </p>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if interview.notes %}
+                    <hr class="my-4">
+                    <div class="mb-3">
+                        <h6 class="text-muted">Notes</h6>
+                        <p class="mb-0">{{ interview.notes }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-dark text-white">
+                    <h6 class="mb-0">Candidate Details</h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <div class="avatar-lg mx-auto mb-3">
+                            <div class="avatar-title bg-primary bg-opacity-10 text-primary rounded-circle">
+                                {{ interview.candidate_name[0] }}
+                            </div>
+                        </div>
+                        <h5 class="mb-1">{{ interview.candidate_name }}</h5>
+                        <p class="text-muted mb-3">{{ interview.candidate_email }}</p>
+                        {% if interview.resume %}
+                        <a href="#" class="btn btn-sm btn-outline-primary w-100">
+                            <i class="bi bi-file-earmark-pdf me-2"></i>View Resume
+                        </a>
+                        {% endif %}
+                    </div>
+
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
+                            <span><i class="bi bi-envelope me-2"></i>Email</span>
+                            <span>{{ interview.candidate_email }}</span>
+                        </li>
+                        <li class="list-group-item bg-transparent d-flex justify-content-between align-items-center px-0">
+                            <span><i class="bi bi-telephone me-2"></i>Phone</span>
+                            <span>{{ interview.candidate_phone or 'N/A' }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="d-grid gap-2">
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#rescheduleModal">
+                    <i class="bi bi-calendar3 me-2"></i>Reschedule
+                </button>
+                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#cancelModal">
+                    <i class="bi bi-x-circle me-2"></i>Cancel Interview
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reschedule Modal -->
+<div class="modal fade" id="rescheduleModal" tabindex="-1" aria-labelledby="rescheduleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-white">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="rescheduleModalLabel">Reschedule Interview</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('schedule_interview') }}" method="POST">
+                <div class="modal-body">
+                    <input type="hidden" name="interview_id" value="{{ interview.id }}">
+                    <div class="mb-3">
+                        <label for="scheduled_time" class="form-label">New Date & Time</label>
+                        <input type="datetime-local" class="form-control bg-dark text-white border-secondary" 
+                               id="scheduled_time" name="scheduled_time" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="interviewer_id" class="form-label">Interviewer</label>
+                        <select class="form-select bg-dark text-white border-secondary" id="interviewer_id" name="interviewer_id" required>
+                            {% for user in users %}
+                            <option value="{{ user.id }}" {% if user.name == interview.interviewer %}selected{% endif %}>
+                                {{ user.name }} ({{ user.role }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Reason for Rescheduling</label>
+                        <textarea class="form-control bg-dark text-white border-secondary" id="notes" 
+                                 name="notes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Reschedule Interview</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Modal -->
+<div class="modal fade" id="cancelModal" tabindex="-1" aria-labelledby="cancelModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-white">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="cancelModalLabel">Cancel Interview</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('cancel_interview', interview_id=interview.id) }}" method="POST">
+                <div class="modal-body">
+                    <p>Are you sure you want to cancel this interview?</p>
+                    <div class="mb-3">
+                        <label for="cancellation_reason" class="form-label">Reason for Cancellation</label>
+                        <textarea class="form-control bg-dark text-white border-secondary" 
+                                 id="cancellation_reason" name="cancellation_reason" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-danger">Cancel Interview</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

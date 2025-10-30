@@ -1,0 +1,541 @@
+{% extends "candidate_base.html" %}
+
+{% block title %}AI Interview Practice - SmartHire AI{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0"><i class="fas fa-robot me-2"></i>AI Interview Practice</h2>
+                <a href="{{ url_for('candidate_interview') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Interviews
+                </a>
+            </div>
+            
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-comments me-2"></i>Practice Session</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="chat-container" style="height: 60vh; display: flex; flex-direction: column;">
+                        <div id="chatMessages" class="flex-grow-1 overflow-auto p-4" 
+                             style="background-color: var(--bg-color);">
+                            <!-- Welcome message -->
+                            <div class="d-flex mb-3">
+                                <div class="bg-dark bg-opacity-25 p-3 rounded-3" style="max-width: 80%;">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="me-2">
+                                            <i class="fas fa-robot text-primary"></i>
+                                        </div>
+                                        <div class="fw-bold">AI Interviewer</div>
+                                    </div>
+                                    <p class="mb-0">Welcome to your AI-powered interview practice! I'll be asking you a series of questions to help you prepare. Take your time to think about your answers.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="border-top p-3" style="background-color: var(--card-bg);">
+                            <form id="chatForm" class="needs-validation" novalidate>
+                                <div class="input-group">
+                                    <input type="text" id="userInput" class="form-control bg-dark text-white border-secondary" 
+                                           placeholder="Type your answer here..." required>
+                                    <button type="button" id="micBtn" class="btn btn-outline-secondary" 
+                                            title="Use microphone">
+                                        <i class="fas fa-microphone"></i>
+                                    </button>
+                                    <button type="submit" id="sendBtn" class="btn btn-primary">
+                                        <i class="fas fa-paper-plane me-1"></i> Send
+                                    </button>
+                                </div>
+                                <div class="form-text text-muted mt-2">
+                                    <small>Press the microphone button to use voice input (if supported by your browser)</small>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Interview Tips Card -->
+            <div class="card mt-4 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Interview Tips</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3 mb-md-0">
+                            <div class="d-flex">
+                                <div class="me-3 text-primary">
+                                    <i class="fas fa-comment-alt fa-2x"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1">Be Concise</h6>
+                                    <p class="small text-muted mb-0">Aim for 1-2 minute responses. Focus on key points.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3 mb-md-0">
+                            <div class="d-flex">
+                                <div class="me-3 text-primary">
+                                    <i class="fas fa-project-diagram fa-2x"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1">Use Examples</h6>
+                                    <p class="small text-muted mb-0">Support your answers with specific examples from your experience.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex">
+                                <div class="me-3 text-primary">
+                                    <i class="fas fa-clock fa-2x"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1">Take Your Time</h6>
+                                    <p class="small text-muted mb-0">It's okay to pause and think before answering.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chat-container {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    
+    .message {
+        margin-bottom: 1rem;
+        max-width: 85%;
+    }
+    
+    .ai-message .message-content {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 0.75rem;
+        padding: 0.75rem 1rem;
+    }
+    
+    .user-message .message-content {
+        background-color: var(--primary-color);
+        color: white;
+        border-radius: 0.75rem;
+        padding: 0.75rem 1rem;
+    }
+    
+    .ai-feedback .message-content {
+        background-color: rgba(255, 193, 7, 0.1);
+        border-left: 3px solid var(--warning-color);
+        border-radius: 0 0.75rem 0.75rem 0;
+        padding: 0.75rem 1rem;
+    }
+    
+    .typing-indicator {
+        display: flex;
+        padding: 1rem;
+        align-items: center;
+    }
+    
+    .typing-dot {
+        width: 8px;
+        height: 8px;
+        margin: 0 2px;
+        background-color: var(--text-muted);
+        border-radius: 50%;
+        display: inline-block;
+        animation: typing 1s infinite ease-in-out;
+    }
+    
+    .typing-dot:nth-child(1) { animation-delay: 0s; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    
+    @keyframes typing {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-3px); }
+    }
+    
+    #micBtn.listening {
+        color: #dc3545;
+        animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+        70% { box-shadow: 0 0 0 8px rgba(220, 53, 69, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+    }
+    
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: var(--card-bg);
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: var(--border-color);
+        border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--text-muted);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const chatForm = document.getElementById('chatForm');
+        const userInput = document.getElementById('userInput');
+        const chatMessages = document.getElementById('chatMessages');
+        const micBtn = document.getElementById('micBtn');
+        
+        // Check if browser supports speech recognition
+        const isSpeechRecognitionSupported = 'webkitSpeechRecognition' in window;
+        
+        if (!isSpeechRecognitionSupported) {
+            micBtn.disabled = true;
+            micBtn.title = 'Speech recognition not supported in your browser';
+        } else {
+            const recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            
+            micBtn.addEventListener('click', () => {
+                if (micBtn.classList.contains('listening')) {
+                    recognition.stop();
+                    micBtn.classList.remove('listening');
+                } else {
+                    recognition.start();
+                    micBtn.classList.add('listening');
+                    userInput.placeholder = 'Listening...';
+                }
+            });
+            
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                userInput.value = transcript;
+                userInput.placeholder = 'Type your answer here...';
+                micBtn.classList.remove('listening');
+            };
+            
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error', event.error);
+                userInput.placeholder = 'Error occurred. Please type instead.';
+                micBtn.classList.remove('listening');
+            };
+            
+            recognition.onend = () => {
+                if (micBtn.classList.contains('listening')) {
+                    micBtn.classList.remove('listening');
+                    userInput.placeholder = 'Type your answer here...';
+                }
+            };
+        }
+        
+        // Add message to chat
+        function addMessage(content, isUser = false, isFeedback = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `d-flex mb-3 ${isUser ? 'justify-content-end' : 'justify-content-start'}`;
+            
+            let messageContent = '';
+            if (isFeedback) {
+                messageContent = `
+                    <div class="ai-feedback">
+                        <div class="message-content">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="fas fa-star text-warning me-2"></i>
+                                <strong>Feedback:</strong>
+                            </div>
+                            <p class="mb-0">${content}</p>
+                        </div>
+                    </div>
+                `;
+            } else if (isUser) {
+                messageContent = `
+                    <div class="user-message">
+                        <div class="message-content">
+                            <p class="mb-0">${content}</p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                messageContent = `
+                    <div class="ai-message">
+                        <div class="message-content">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="fas fa-robot text-primary me-2"></i>
+                                <strong>AI Interviewer</strong>
+                            </div>
+                            <p class="mb-0">${content}</p>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            messageDiv.innerHTML = messageContent;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            return messageDiv;
+        }
+        
+        // Show typing indicator
+        function showTypingIndicator() {
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'typing-indicator';
+            typingDiv.id = 'typingIndicator';
+            typingDiv.innerHTML = `
+                <div class="me-2">
+                    <i class="fas fa-robot text-primary"></i>
+                </div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            `;
+            chatMessages.appendChild(typingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return typingDiv;
+        }
+        
+        // Hide typing indicator
+        function hideTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+        
+        // Handle form submission
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const userMessage = userInput.value.trim();
+            if (!userMessage) return;
+            
+            // Add user message to chat
+            addMessage(userMessage, true);
+            userInput.value = '';
+            
+            try {
+                // Show typing indicator
+                showTypingIndicator();
+                
+                // Simulate API call to get AI response
+                // In a real implementation, this would be a fetch call to your backend
+                setTimeout(() => {
+                    hideTypingIndicator();
+                    
+                    // Simulate AI response
+                    const responses = [
+                        "That's an interesting perspective. Can you elaborate on that?",
+                        "Great answer! Let me ask you another question: What would you do in a situation where...",
+                        "I see. What challenges did you face while working on that project?",
+                        "Thank you for your response. Let's move on to the next question.",
+                        "That's a good point. How do you think this experience has prepared you for this role?"
+                    ];
+                    
+                    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+                    addMessage(randomResponse);
+                    
+                    // Sometimes add feedback
+                    if (Math.random() > 0.7) {
+                        const feedbacks = [
+                            "Your answer was well-structured, but try to include more specific examples.",
+                            "Great use of the STAR method in your response!",
+                            "Consider being more concise in your answers to keep the interviewer engaged.",
+                            "Your response shows good technical knowledge. Try to relate it more to the job requirements.",
+                            "Good start! You might want to quantify your achievements for more impact."
+                        ];
+                        const randomFeedback = feedbacks[Math.floor(Math.random() * feedbacks.length)];
+                        setTimeout(() => addMessage(randomFeedback, false, true), 1000);
+                    }
+                }, 1500);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                hideTypingIndicator();
+                addMessage("I'm sorry, I encountered an error. Please try again.");
+            }
+        });
+        
+        // Initial greeting
+        setTimeout(() => {
+            addMessage("Let's start with a common interview question: Can you tell me about yourself?");
+        }, 1000);
+        
+        // Focus input on load
+        userInput.focus();
+    });
+</script>
+{% endblock %}
+        
+        if (data.next_question) {
+            currentQuestion = data.next_question.content;
+            if (data.next_question.type === 'interview_complete') {
+                // Handle interview completion
+                addMessage(data.next_question.content, 'ai');
+                addMessage("Interview completed! Here's your feedback:", 'ai');
+                
+                // Show summary
+                if (data.next_question.summary) {
+                    const summary = data.next_question.summary;
+                    let summaryHtml = `
+                        <div class="card mt-3">
+                            <div class="card-body">
+                                <h5 class="card-title">Interview Summary</h5>
+                                <p>Questions answered: ${summary.total_questions_answered}</p>
+                                <p>Average response length: ${Math.round(summary.average_response_length)} words</p>
+                                <h6>Areas for improvement:</h6>
+                                <ul class="mb-0">
+                    `;
+                    
+                    summary.suggested_improvements.forEach(improvement => {
+                        summaryHtml += `<li>${improvement}</li>`;
+                    });
+                    
+                    summaryHtml += `
+                                </ul>
+                            </div>
+                        </div>
+                    `;
+                    
+                    addMessage(summaryHtml, 'ai');
+                }
+                
+                // Disable the form
+                chatForm.style.display = 'none';
+            } else {
+                // Show next question
+                addMessage(currentQuestion, 'ai');
+            }
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showError('An error occurred. Please try again.');
+    } finally {
+        // Re-enable input and buttons
+        userInput.disabled = false;
+        sendBtn.disabled = false;
+        userInput.focus();
+    }
+}
+
+// Get the next question from the server
+async function getNextQuestion() {
+    try {
+        const response = await fetch('/ai-interview-practice', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ action: 'get_question' })
+        });
+        
+        const data = await response.json();
+        
+        if (data.type === 'question') {
+            currentQuestion = data.content;
+            addMessage(currentQuestion, 'ai');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showError('Failed to load the next question. Please refresh the page.');
+    }
+}
+
+// Add a message to the chat
+function addMessage(text, type = 'user') {
+    const messageDiv = document.createElement('div');
+    
+    if (type === 'user') {
+        messageDiv.className = 'message user-message';
+        messageDiv.innerHTML = `
+            <div class="d-flex justify-content-end mb-2">
+                <div class="bg-primary text-white p-3 rounded-3" style="max-width: 80%;">
+                    <p class="mb-0">${escapeHtml(text)}</p>
+                </div>
+            </div>
+        `;
+    } else if (type === 'ai') {
+        messageDiv.className = 'message ai-message';
+        messageDiv.innerHTML = `
+            <div class="d-flex mb-2">
+                <div class="bg-light p-3 rounded-3" style="max-width: 80%;">
+                    <p class="mb-0">${escapeHtml(text)}</p>
+                </div>
+            </div>
+        `;
+    } else if (type === 'ai feedback') {
+        messageDiv.className = 'message ai-feedback';
+        messageDiv.innerHTML = `
+            <div class="d-flex mb-2">
+                <div class="bg-light p-3 rounded-3" style="max-width: 80%; border-left: 3px solid #ffc107;">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-lightbulb text-warning me-2"></i>
+                        <span class="fw-bold">Feedback</span>
+                    </div>
+                    <p class="mb-0">${escapeHtml(text)}</p>
+                </div>
+            </div>
+        `;
+    }
+    
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Show typing indicator
+function showTypingIndicator() {
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'typing-indicator';
+    typingDiv.id = 'typingIndicator';
+    typingDiv.innerHTML = `
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+    `;
+    chatMessages.appendChild(typingDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    return typingDiv;
+}
+
+// Show error message
+function showError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'alert alert-danger';
+    errorDiv.textContent = message;
+    document.getElementById('chatMessages').appendChild(errorDiv);
+    errorDiv.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Helper function to escape HTML
+function escapeHtml(unsafe) {
+    return unsafe
+        .toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+// Start the interview when the page loads
+window.addEventListener('load', () => {
+    startInterview();
+});
+</script>

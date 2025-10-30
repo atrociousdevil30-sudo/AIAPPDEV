@@ -1,0 +1,65 @@
+{
+  "de81c6d2e5492c92125be60d8ee00923": {
+    "id": "de81c6d2e5492c92125be60d8ee00923",
+    "category": "Introduction",
+    "question": "Can you tell me about yourself?",
+    "difficulty": "Easy",
+    "tags": [
+      "introduction",
+      "personal"
+    ],
+    "tips": [
+      "Keep it professional but personable",
+      "Focus on your professional background and achievements",
+      "Limit to 1-2 minutes"
+    ],
+    "sample_answers": [
+      "I'm a recent Computer Science graduate from XYZ University with a passion for web development. During my studies, I completed several projects using Python and JavaScript, and I'm particularly interested in building scalable web applications. I'm excited about the opportunity to bring my skills to your team."
+    ],
+    "created_at": "2025-10-30T21:01:33.259612",
+    "updated_at": "2025-10-30T21:01:33.259612"
+  },
+  "e26c1e6b9b24ae8427aafd959359f513": {
+    "id": "e26c1e6b9b24ae8427aafd959359f513",
+    "category": "Technical",
+    "question": "Explain the difference between SQL and NoSQL databases.",
+    "difficulty": "Medium",
+    "tags": [
+      "databases",
+      "sql",
+      "nosql",
+      "technical"
+    ],
+    "tips": [
+      "Compare structure, schema, and scalability",
+      "Mention use cases for each type",
+      "Provide examples if possible"
+    ],
+    "sample_answers": [
+      "SQL databases are relational, table-based databases that use structured query language for defining and manipulating data. They have a predefined schema and are great for complex queries. NoSQL databases are non-relational, can be document-based, key-value pairs, or graph databases, and are more flexible with schema design. SQL databases are typically vertically scalable, while NoSQL databases are horizontally scalable. For example, MySQL is great for complex transactions, while MongoDB is better for handling large amounts of unstructured data."
+    ],
+    "created_at": "2025-10-30T21:01:33.259612",
+    "updated_at": "2025-10-30T21:01:33.259612"
+  },
+  "5393b02ce3838d2eddbed166b99c8fd3": {
+    "id": "5393b02ce3838d2eddbed166b99c8fd3",
+    "category": "Behavioral",
+    "question": "Tell me about a time you faced a challenge at work and how you overcame it.",
+    "difficulty": "Medium",
+    "tags": [
+      "behavioral",
+      "problem-solving",
+      "teamwork"
+    ],
+    "tips": [
+      "Use the STAR method (Situation, Task, Action, Result)",
+      "Focus on your problem-solving process",
+      "Highlight what you learned"
+    ],
+    "sample_answers": [
+      "In my previous role, we had a critical bug in production that was causing data inconsistencies. The situation was urgent as it was affecting our customers. My task was to identify and fix the issue while minimizing downtime. I quickly assembled a small team, and we used a systematic approach to debug the problem. We discovered it was a race condition in our data processing pipeline. I implemented a fix with proper locking mechanisms and added automated tests to prevent similar issues. As a result, we resolved the issue within 4 hours with minimal customer impact, and the additional tests helped catch similar issues in development going forward."
+    ],
+    "created_at": "2025-10-30T21:01:33.259612",
+    "updated_at": "2025-10-30T21:01:33.259612"
+  }
+}

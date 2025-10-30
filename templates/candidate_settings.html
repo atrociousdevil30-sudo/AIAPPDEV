@@ -1,0 +1,485 @@
+{% extends "candidate_base.html" %}
+
+{% block title %}Account Settings - SmartHire AI{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Account Settings</h1>
+    </div>
+
+    <div class="row">
+        <!-- Left Navigation -->
+        <div class="col-lg-3 mb-4">
+            <div class="card shadow">
+                <div class="list-group list-group-flush">
+                    <a href="#account" class="list-group-item list-group-item-action active" data-bs-toggle="list">
+                        <i class="fas fa-user-cog fa-fw me-2"></i>Account
+                    </a>
+                    <a href="#notifications" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                        <i class="fas fa-bell fa-fw me-2"></i>Notifications
+                    </a>
+                    <a href="#privacy" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                        <i class="fas fa-shield-alt fa-fw me-2"></i>Privacy & Security
+                    </a>
+                    <a href="#integrations" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                        <i class="fas fa-plug fa-fw me-2"></i>Integrations
+                    </a>
+                    <a href="#billing" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                        <i class="fas fa-credit-card fa-fw me-2"></i>Billing
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Account Status -->
+            <div class="card shadow mt-4">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <div class="position-relative d-inline-block">
+                            <img src="{{ url_for('static', filename='images/default-avatar.png') }}" class="rounded-circle" width="100" alt="Profile" id="profileImage">
+                            <label for="profileImageUpload" class="position-absolute bottom-0 end-0 bg-primary text-white rounded-circle p-2" style="cursor: pointer;">
+                                <i class="fas fa-camera"></i>
+                                <input type="file" id="profileImageUpload" class="d-none" accept="image/*">
+                            </label>
+                        </div>
+                    </div>
+                    <h5 class="mb-1">{{ session.get('user_name', 'Candidate') }}</h5>
+                    <p class="text-muted small mb-0">Member since {{ current_user.created_at.strftime('%B %Y') if current_user and current_user.created_at else '2023' }}</p>
+                    <div class="mt-3">
+                        <span class="badge bg-success">Active</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-lg-9">
+            <div class="tab-content">
+                <!-- Account Settings -->
+                <div class="tab-pane fade show active" id="account">
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                            <h6 class="m-0 font-weight-bold text-primary">Profile Information</h6>
+                            <button class="btn btn-sm btn-primary" id="editProfileBtn">
+                                <i class="fas fa-edit fa-sm"></i> Edit
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <form id="profileForm">
+                                <div class="row mb-3">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">First Name</label>
+                                        <input type="text" class="form-control" value="{{ current_user.first_name if current_user else 'John' }}" disabled>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Last Name</label>
+                                        <input type="text" class="form-control" value="{{ current_user.last_name if current_user else 'Doe' }}" disabled>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-control" value="{{ current_user.email if current_user else 'john.doe@example.com' }}" disabled>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Phone</label>
+                                    <input type="tel" class="form-control" value="+1 (555) 123-4567" disabled>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Location</label>
+                                    <input type="text" class="form-control" value="San Francisco, CA" disabled>
+                                </div>
+                                <div class="d-none" id="profileFormActions">
+                                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                                    <button type="button" class="btn btn-link text-muted" id="cancelEditProfile">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Change Password</h6>
+                        </div>
+                        <div class="card-body">
+                            <form id="passwordForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Current Password</label>
+                                    <input type="password" class="form-control" required>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">New Password</label>
+                                        <input type="password" class="form-control" id="newPassword" required>
+                                        <div class="form-text">Minimum 8 characters with at least 1 number and 1 special character</div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Confirm New Password</label>
+                                        <input type="password" class="form-control" required>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Update Password</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card shadow">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Account Preferences</h6>
+                        </div>
+                        <div class="card-body">
+                            <form id="preferencesForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Time Zone</label>
+                                    <select class="form-select">
+                                        <option>(UTC-08:00) Pacific Time (US & Canada)</option>
+                                        <option>(UTC-07:00) Mountain Time (US & Canada)</option>
+                                        <option>(UTC-06:00) Central Time (US & Canada)</option>
+                                        <option>(UTC-05:00) Eastern Time (US & Canada)</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Date Format</label>
+                                    <select class="form-select">
+                                        <option>MM/DD/YYYY</option>
+                                        <option>DD/MM/YYYY</option>
+                                        <option>YYYY-MM-DD</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Language</label>
+                                    <select class="form-select">
+                                        <option>English (US)</option>
+                                        <option>Español</option>
+                                        <option>Français</option>
+                                        <option>Deutsch</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Save Preferences</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notification Settings -->
+                <div class="tab-pane fade" id="notifications">
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">Email Notifications</h6>
+                        </div>
+                        <div class="card-body">
+                            <form id="emailNotificationsForm">
+                                <div class="mb-4">
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" id="jobAlerts" checked>
+                                        <label class="form-check-label" for="jobAlerts">
+                                            <strong>Job Alerts</strong>
+                                            <p class="text-muted small mb-0">Receive emails about new job postings that match your profile</p>
+                                        </label>
+                                    </div>
+                                    
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" id="applicationUpdates" checked>
+                                        <label class="form-check-label" for="applicationUpdates">
+                                            <strong>Application Updates</strong>
+                                            <p class="text-muted small mb-0">Get notified when there are updates to your job applications</p>
+                                        </label>
+                                    </div>
+                                    
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" id="interviewInvites" checked>
+                                        <label class="form-check-label" for="interviewInvites">
+                                            <strong>Interview Invitations</strong>
+                                            <p class="text-muted small mb-0">Receive notifications for new interview invitations</p>
+                                        </label>
+                                    </div>
+                                    
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="marketingEmails">
+                                        <label class="form-check-label" for="marketingEmails">
+                                            <strong>Marketing Communications</strong>
+                                            <p class="text-muted small mb-0">Receive promotional emails and newsletters</p>
+                                        </label>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Save Email Preferences</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">In-App Notifications</h6>
+                        </div>
+                        <div class="card-body">
+                            <form id="inAppNotificationsForm">
+                                <div class="mb-4">
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" id="inAppJobAlerts" checked>
+                                        <label class="form-check-label" for="inAppJobAlerts">
+                                            <strong>Job Alerts</strong>
+                                            <p class="text-muted small mb-0">Show notifications for new job recommendations</p>
+                                        </label>
+                                    </div>
+                                    
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" id="inAppApplicationUpdates" checked>
+                                        <label class="form-check-label" for="inAppApplicationUpdates">
+                                            <strong>Application Status Changes</strong>
+                                            <p class="text-muted small mb-0">Get notified when your application status changes</p>
+                                        </label>
+                                    </div>
+                                    
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" id="inAppInterviewAlerts" checked>
+                                        <label class="form-check-label" for="inAppInterviewAlerts">
+                                            <strong>Interview Reminders</strong>
+                                            <p class="text-muted small mb-0">Receive reminders for upcoming interviews</p>
+                                        </label>
+                                    </div>
+                                    
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="inAppMessages" checked>
+                                        <label class="form-check-label" for="inAppMessages">
+                                            <strong>New Messages</strong>
+                                            <p class="text-muted small mb-0">Get notified when you receive new messages</p>
+                                        </label>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Save Notification Preferences</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card shadow">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">SMS Notifications</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info mb-4">
+                                <i class="fas fa-info-circle me-2"></i> Standard message and data rates may apply for SMS notifications.
+                            </div>
+                            <form id="smsNotificationsForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Phone Number</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                                        <input type="tel" class="form-control" placeholder="+1 (___) ___-____" value="+1 (555) 123-4567">
+                                        <button class="btn btn-outline-secondary" type="button" id="verifyNumberBtn">Verify</button>
+                                    </div>
+                                    <div class="form-text">We'll send a verification code to this number</div>
+                                </div>
+                                
+                                <div class="mb-4" id="verificationCodeGroup" style="display: none;">
+                                    <label class="form-label">Verification Code</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" placeholder="Enter 6-digit code">
+                                        <button class="btn btn-outline-success" type="button">Verify Code</button>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" id="smsInterviewReminders">
+                                    <label class="form-check-label" for="smsInterviewReminders">
+                                        <strong>Interview Reminders</strong>
+                                        <p class="text-muted small mb-0">Receive SMS reminders for upcoming interviews</p>
+                                    </label>
+                                </div>
+                                
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="smsStatusUpdates">
+                                    <label class="form-check-label" for="smsStatusUpdates">
+                                        <strong>Application Status Updates</strong>
+                                        <p class="text-muted small mb-0">Get SMS notifications for important application updates</p>
+                                    </label>
+                                </div>
+                                
+                                <div class="mt-4">
+                                    <button type="submit" class="btn btn-primary">Save SMS Preferences</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty tabs for future use -->
+                <div class="tab-pane fade" id="privacy">
+                    <div class="card shadow">
+                        <div class="card-body text-center py-5">
+                            <i class="fas fa-shield-alt fa-3x text-gray-400 mb-3"></i>
+                            <h5 class="text-gray-700">Privacy & Security Settings</h5>
+                            <p class="text-muted">Coming soon! We're working on more privacy and security features.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-pane fade" id="integrations">
+                    <div class="card shadow">
+                        <div class="card-body text-center py-5">
+                            <i class="fas fa-plug fa-3x text-gray-400 mb-3"></i>
+                            <h5 class="text-gray-700">Integrations</h5>
+                            <p class="text-muted">Coming soon! Connect with your favorite tools and services.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-pane fade" id="billing">
+                    <div class="card shadow">
+                        <div class="card-body text-center py-5">
+                            <i class="fas fa-credit-card fa-3x text-gray-400 mb-3"></i>
+                            <h5 class="text-gray-700">Billing & Subscriptions</h5>
+                            <p class="text-muted">Coming soon! Manage your subscription and payment methods.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Enable Bootstrap tooltips
+var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl)
+});
+
+// Profile form edit mode toggle
+document.getElementById('editProfileBtn').addEventListener('click', function() {
+    const form = document.getElementById('profileForm');
+    const inputs = form.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"]');
+    const saveBtn = document.getElementById('profileFormActions');
+    
+    inputs.forEach(input => {
+        input.disabled = !input.disabled;
+    });
+    
+    saveBtn.classList.toggle('d-none');
+    
+    if (this.textContent.trim() === 'Edit') {
+        this.innerHTML = '<i class="fas fa-times fa-sm"></i> Cancel';
+        this.classList.remove('btn-primary');
+        this.classList.add('btn-outline-secondary');
+    } else {
+        this.innerHTML = '<i class="fas fa-edit fa-sm"></i> Edit';
+        this.classList.remove('btn-outline-secondary');
+        this.classList.add('btn-primary');
+    }
+});
+
+// Cancel edit profile
+document.getElementById('cancelEditProfile')?.addEventListener('click', function() {
+    const form = document.getElementById('profileForm');
+    const inputs = form.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"]');
+    const saveBtn = document.getElementById('profileFormActions');
+    const editBtn = document.getElementById('editProfileBtn');
+    
+    inputs.forEach(input => {
+        input.disabled = true;
+    });
+    
+    saveBtn.classList.add('d-none');
+    editBtn.innerHTML = '<i class="fas fa-edit fa-sm"></i> Edit';
+    editBtn.classList.remove('btn-outline-secondary');
+    editBtn.classList.add('btn-primary');
+    
+    // Reset form if needed
+    form.reset();
+});
+
+// Password strength indicator
+const passwordInput = document.getElementById('newPassword');
+if (passwordInput) {
+    passwordInput.addEventListener('input', function() {
+        const password = this.value;
+        const strengthText = document.getElementById('passwordStrength');
+        
+        if (password.length === 0) {
+            strengthText.textContent = '';
+            return;
+        }
+        
+        let strength = 0;
+        if (password.length >= 8) strength++;
+        if (password.match(/[a-z]+/)) strength++;
+        if (password.match(/[A-Z]+/)) strength++;
+        if (password.match(/[0-9]+/)) strength++;
+        if (password.match(/[!@#$%^&*(),.?":{}|<>]+/)) strength++;
+        
+        const strengthLabels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong', 'Very Strong'];
+        const strengthClasses = ['text-danger', 'text-danger', 'text-warning', 'text-info', 'text-success', 'text-success'];
+        
+        strengthText.textContent = strengthLabels[strength];
+        strengthText.className = strengthClasses[strength];
+    });
+}
+
+// Show verification code field when Verify button is clicked
+document.getElementById('verifyNumberBtn')?.addEventListener('click', function() {
+    document.getElementById('verificationCodeGroup').style.display = 'block';
+    this.disabled = true;
+    this.textContent = 'Resend Code';
+    this.classList.remove('btn-outline-secondary');
+    this.classList.add('btn-outline-primary');
+});
+
+// Form submissions
+document.querySelectorAll('form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        // Show success message
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success alert-dismissible fade show mt-3';
+        alertDiv.role = 'alert';
+        alertDiv.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i>
+            Your changes have been saved successfully!
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        
+        // Insert after the form
+        this.parentNode.insertBefore(alertDiv, this.nextSibling);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            const alert = bootstrap.Alert.getOrCreateInstance(alertDiv);
+            alert.close();
+        }, 5000);
+    });
+});
+
+// Profile image upload
+document.getElementById('profileImageUpload')?.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            document.getElementById('profileImage').src = event.target.result;
+            
+            // Show success message
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success alert-dismissible fade show mt-3';
+            alertDiv.role = 'alert';
+            alertDiv.innerHTML = `
+                <i class="fas fa-check-circle me-2"></i>
+                Profile picture updated successfully!
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            
+            // Insert after the profile card
+            const profileCard = document.querySelector('.card.shadow.mt-4');
+            profileCard.parentNode.insertBefore(alertDiv, profileCard.nextSibling);
+            
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                const alert = bootstrap.Alert.getOrCreateInstance(alertDiv);
+                alert.close();
+            }, 5000);
+        };
+        reader.readAsDataURL(file);
+    }
+});
+</script>
+{% endblock %}

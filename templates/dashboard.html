@@ -3,36 +3,141 @@
 {% block title %}SmartHire AI - HR Dashboard{% endblock %}
 
 {% block content %}
-<!-- View All Modal -->
-<div class="modal fade" id="viewAllModal" tabindex="-1" aria-labelledby="viewAllModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
+<div class="container-fluid py-4">
+
+<!-- Recruitment Pipeline Modal -->
+<div class="modal fade" id="pipelineModal" tabindex="-1" aria-labelledby="pipelineModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content bg-dark text-white">
             <div class="modal-header border-secondary">
-                <h5 class="modal-title" id="viewAllModalLabel">View All Items</h5>
+                <h5 class="modal-title" id="pipelineModalLabel">Recruitment Pipeline Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="nav nav-tabs" id="pipelineTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="sourced-tab" data-bs-toggle="tab" data-bs-target="#sourced" type="button" role="tab" aria-controls="sourced" aria-selected="true">
+                            Sourced <span class="badge bg-primary ms-1" id="sourced-count">0</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="applied-tab" data-bs-toggle="tab" data-bs-target="#applied" type="button" role="tab" aria-controls="applied" aria-selected="false">
+                            Applied <span class="badge bg-primary ms-1" id="applied-count">0</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="phone-screen-tab" data-bs-toggle="tab" data-bs-target="#phone-screen" type="button" role="tab" aria-controls="phone-screen" aria-selected="false">
+                            Phone Screen <span class="badge bg-primary ms-1" id="phone-screen-count">0</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="technical-interview-tab" data-bs-toggle="tab" data-bs-target="#technical-interview" type="button" role="tab" aria-controls="technical-interview" aria-selected="false">
+                            Technical Interview <span class="badge bg-primary ms-1" id="technical-interview-count">0</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="final-interview-tab" data-bs-toggle="tab" data-bs-target="#final-interview" type="button" role="tab" aria-controls="final-interview" aria-selected="false">
+                            Final Interview <span class="badge bg-primary ms-1" id="final-interview-count">0</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="offer-extended-tab" data-bs-toggle="tab" data-bs-target="#offer-extended" type="button" role="tab" aria-controls="offer-extended" aria-selected="false">
+                            Offer Extended <span class="badge bg-primary ms-1" id="offer-extended-count">0</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="hired-tab" data-bs-toggle="tab" data-bs-target="#hired" type="button" role="tab" aria-controls="hired" aria-selected="false">
+                            Hired <span class="badge bg-primary ms-1" id="hired-count">0</span>
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content p-3 border border-top-0 border-secondary rounded-bottom" id="pipelineTabsContent">
+                    <div class="tab-pane fade show active" id="sourced" role="tabpanel" aria-labelledby="sourced-tab">
+                        <div class="table-responsive">
+                            <table class="table table-dark table-hover" id="sourced-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Name</th>
+                                        <th>Position</th>
+                                        <th>Email</th>
+                                        <th>Phone</th>
+                                        <th>Score</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be loaded by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- Other tab panes will be populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="export-pipeline">Export to Excel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Skill Distribution Modal -->
+<div class="modal fade" id="skillDistributionModal" tabindex="-1" aria-labelledby="skillDistributionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content bg-dark text-white">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="skillDistributionModalLabel">Skill Distribution Details</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="table-responsive">
-                    <table class="table table-dark table-hover" id="viewAllTable">
+                    <table class="table table-dark table-hover">
                         <thead>
                             <tr>
-                                <th>ID</th>
-                                <th>Name</th>
-                                <th>Status</th>
-                                <th>Date</th>
-                                <th>Score</th>
-                                <th>Actions</th>
+                                <th>Skill</th>
+                                <th>Count</th>
+                                <th>Percentage</th>
                             </tr>
                         </thead>
-                        <tbody id="viewAllTableBody">
-                            <!-- Data will be populated by JavaScript -->
+                        <tbody id="skill-distribution-body">
+                            <!-- Will be populated by JavaScript -->
                         </tbody>
                     </table>
                 </div>
             </div>
             <div class="modal-footer border-secondary">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary">Export to Excel</button>
+                <button type="button" class="btn btn-primary" id="export-skill-distribution">Export to Excel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Activities Modal -->
+<div class="modal fade" id="activitiesModal" tabindex="-1" aria-labelledby="activitiesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content bg-dark text-white">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">
+                    Recent Activities
+                    <span class="badge bg-danger ms-2" id="unread-count-modal" style="display: none;">0</span>
+                </h5>
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-light me-2" id="mark-all-read">
+                        <i class="fas fa-check-double me-1"></i> Mark All as Read
+                    </button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+            </div>
+            <div class="modal-body p-0">
+                <div id="activities-modal-list" class="list-group list-group-flush">
+                    <!-- Activities will be populated by activities.js -->
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -57,17 +162,6 @@
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="#">Custom Range</a></li>
                 </ul>
-            </div>
-            <div class="btn-group" role="group">
-                <a href="{{ url_for('resume_screening_route') }}" class="btn btn-outline-light me-2">
-                    <i class="fas fa-users me-1"></i> Candidates
-                </a>
-                <a href="{{ url_for('hr_interviews') }}" class="btn btn-outline-light me-2">
-                    <i class="fas fa-calendar-day me-1"></i> Interviews
-                </a>
-                <a href="{{ url_for('manage_appointments') }}" class="btn btn-outline-light">
-                    <i class="fas fa-calendar-check me-1"></i> Schedule
-                </a>
             </div>
             <button class="btn btn-primary ms-3" data-bs-toggle="modal" data-bs-target="#newJobPostingModal">
                 <i class="fas fa-plus me-1"></i>New Job
@@ -129,7 +223,7 @@
                             </span>
                         </div>
                     </div>
-                    <h3 class="mb-1 text-white">{{ total_applications|default('0') }}</h3>
+                    <h3 class="mb-1 text-white">247</h3>
                     <p class="text-muted mb-0">Total Applications</p>
                     <div class="progress mt-3 bg-dark" style="height: 4px;">
                         <div class="progress-bar" role="progressbar" style="width: 75%" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100"></div>
@@ -152,7 +246,7 @@
                             </span>
                         </div>
                     </div>
-                    <h3 class="mb-1">{{ (total_applications * 0.45)|round|int }}</h3>
+                    <h3 class="mb-1">112</h3>
                     <p class="text-muted mb-0">Shortlisted</p>
                     <div class="progress mt-3" style="height: 4px;">
                         <div class="progress-bar bg-success" role="progressbar" style="width: 45%" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100"></div>
@@ -175,7 +269,7 @@
                             </span>
                         </div>
                     </div>
-                    <h3 class="mb-1">{{ interviews_scheduled|default('0') }}</h3>
+                    <h3 class="mb-1">74</h3>
                     <p class="text-muted mb-0">Interviews</p>
                     <div class="progress mt-3" style="height: 4px;">
                         <div class="progress-bar bg-info" role="progressbar" style="width: 30%" aria-valuenow="30" aria-valuemin="0" aria-valuemax="100"></div>
@@ -198,7 +292,7 @@
                             </span>
                         </div>
                     </div>
-                    <h3 class="mb-1">{{ (total_applications * 0.15)|round|int }}</h3>
+                    <h3 class="mb-1">37</h3>
                     <p class="text-muted mb-0">Hired</p>
                     <div class="progress mt-3" style="height: 4px;">
                         <div class="progress-bar bg-warning" role="progressbar" style="width: 15%" aria-valuenow="15" aria-valuemin="0" aria-valuemax="100"></div>
@@ -238,7 +332,7 @@
                                 Average Time to Hire</div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">24 days</div>
                             <div class="mt-2 text-danger">
-                                <i class="fas fa-arrow-down"></i> 2 days longer
+                                <i class="fas fa-arrow-up"></i> 2 days faster
                             </div>
                         </div>
                         <div class="col-auto">
@@ -250,8 +344,135 @@
         </div>
     </div>
 
-    <!-- Main Content -->
+    <!-- Interviews Section -->
     <div class="row g-4 mt-2">
+        <!-- Upcoming Interviews -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100 bg-dark">
+                <div class="card-header bg-primary bg-opacity-10 border-bottom border-primary">
+                    <h5 class="mb-0 text-white">
+                        <i class="bi bi-calendar-check me-2"></i>Upcoming Interviews
+                        <span class="badge bg-primary ms-2">{{ upcoming|length }}</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if upcoming %}
+                        <div class="list-group list-group-flush">
+                            {% for interview in upcoming %}
+                            <div class="list-group-item bg-transparent border-secondary">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1">{{ interview.candidate_name }}</h6>
+                                        <small class="text-muted">
+                                            <i class="bi bi-clock me-1"></i>
+                                            {{ interview.scheduled_time.strftime('%b %d, %Y %I:%M %p') }}
+                                        </small>
+                                    </div>
+                                    <span class="badge bg-primary">{{ interview.interview_type|title }}</span>
+                                </div>
+                                <div class="mt-2">
+                                    <a href="{{ url_for('view_interview', interview_id=interview.id) }}" class="btn btn-sm btn-outline-primary">View</a>
+                                    <a href="#" class="btn btn-sm btn-outline-secondary ms-1" data-bs-toggle="modal" data-bs-target="#rescheduleModal{{ interview.id }}">
+                                        Reschedule
+                                    </a>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center p-4">
+                            <i class="bi bi-calendar-x text-muted" style="font-size: 2rem;"></i>
+                            <p class="mt-2 mb-0 text-muted">No upcoming interviews</p>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-transparent border-top border-secondary">
+                    <a href="{{ url_for('hr_interviews') }}" class="btn btn-sm btn-outline-light w-100">
+                        View All Interviews
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Completed Interviews -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100 bg-dark">
+                <div class="card-header bg-success bg-opacity-10 border-bottom border-success">
+                    <h5 class="mb-0 text-white">
+                        <i class="bi bi-check-circle me-2"></i>Recent Completed
+                        <span class="badge bg-success ms-2">{{ completed|length }}</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if completed %}
+                        <div class="list-group list-group-flush">
+                            {% for interview in completed[:3] %}
+                            <div class="list-group-item bg-transparent border-secondary">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1">{{ interview.candidate_name }}</h6>
+                                        <small class="text-muted">
+                                            {{ interview.scheduled_time|time_ago }}
+                                        </small>
+                                    </div>
+                                    <span class="badge bg-success">Completed</span>
+                                </div>
+                                <div class="mt-2">
+                                    <a href="{{ url_for('view_interview', interview_id=interview.id) }}" class="btn btn-sm btn-outline-success">View Results</a>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center p-4">
+                            <i class="bi bi-check-circle text-muted" style="font-size: 2rem;"></i>
+                            <p class="mt-2 mb-0 text-muted">No completed interviews</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Interview Analytics -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100 bg-dark">
+                <div class="card-header bg-info bg-opacity-10 border-bottom border-info">
+                    <h5 class="mb-0 text-white">
+                        <i class="bi bi-graph-up me-2"></i>Interview Analytics
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <div class="d-flex justify-content-around">
+                            <div class="text-center">
+                                <h3 class="mb-0">{{ upcoming|length }}</h3>
+                                <small class="text-muted">Upcoming</small>
+                            </div>
+                            <div class="text-center">
+                                <h3 class="mb-0">{{ completed|length }}</h3>
+                                <small class="text-muted">Completed</small>
+                            </div>
+                            <div class="text-center">
+                                <h3 class="mb-0">{{ cancelled|length }}</h3>
+                                <small class="text-muted">Cancelled</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="progress mb-3" style="height: 6px;">
+                        {% set completion_rate = (completed|length / (upcoming|length + completed|length + cancelled|length) * 100) if (upcoming|length + completed|length + cancelled|length) > 0 else 0 %}
+                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ completion_rate }}%" 
+                             aria-valuenow="{{ completion_rate }}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <p class="small text-muted mb-0 text-center">
+                        {{ "%.1f"|format(completion_rate) }}% completion rate
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="row g-4 mt-4">
         <!-- Left Column -->
         <div class="col-lg-8">
             <!-- Hiring Trends Chart -->
@@ -272,24 +493,17 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    {{ hiring_trends|safe }}
+                    <div id="hiringTrendsChartContainer">
+                        <canvas id="hiringTrendsChart"></canvas>
+                    </div>
+                    <div id="chartFallback" style="display: none;"></div>
                 </div>
             </div>
         </div>
         
         <!-- Right Column -->
         <div class="col-lg-4">
-            <!-- ATS Score Distribution -->
-            <div class="card border-0 shadow-sm h-100 bg-dark">
-                <div class="card-header border-bottom border-secondary py-3">
-                    <h5 class="mb-0 text-white">ATS Score Distribution</h5>
-                </div>
-                <div class="card-body">
-                    <div id="resume-chart">
-                        {{ resume_chart|safe }}
-                    </div>
-                </div>
-            </div>
+            <!-- Skill Distribution Card Removed -->    
         </div>
     </div>
     
@@ -302,40 +516,62 @@
                     <button type="button" class="btn btn-sm btn-outline-light view-all-btn" data-type="pipeline">View All</button>
                 </div>
                 <div class="card-body">
-                    <div id="pipeline-chart">
-                        {{ pipeline_chart|safe }}
+                    <div class="recruitment-pipeline">
+                        {% set stage_descriptions = {
+                            'Sourced': 'Candidates identified through various channels but haven\'t applied yet',
+                            'Applied': 'Candidates who have submitted job applications',
+                            'Phone Screen': 'Initial screening call to assess basic qualifications',
+                            'Technical Interview': 'In-depth evaluation of technical skills and knowledge',
+                            'Final Interview': 'Final round with key stakeholders/management',
+                            'Offer Extended': 'Job offer has been made to the candidate',
+                            'Hired': 'Candidate has accepted the offer and joined the company'
+                        } %}
+                        {% for stage, count in recruitment_pipeline.items() %}
+                        <div class="pipeline-stage mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <div class="d-flex align-items-center">
+                                    <span class="text-muted me-1">{{ stage }}</span>
+                                    <i class="fas fa-info-circle text-muted small" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="top" 
+                                       title="{{ stage_descriptions[stage] }}"></i>
+                                </div>
+                                <span class="fw-bold text-white">{{ count }}</span>
+                            </div>
+                            {% set percentage = (count / recruitment_pipeline['Sourced'] * 100)|round|int %}
+                            <div class="progress" data-bs-toggle="tooltip" 
+                                 title="{{ count }} candidates ({{ percentage }}% of sourced)">
+                                <div class="progress-bar bg-primary" 
+                                     role="progressbar" 
+                                     data-width="{{ percentage }}"
+                                     aria-valuenow="{{ percentage }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
             </div>
         </div>
         
-        <!-- Right Column - Top Candidates -->
+        <!-- Right Column - Recent Activities -->
         <div class="col-md-6">
             <div class="card border-0 shadow-sm h-100 bg-dark">
                 <div class="card-header border-bottom border-secondary py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 text-white">Top Candidates</h5>
-                    <button type="button" class="btn btn-sm btn-outline-light view-all-btn" data-type="top-candidates">View All</button>
+                    <h5 class="mb-0 text-white">Recent Activities</h5>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-outline-light" id="refresh-activities">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-light ms-2" data-bs-toggle="modal" data-bs-target="#activitiesModal">
+                            View All <span class="badge bg-danger" id="unread-count" style="display: none;">0</span>
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body p-0">
-                    <div class="list-group list-group-flush">
-                        {% for candidate in candidates %}
-                        <div class="list-group-item list-group-item-action border-0 py-3 bg-dark" style="border-bottom: 1px solid #2d2d2d !important;">
-                            <div class="d-flex align-items-center">
-                                <div class="flex-shrink-0">
-                                    <div class="avatar avatar-md">
-                                        <span class="avatar-text bg-primary text-white">{{ candidate.name.split(' ')|map('first')|join('')|upper }}</span>
-                                    </div>
-                                </div>
-                                <div class="flex-grow-1 ms-3">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <h6 class="mb-0 text-white">{{ candidate.name }}</h6>
-                                        <span class="badge bg-success bg-opacity-25 text-success">{{ candidate.score }}%</span>
-                                    </div>
-                                    <p class="text-muted mb-0 small">{{ candidate.status }}</p>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
+                    <div id="activities-list" class="list-group list-group-flush">
+                        <!-- Activities will be populated by activities.js -->
                     </div>
                 </div>
             </div>
@@ -343,38 +579,35 @@
     </div>
     
     <div class="row g-4 mt-2">
-        <!-- Left Column - Recent Activities -->
+        <!-- Left Column - Skill Distribution -->
         <div class="col-md-6">
             <div class="card border-0 shadow-sm h-100 bg-dark">
                 <div class="card-header border-bottom border-secondary py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 text-white">Recent Activities</h5>
-                    <button type="button" class="btn btn-sm btn-outline-light view-all-btn" data-type="activities">View All</button>
+                    <h5 class="mb-0 text-white">Skill Distribution</h5>
+                    <button type="button" class="btn btn-sm btn-outline-light" data-bs-toggle="modal" data-bs-target="#skillDistributionModal">
+                        View All <i class="fas fa-arrow-right ms-1"></i>
+                    </button>
                 </div>
-                <div class="card-body p-0">
-                    <div class="list-group list-group-flush">
-                        {% for activity in activities %}
-                        <div class="list-group-item border-0 py-3 bg-dark text-white" style="border-bottom: 1px solid #2d2d2d !important;">
-                            <div class="d-flex">
-                                <div class="flex-shrink-0">
-                                    <div class="avatar avatar-sm">
-                                        <span class="avatar-text bg-{{ 'success' if 'Hired' in activity.action else 'info' if 'Interview' in activity.action else 'primary' }}">
-                                            {{ activity.candidate.split(' ')|map('first')|join('')|upper }}
-                                        </span>
-                                    </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for category, skills in skill_distribution.items() %}
+                        <div class="col-12 mb-4">
+                            <h6 class="text-white-50 small mb-3">{{ category }}</h6>
+                            {% for skill, percentage in skills.items() %}
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="text-white small">{{ skill }}</span>
+                                    <span class="text-muted small">{{ percentage }}%</span>
                                 </div>
-                                <div class="flex-grow-1 ms-3">
-                                    <div class="d-flex justify-content-between">
-                                        <h6 class="mb-1 text-white">{{ activity.candidate }}</h6>
-                                        <small class="text-muted">{{ activity.time }}</small>
-                                    </div>
-                                    <p class="mb-0">
-                                        <span class="badge bg-{{ 'success' if 'Hired' in activity.action else 'info' if 'Interview' in activity.action else 'primary' }} bg-opacity-25 text-{{ 'success' if 'Hired' in activity.action else 'info' if 'Interview' in activity.action else 'primary' }} me-2">
-                                            {{ activity.action }}
-                                        </span>
-                                        <span class="text-muted">for Senior Developer position</span>
-                                    </p>
+                                <div class="progress bg-dark progress-thin">
+                                    <div class="progress-bar bg-primary" role="progressbar" 
+                                         data-percentage="{{ percentage }}"
+                                         aria-valuenow="{{ percentage }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100"></div>
                                 </div>
                             </div>
+                            {% endfor %}
                         </div>
                         {% endfor %}
                     </div>
@@ -382,73 +615,183 @@
             </div>
         </div>
         
-        <!-- Right Column - Skill Distribution -->
+        <!-- Right Column - Sentiment Analysis -->
         <div class="col-md-6">
-            <div class="card border-0 shadow-sm h-100 bg-dark">
-                <div class="card-header border-bottom border-secondary py-3">
-                    <h5 class="mb-0 text-white">Skill Distribution</h5>
+            <div class="card shadow h-100 bg-dark border-0">
+                <div class="card-header d-flex justify-content-between align-items-center bg-dark border-bottom border-secondary">
+                    <h5 class="mb-0 text-white">Employee Sentiment Analysis</h5>
+                    <span class="badge bg-primary">{{ sentiment_data.total_responses }} Responses ({{ sentiment_data.response_rate }})</span>
                 </div>
                 <div class="card-body">
-                    <div id="skill-chart">
-                        {{ skill_chart|safe }}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>    
-        <!-- Sentiment Analysis -->
-        <div class="col-lg-6 mb-4">
-            <div class="card shadow h-100 bg-dark">
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-dark border-bottom border-secondary">
-                    <h6 class="m-0 font-weight-bold text-white">Exit Interview Sentiment Analysis</h6>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            {{ sentiment_chart|safe }}
+                    <div class="text-center mb-4">
+                        <div class="position-relative d-inline-block mb-3">
+                            <div id="sentimentGauge" style="width: 200px; height: 100px;"></div>
+                            <div class="position-absolute top-50 start-50 translate-middle text-center w-100">
+                                <h3 class="mb-0">{{ sentiment_data.sentiment_score }}</h3>
+                                <small class="text-muted">/ 100</small>
+                                {% set score_diff = sentiment_data.sentiment_score - sentiment_data.previous_score %}
+                                <div class="mt-1 small {{ 'text-success' if score_diff >= 0 else 'text-danger' }}">
+                                    <i class="fas {{ 'fa-arrow-up' if score_diff >= 0 else 'fa-arrow-down' }} me-1"></i>
+                                    {{ score_diff|abs }} from last month
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <h6 class="text-center mb-3">Sentiment Breakdown</h6>
-                            <style>
-                                .progress-positive {
-                                    --progress-width: {{ (sentiment_data['Positive'] / sentiment_total) * 100 }}%;
-                                }
-                                .progress-neutral {
-                                    --progress-width: {{ (sentiment_data['Neutral'] / sentiment_total) * 100 }}%;
-                                }
-                                .progress-negative {
-                                    --progress-width: {{ (sentiment_data['Negative'] / sentiment_total) * 100 }}%;
-                                }
-                                .progress-bar {
-                                    width: var(--progress-width);
-                                }
-                            </style>
-                            <div class="mb-3">
-                                <div class="d-flex justify-content-between mb-1">
-                                    <span>Positive</span>
-                                    <span class="text-success font-weight-bold">{{ sentiment_data['Positive'] }}</span>
-                                </div>
-                                <div class="progress" style="height: 10px;">
-                                    <div class="progress-bar bg-success progress-positive" role="progressbar"></div>
+                        <p class="text-muted mb-0">Overall Employee Sentiment Score</p>
+                    </div>
+                    
+                    <!-- Gauge Visualization -->
+                    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            // Initialize the gauge chart
+                            const score = parseInt('{{ sentiment_data.sentiment_score }}');
+                            const options = {
+                                series: [score],
+                                chart: {
+                                    height: 200,
+                                    type: 'radialBar',
+                                    sparkline: {
+                                        enabled: true
+                                    }
+                                },
+                                plotOptions: {
+                                    radialBar: {
+                                        startAngle: -135,
+                                        endAngle: 135,
+                                        hollow: {
+                                            margin: 0,
+                                            size: '70%',
+                                        },
+                                        dataLabels: {
+                                            name: {
+                                                show: false
+                                            },
+                                            value: {
+                                                offsetY: 0,
+                                                fontSize: '22px',
+                                                formatter: function(val) {
+                                                    return val;
+                                                },
+                                                color: '#fff'
+                                            }
+                                        },
+                                        track: {
+                                            background: 'rgba(255, 255, 255, 0.1)',
+                                            strokeWidth: '97%',
+                                            margin: 0,
+                                        },
+                                    }
+                                },
+                                fill: {
+                                    type: 'gradient',
+                                    gradient: {
+                                        shade: 'dark',
+                                        type: 'horizontal',
+                                        gradientToColors: ['#00E396', '#FEB019', '#FF4560'],
+                                        stops: [33, 66, 100],
+                                        colorStops: [
+                                            { offset: 0, color: '#00E396' },
+                                            { offset: 50, color: '#FEB019' },
+                                            { offset: 100, color: '#FF4560' }
+                                        ]
+                                    }
+                                },
+                                stroke: {
+                                    lineCap: 'round',
+                                    dashArray: 4
+                                },
+                                labels: ['Sentiment Score']
+                            };
+
+                            // Only initialize if the element exists
+                            const gaugeElement = document.querySelector("#sentimentGauge");
+                            if (gaugeElement) {
+                                const chart = new ApexCharts(gaugeElement, options);
+                                chart.render();
+                            }
+                        });
+                    </script>
+
+                    <div class="row g-3 mb-4">
+                        {% for sentiment in [('positive', 'success'), ('neutral', 'warning'), ('negative', 'danger')] %}
+                        <div class="col-md-4">
+                            <div class="card bg-dark border-0 h-100">
+                                <div class="card-body text-center">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="mb-0 text-{{ sentiment[1] }}">{{ sentiment[0]|title }}</h6>
+                                        <span class="badge bg-{{ sentiment[1] }} bg-opacity-25">{{ sentiment_data[sentiment[0]].count }}</span>
+                                    </div>
+                                    {% set width = ((sentiment_data[sentiment[0]].count / sentiment_data.total_responses) * 100)|round(1) %}
+                                    <div class="progress progress-thin mb-3">
+                                        <div class="progress-bar bg-{{ sentiment[1] }} sentiment-progress" 
+                                             data-width="{{ width }}"
+                                             role="progressbar"
+                                             aria-valuenow="{{ width }}" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                    <style>
+                                        .progress-thin {
+                                            height: 6px !important;
+                                        }
+                                        .sentiment-progress[data-width] {
+                                            width: var(--progress-width, 0%);
+                                        }
+                                    </style>
+                                    <div class="d-flex justify-content-between small text-muted">
+                                        <span>{{ ((sentiment_data[sentiment[0]].count / sentiment_data.total_responses) * 100)|round(1) }}%</span>
+                                        <span class="{{ 'text-success' if sentiment_data[sentiment[0]].change > 0 else 'text-danger' }}">
+                                            <i class="fas {{ 'fa-arrow-up' if sentiment_data[sentiment[0]].change >= 0 else 'fa-arrow-down' }} me-1"></i>
+                                            {{ sentiment_data[sentiment[0]].change|abs }}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="mb-3">
-                                <div class="d-flex justify-content-between mb-1">
-                                    <span>Neutral</span>
-                                    <span class="text-warning font-weight-bold">{{ sentiment_data['Neutral'] }}</span>
-                                </div>
-                                <div class="progress" style="height: 10px;">
-                                    <div class="progress-bar bg-warning progress-neutral" role="progressbar"></div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-4">
+                        <h6 class="mb-3">Key Improvement Areas</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for area in sentiment_data.key_improvement_areas %}
+                            <span class="badge bg-secondary bg-opacity-25 text-white">{{ area }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="accordion" id="sentimentComments">
+                        <div class="accordion-item bg-transparent border-secondary">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button bg-dark text-white" type="button" data-bs-toggle="collapse" 
+                                        data-bs-target="#collapseComments" aria-expanded="false" aria-controls="collapseComments">
+                                    <i class="fas fa-comments me-2"></i> View Sample Feedback
+                                </button>
+                            </h2>
+                            <div id="collapseComments" class="accordion-collapse collapse" data-bs-parent="#sentimentComments">
+                                <div class="accordion-body bg-dark">
+                                    <div class="row g-3">
+                                        {% for sentiment in ['positive', 'neutral', 'negative'] %}
+                                        <div class="col-md-4">
+                                            <h6 class="text-{{ 'success' if sentiment == 'positive' else 'warning' if sentiment == 'neutral' else 'danger' }}">
+                                                {{ sentiment|title }} Feedback
+                                            </h6>
+                                            <ul class="list-unstyled small">
+                                                {% for comment in sentiment_data[sentiment].comments %}
+                                                <li class="mb-2 d-flex">
+                                                    <i class="fas fa-comment-alt text-{{ 'success' if sentiment == 'positive' else 'warning' if sentiment == 'neutral' else 'danger' }} me-2 mt-1"></i>
+                                                    {{ comment }}
+                                                </li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
                                 </div>
                             </div>
-                            <div class="mb-3">
-                                <div class="d-flex justify-content-between mb-1">
-                                    <span>Negative</span>
-                                    <span class="text-danger font-weight-bold">{{ sentiment_data['Negative'] }}</span>
-                                </div>
-                                <div class="progress" style="height: 10px;">
-                                    <div class="progress-bar bg-danger progress-negative" role="progressbar"></div>
-                                </div>
+                        </div>
+                    </div>
                             </div>
                             <p class="small text-muted mt-3">
                                 <i class="fas fa-info-circle"></i> Based on analysis of exit interview feedback using natural language processing.
@@ -459,66 +802,206 @@
             </div>
         </div>
         
-        <!-- Top Candidates -->
-        <div class="col-lg-6 mb-4">
-            <div class="card shadow h-100 bg-dark">
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                    <h6 class="m-0 font-weight-bold text-white">Top Candidates</h6>
-                    <button type="button" class="btn btn-sm btn-primary view-all-btn" data-type="top-candidates">View All</button>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Score</th>
-                                    <th>Status</th>
-                                    <th>Applied</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for candidate in candidates %}
-                                <tr>
-                                    <td>{{ candidate.name }}</td>
-                                    <td>
-                                        <span class="badge badge-pill badge-{{ 'success' if candidate.score >= 90 else 'warning' if candidate.score >= 80 else 'info' }}">
-                                            {{ candidate.score }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="badge 
-                                            {% if candidate.status == 'Offer Sent' %}bg-success
-                                            {% elif candidate.status == 'Interview Scheduled' %}bg-primary
-                                            {% elif candidate.status == 'Interviewed' %}bg-info
-                                            {% else %}bg-secondary{% endif %}">
-                                            {{ candidate.status }}
-                                        </span>
-                                    </td>
-                                    <td>{{ candidate.applied }}</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-primary view-candidate" data-bs-toggle="modal" data-bs-target="#candidateModal" 
-                                                data-name="{{ candidate.name }}" 
-                                                data-score="{{ candidate.score }}"
-                                                data-status="{{ candidate.status }}"
-                                                data-applied="{{ candidate.applied }}">
-                                            View
-                                        </button>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- Right Column - Top Candidates (This section intentionally left blank as it's a duplicate) -->
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
+    <script src="{{ url_for('static', filename='js/pipeline.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/activities.js') }}"></script>
+    <script>
+// Get data from the server-side template
+const recruitmentPipelineData = JSON.parse('{{ recruitment_pipeline|tojson|safe }}' || '{}');
+
+// Format the pipeline data to match the expected structure
+const pipelineStages = [
+    { key: 'sourced', display: 'Sourced' },
+    { key: 'applied', display: 'Applied' },
+    { key: 'phone_screen', display: 'Phone Screen' },
+    { key: 'technical_interview', display: 'Technical Interview' },
+    { key: 'final_interview', display: 'Final Interview' },
+    { key: 'offer_extended', display: 'Offer Extended' },
+    { key: 'hired', display: 'Hired' }
+];
+
+// Initialize pipeline data structure
+const pipelineData = {};
+
+// Populate pipeline data for each stage
+pipelineStages.forEach(stage => {
+    const stageCandidates = [];
+    pipelineData[stage.key] = {
+        candidates: stageCandidates,
+        count: 0
+    };
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function(tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Initialize modals
+    const pipelineModalEl = document.getElementById('pipelineModal');
+    const activitiesModalEl = document.getElementById('activitiesModal');
+    const skillModalEl = document.getElementById('skillDistributionModal');
+    
+    // Function to clean up modal
+    const cleanupModal = () => {
+        document.body.classList.remove('modal-open');
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop) {
+            backdrop.remove();
+        }
+    };
+    
+    if (pipelineModalEl) {
+        pipelineModalEl.addEventListener('hidden.bs.modal', cleanupModal);
+    }
+    
+    if (activitiesModalEl) {
+        activitiesModalEl.addEventListener('hidden.bs.modal', cleanupModal);
+    }
+    
+    if (skillModalEl) {
+        skillModalEl.addEventListener('hidden.bs.modal', cleanupModal);
+        
+        // Initialize skill distribution modal content when shown
+        skillModalEl.addEventListener('show.bs.modal', function () {
+            // Force a small delay to ensure modal is fully shown
+            setTimeout(() => {
+                loadSkillDistribution(20, true);
+            }, 100);
+        });
+    }
+
+    // Initialize search and filter for candidates modal
+    const exportBtn = document.getElementById('export-skills');
+    
+    if (exportBtn) exportBtn.addEventListener('click', function() {
+        alert('Exporting skill distribution data...');
+        // Export functionality would go here
+    });
+
+    // Set progress bar widths from data attributes
+    document.querySelectorAll('.progress-bar[data-width]').forEach(bar => {
+        bar.style.width = bar.dataset.width + '%';
+    });
+
+    // Initialize analytics if the function exists
+    if (typeof initAnalytics === 'function') {
+        initAnalytics();
+    }
+});
+
+// Load and display recruitment pipeline data
+function loadPipelineData() {
+    try {
+
+        // Update the count badges
+        Object.entries(pipelineData).forEach(([stage, data]) => {
+            const countElement = document.getElementById(`${stage.replace('_', '-')}-count`);
+            if (countElement) {
+                countElement.textContent = data.count;
+            }
+
+            // Create or update the table for this stage
+            const tableBody = document.querySelector(`#${stage.replace('_', '-')} tbody`);
+            if (tableBody) {
+                tableBody.innerHTML = ''; // Clear existing rows
+                
+                data.candidates.forEach(candidate => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${candidate.id}</td>
+                        <td>${candidate.name}</td>
+                        <td>${candidate.position}</td>
+                        <td><a href="mailto:${candidate.email}">${candidate.email}</a></td>
+                        <td>${candidate.phone}</td>
+                        <td><span class="badge bg-${getScoreBadgeClass(candidate.score)}">${candidate.score}%</span></td>
+                        <td><span class="badge ${getStatusBadgeClass(candidate.status.toLowerCase())}">${candidate.status}</span></td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+        });
+
+    } catch (error) {
+        console.error('Error loading pipeline data:', error);
+        alert('Failed to load recruitment pipeline data. Please try again later.');
+    }
+}
+
+// Recruitment Pipeline View All Functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Helper function to get badge class based on score
+    function getScoreBadgeClass(score) {
+        if (score >= 90) return 'success';
+        if (score >= 70) return 'info';
+        if (score >= 50) return 'warning';
+        return 'danger';
+    }
+    
+    // Helper function to get badge class based on status
+    function getStatusBadgeClass(status) {
+        const statusMap = {
+            'Sourced': 'secondary',
+            'Applied': 'primary',
+            'Phone Screen': 'info',
+            'Technical Interview': 'warning',
+            'Final Interview': 'primary',
+            'Offer Extended': 'success',
+            'Hired': 'success'
+        };
+        return statusMap[status] || 'secondary';
+    }
+    
+    // Handle export button click for pipeline
+    document.getElementById('export-pipeline')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        alert('Exporting pipeline data to Excel...');
+        // In a real app, you would implement Excel/CSV export here
+        return false;
+    });
+    
+    // Handle export button click for skill distribution
+    document.getElementById('export-skill-distribution')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        alert('Exporting skill distribution data to Excel...');
+        // In a real app, you would implement Excel/CSV export here
+        return false;
+    });
+    
+    // Properly handle modal show/hide events
+    document.querySelectorAll('[data-bs-toggle="modal"]').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetModal = this.getAttribute('data-bs-target');
+            if (targetModal) {
+                const modal = new bootstrap.Modal(document.querySelector(targetModal));
+                modal.show();
+            }
+        });
+    });
+    
+    // Handle skills export button
+    document.getElementById('export-skills').addEventListener('click', function() {
+        alert('Exporting skill distribution data...');
+        // Export functionality would go here
+    });
+});
+
+// Initialize analytics if the function exists
+if (typeof initAnalytics === 'function') {
+    initAnalytics();
+}
+</script>
+
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
@@ -531,26 +1014,12 @@
             { id: 4, name: 'Emily Davis', status: 'Offered', date: '2023-10-23', score: 90 },
             { id: 5, name: 'Michael Brown', status: 'Hired', date: '2023-10-22', score: 95 },
         ],
-        'candidates': [
-            { id: 1, name: 'John Doe', status: 'Interview Scheduled', date: '2023-10-26', score: 92 },
-            { id: 2, name: 'Jane Smith', status: 'Offer Sent', date: '2023-10-25', score: 88 },
-            { id: 3, name: 'Robert Johnson', status: 'New Application', date: '2023-10-24', score: 85 },
-            { id: 4, name: 'Emily Davis', status: 'Interviewed', date: '2023-10-23', score: 82 },
-            { id: 5, name: 'Michael Brown', status: 'Screening', date: '2023-10-22', score: 79 },
-        ],
         'activities': [
             { id: 1, name: 'John Doe', status: 'Applied', date: '2023-10-26 10:30', score: 92 },
             { id: 2, name: 'Jane Smith', status: 'Interview Scheduled', date: '2023-10-25 14:15', score: 88 },
             { id: 3, name: 'Robert Johnson', status: 'Resume Reviewed', date: '2023-10-24 09:45', score: 85 },
             { id: 4, name: 'Emily Davis', status: 'Offer Accepted', date: '2023-10-23 16:20', score: 90 },
             { id: 5, name: 'Michael Brown', status: 'Rejected', date: '2023-10-22 11:10', score: 70 },
-        ],
-        'top-candidates': [
-            { id: 1, name: 'John Doe', status: 'Interview Scheduled', date: '2023-10-26', score: 98 },
-            { id: 2, name: 'Jane Smith', status: 'Offer Sent', date: '2023-10-25', score: 95 },
-            { id: 3, name: 'Robert Johnson', status: 'New Application', date: '2023-10-24', score: 93 },
-            { id: 4, name: 'Emily Davis', status: 'Interviewed', date: '2023-10-23', score: 91 },
-            { id: 5, name: 'Michael Brown', status: 'Screening', date: '2023-10-22', score: 89 },
         ]
     };
 
@@ -608,20 +1077,22 @@
 
     // Initialize analytics data and charts
     function initAnalytics() {
-        // Sample data - replace with actual API calls
+        console.log('Initializing analytics with mock data...');
+        
+        // Enhanced mock data
         const analyticsData = {
-            totalCandidates: 128,
-            avgScore: 78.5,
-            interviewsScheduled: 24,
-            hiringRate: 15.2,
+            totalCandidates: 247,
+            avgScore: 82.3,
+            interviewsScheduled: 36,
+            hiringRate: 18.7,
             scoreDistribution: {
                 labels: ['0-20', '21-40', '41-60', '61-80', '81-100'],
-                data: [5, 15, 30, 45, 30]
+                data: [8, 22, 45, 87, 85]
             },
             hiringTrends: {
                 labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-                hired: [3, 5, 4, 7, 6, 8],
-                rejected: [12, 15, 18, 14, 16, 13]
+                hired: [5, 8, 12, 15, 18, 22],
+                rejected: [15, 18, 20, 25, 22, 20]
             },
             topSkills: ['Python', 'JavaScript', 'SQL', 'AWS', 'React']
         };
@@ -632,9 +1103,25 @@
         document.getElementById('interviewsScheduled').textContent = analyticsData.interviewsScheduled;
         document.getElementById('hiringRate').textContent = analyticsData.hiringRate + '%';
 
-        // Initialize charts
-        initScoreDistributionChart(analyticsData.scoreDistribution);
-        initHiringTrendsChart(analyticsData.hiringTrends);
+        // Initialize charts with error handling
+        try {
+            initScoreDistributionChart(analyticsData.scoreDistribution);
+            initHiringTrendsChart(analyticsData.hiringTrends);
+            console.log('Charts initialized successfully');
+        } catch (error) {
+            console.error('Error initializing charts:', error);
+            // Fallback to showing data in text format if charts fail
+            document.getElementById('chartFallback').style.display = 'block';
+            document.getElementById('chartFallback').innerHTML = `
+                <div class="alert alert-info">
+                    <h5>Hiring Statistics</h5>
+                    <p>Total Candidates: ${analyticsData.totalCandidates}</p>
+                    <p>Average Score: ${analyticsData.avgScore}%</p>
+                    <p>Interviews Scheduled: ${analyticsData.interviewsScheduled}</p>
+                    <p>Hiring Rate: ${analyticsData.hiringRate}%</p>
+                </div>
+            `;
+        }
     }
 
     function initScoreDistributionChart(data) {
@@ -698,33 +1185,212 @@
         });
     }
 
-    // Initialize event listeners for View All buttons
+    // Mock skill distribution data
+    const mockSkillData = [
+        { name: 'Python', count: 125, percentage: 42 },
+        { name: 'JavaScript', count: 98, percentage: 33 },
+        { name: 'SQL', count: 87, percentage: 29 },
+        { name: 'React', count: 76, percentage: 25 },
+        { name: 'Node.js', count: 65, percentage: 22 },
+        { name: 'AWS', count: 58, percentage: 19 },
+        { name: 'Docker', count: 54, percentage: 18 },
+        { name: 'Machine Learning', count: 48, percentage: 16 },
+        { name: 'Data Analysis', count: 42, percentage: 14 },
+        { name: 'DevOps', count: 37, percentage: 12 },
+        { name: 'TypeScript', count: 35, percentage: 12 },
+        { name: 'GraphQL', count: 28, percentage: 9 },
+        { name: 'Kubernetes', count: 25, percentage: 8 },
+        { name: 'Terraform', count: 22, percentage: 7 },
+        { name: 'CI/CD', count: 20, percentage: 7 },
+        { name: 'Microservices', count: 18, percentage: 6 },
+        { name: 'REST API', count: 15, percentage: 5 },
+        { name: 'MongoDB', count: 14, percentage: 5 },
+        { name: 'PostgreSQL', count: 12, percentage: 4 },
+        { name: 'Redis', count: 10, percentage: 3 }
+    ];
+
+    // Function to load skill distribution data with pagination
+    function loadSkillDistribution(limit = 5, isModal = false) {
+        try {
+            // Use mock data instead of API call
+            const data = mockSkillData.slice(0, isModal ? 20 : limit);
+            
+            // Update the UI with the skill distribution data
+            updateSkillDistributionUI(data, limit, isModal);
+            
+            // Show/hide view all button based on limit
+            const viewAllBtn = document.querySelector('.skill-distribution .view-all-btn');
+            if (viewAllBtn) {
+                viewAllBtn.style.display = limit === 5 ? 'block' : 'none';
+            }
+        } catch (error) {
+            console.error('Error loading skill distribution:', error);
+            // Fallback to mock data on error
+            updateSkillDistributionUI(mockSkillData.slice(0, isModal ? 20 : limit), limit, isModal);
+        }
+    }
+    
+    // Function to update skill distribution UI
+    function updateSkillDistributionUI(skillsData, limit = 5, isModal = false) {
+        console.log('Updating skill distribution UI', { isModal, skillsData });
+        
+        // If this is for the modal, update the modal table
+        if (isModal) {
+            const tableBody = document.getElementById('skill-distribution-body');
+            console.log('Modal table body:', tableBody);
+            
+            if (tableBody) {
+                const rows = skillsData.map(skill => `
+                    <tr>
+                        <td>${skill.name}</td>
+                        <td class="text-end">${skill.count}</td>
+                        <td class="text-end">${skill.percentage}%</td>
+                    </tr>
+                `).join('');
+                
+                console.log('Generated rows:', rows);
+                tableBody.innerHTML = rows;
+                
+                // Log the final HTML for debugging
+                console.log('Table body HTML after update:', tableBody.innerHTML);
+            } else {
+                console.error('Could not find skill-distribution-body element');
+            }
+            return;
+        }
+        const container = document.querySelector('.skill-distribution .card-body');
+        if (!container) return;
+        
+        // Clear existing content
+        container.innerHTML = '';
+        
+        // Create a row for the charts
+        const row = document.createElement('div');
+        row.className = 'row';
+        
+        // Process each skill category
+        Object.entries(skillsData).forEach(([category, skills], index) => {
+            // Only show limited number of skills per category if limit is set
+            const skillsToShow = limit ? Object.entries(skills).slice(0, limit) : Object.entries(skills);
+            
+            // Create a column for this category
+            const col = document.createElement('div');
+            col.className = 'col-md-6 col-lg-4 mb-4';
+            
+            // Create card for this category
+            const card = document.createElement('div');
+            card.className = 'card h-100 border-0 shadow-sm';
+            
+            // Card header
+            const cardHeader = document.createElement('div');
+            cardHeader.className = 'card-header bg-white';
+            cardHeader.innerHTML = `<h6 class="mb-0">${category}</h6>`;
+            
+            // Card body
+            const cardBody = document.createElement('div');
+            cardBody.className = 'card-body';
+            
+            // Add skills to card body
+            const skillsList = document.createElement('div');
+            skillsList.className = 'list-group list-group-flush';
+            
+            skillsToShow.forEach(([skill, data]) => {
+                const skillItem = document.createElement('div');
+                skillItem.className = 'list-group-item border-0 px-0';
+                
+                const skillName = document.createElement('div');
+                skillName.className = 'd-flex justify-content-between mb-1';
+                skillName.innerHTML = `
+                    <span class="fw-medium">${skill}</span>
+                    <span class="text-muted small">${data}%</span>
+                `;
+                
+                const progress = document.createElement('div');
+                progress.className = 'progress progress-sm';
+                progress.innerHTML = `
+                    <div class="progress-bar bg-primary" role="progressbar" 
+                         style="width: ${data}%" 
+                         aria-valuenow="${data}" 
+                         aria-valuemin="0" 
+                         aria-valuemax="100">
+                    </div>
+                `;
+                
+                skillItem.appendChild(skillName);
+                skillItem.appendChild(progress);
+                skillsList.appendChild(skillItem);
+            });
+            
+            // Add view more button if there are more skills
+            if (limit && Object.keys(skills).length > limit) {
+                const viewMoreBtn = document.createElement('button');
+                viewMoreBtn.className = 'btn btn-sm btn-link text-decoration-none w-100 mt-2';
+                viewMoreBtn.textContent = `View All ${Object.keys(skills).length} Skills`;
+                viewMoreBtn.onclick = () => loadSkillDistribution();
+                cardBody.appendChild(viewMoreBtn);
+            }
+            
+            cardBody.appendChild(skillsList);
+            card.appendChild(cardHeader);
+            card.appendChild(cardBody);
+            col.appendChild(card);
+            row.appendChild(col);
+        });
+        
+        container.appendChild(row);
+    }
+    
+    // Initialize skill distribution when DOM is loaded
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM fully loaded, initializing skill distribution...');
+        // Load initial skill distribution with limit
+        loadSkillDistribution(5);
+        
+        // Manually trigger skill distribution load for the modal if it's open
+        const viewAllBtn = document.querySelector('[data-bs-target="#skillDistributionModal"]');
+        if (viewAllBtn) {
+            viewAllBtn.addEventListener('click', function() {
+                console.log('View All button clicked, loading skill data...');
+                // Small delay to ensure modal is shown before updating
+                setTimeout(() => {
+                    loadSkillDistribution(20, true);
+                }, 100);
+            });
+        }
+        
+        // Handle view all button click for skill distribution
+        document.querySelectorAll('.view-all-btn[data-type="skill-distribution"]').forEach(btn => {
+            btn.addEventListener('click', () => loadSkillDistribution());
+        });
+        
+        // Initialize progress bars
+        document.querySelectorAll('.progress-bar[data-percentage]').forEach(bar => {
+            const percentage = bar.getAttribute('data-percentage');
+            bar.style.width = `${percentage}%`;
+            bar.setAttribute('aria-valuenow', percentage);
+        });
+
+        // Initialize analytics with mock data
         initAnalytics();
+        
+        // Set up a small delay to ensure all elements are fully loaded
+        setTimeout(initAnalytics, 500);
+        
         // View All buttons
         document.querySelectorAll('.view-all-btn').forEach(button => {
             button.addEventListener('click', function() {
                 const dataType = this.getAttribute('data-type');
-                const modalTitle = document.getElementById('viewAllModalLabel');
+                let modalId = '';
                 
-                // Set modal title based on button type
-                const titles = {
-                    'pipeline': 'Recruitment Pipeline - All Candidates',
-                    'candidates': 'All Candidates',
-                    'activities': 'Recent Activities',
-                    'top-candidates': 'Top Candidates'
+                // Map button types to their respective modal IDs
+                const modalMap = {
+                    'pipeline': 'pipelineModal'
                 };
                 
-                modalTitle.textContent = titles[dataType] || 'View All Items';
-                
-                // Populate modal with data
-                if (mockData[dataType]) {
-                    populateModal(mockData[dataType]);
+                if (modalMap[dataType]) {
+                    const modal = new bootstrap.Modal(document.getElementById(modalMap[dataType]));
+                    modal.show();
                 }
-                
-                // Show the modal
-                const modal = new bootstrap.Modal(document.getElementById('viewAllModal'));
-                modal.show();
             });
         });
 
@@ -760,6 +1426,11 @@
             return container && container.innerHTML.trim() !== '';
         }
         
+        // Set progress bar widths from data attributes
+        document.querySelectorAll('.progress-bar[data-width]').forEach(bar => {
+            bar.style.width = bar.dataset.width + '%';
+        });
+
         // Initialize charts with a small delay to ensure DOM is ready
         setTimeout(function() {
             // Force Plotly to redraw all charts

@@ -3,19 +3,24 @@ import json
 import random
 import sys
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash, send_from_directory, current_app, Blueprint
+from typing import Dict, Any
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_from_directory, send_file, abort
 from flask_sqlalchemy import SQLAlchemy
-from flask_wtf.csrf import CSRFProtect, generate_csrf
 from flask_migrate import Migrate
+from flask_wtf.csrf import CSRFProtect
+# Flask-Login has been removed in favor of session-based authentication
+from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from typing import Dict, List, Any, Tuple, Optional
-import re
-import pickle
 import os
+import json
+import random
+import sys
+from datetime import datetime, timedelta
+from functools import wraps
+import uuid
+import shutil
 from pathlib import Path
-from datetime import datetime
-
-# Import models after db is initialized to avoid circular imports
+from resume_parser import ResumeParser  # Import the ResumeParser class initialized to avoid circular imports
 from models import db, User, Candidate, Resume, JobPosting, Application, Interview, Note, AIConversation, AIMessage
 from resume_parser import ResumeData
 
@@ -103,9 +108,36 @@ def calculate_match_score(resume_data: ResumeData, job_title: str, job_descripti
     }
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'dev-key-please-change-in-production'
+
+# Custom Jinja2 filter for date formatting
+def datetimeformat(value, format='%Y-%m-%d %H:%M'):
+    if value is None:
+        return ''
+    if isinstance(value, str):
+        try:
+            # Try to parse the string as a datetime
+            value = datetime.strptime(value, '%Y-%m-%dT%H:%M')
+        except (ValueError, TypeError):
+            try:
+                # Try a different format if the first one fails
+                value = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+            except (ValueError, TypeError):
+                return value  # Return as is if we can't parse it
+    return value.strftime(format)
+
+# Register custom Jinja2 filters
+app.jinja_env.filters['datetimeformat'] = datetimeformat
+
+# Context processor to make 'now' available in all templates
+@app.context_processor
+def inject_now():
+    return {'now': datetime.utcnow()}
 
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
+
+# Session-based authentication is used instead of Flask-Login
 
 # Basic Configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'dev-key-please-change-in-production'
@@ -320,38 +352,38 @@ if os.environ.get('FLASK_ENV') == 'development':
 def index():
     return redirect(url_for('select_role'))
 
-@app.route('/logout')
-def logout():
-    return redirect(url_for('select_role'))
-
 @app.route('/select-role')
 def select_role():
-    # Set default user as HR for demo purposes
-    session['user_id'] = 1
+    # Check if user is already logged in
+    if 'user_role' in session:
+        if session['user_role'] == 'hr':
+            return redirect(url_for('hr_dashboard'))
+        elif session['user_role'] == 'candidate':
+            return redirect(url_for('candidate_dashboard'))
+    
+    # Clear any existing session data if no valid role
+    session.clear()
+    # Render the role selection page
+    return render_template('role_selection.html')
+
+@app.route('/login/hr')
+def login_hr():
+    # Set up a mock HR user
     session['user_role'] = 'hr'
-    session['user_name'] = 'Demo HR User'
+    session['user_name'] = 'HR User'
     return redirect(url_for('hr_dashboard'))
 
-# Public routes for all templates
-@app.route('/analytics')
-def analytics():
-    return render_template('analytics.html')
+@app.route('/login/candidate')
+def login_candidate():
+    # Set up a mock candidate user
+    session['user_role'] = 'candidate'
+    session['user_name'] = 'Candidate User'
+    return redirect(url_for('candidate_dashboard'))
 
-@app.route('/candidate/applications')
-def candidate_applications_route():
-    return render_template('candidate_applications.html')
-
-@app.route('/candidate/dashboard')
-def candidate_dashboard_route():
-    return render_template('candidate_dashboard.html')
-
-@app.route('/candidate/interviews')
-def candidate_interviews_route():
-    return render_template('candidate_interviews.html')
-
-@app.route('/candidate/resume')
-def candidate_resume_route():
-    return render_template('candidate_resume.html')
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('select_role'))
 
 @app.route('/dashboard')
 def dashboard_route():
@@ -361,13 +393,927 @@ def dashboard_route():
 def error_route():
     return render_template('error.html')
 
-@app.route('/exit')
+def get_exit_interview_data():
+    """Generate comprehensive mock data for the exit interview page"""
+    # Exit survey questions
+    exit_survey = {
+        'id': 'survey1',
+        'title': 'Exit Interview Survey',
+        'description': 'Please help us improve by sharing your experience and feedback.',
+        'sections': [
+            {
+                'id': 'section1',
+                'title': 'Your Experience',
+                'questions': [
+                    {
+                        'id': 'q1',
+                        'type': 'rating',
+                        'question': 'How would you rate your overall experience working at our company?',
+                        'required': True,
+                        'options': ['1 - Very Poor', '2', '3 - Neutral', '4', '5 - Excellent']
+                    },
+                    {
+                        'id': 'q2',
+                        'type': 'text',
+                        'question': 'What did you enjoy most about working here?',
+                        'required': True,
+                        'placeholder': 'Share your positive experiences...'
+                    },
+                    {
+                        'id': 'q3',
+                        'type': 'text',
+                        'question': 'What could we improve to make this a better workplace?',
+                        'required': True,
+                        'placeholder': 'Your suggestions for improvement...'
+                    }
+                ]
+            },
+            {
+                'id': 'section2',
+                'title': 'Your Role',
+                'questions': [
+                    {
+                        'id': 'q4',
+                        'type': 'rating',
+                        'question': 'How would you rate your job satisfaction?',
+                        'required': True,
+                        'options': ['1 - Very Dissatisfied', '2', '3 - Neutral', '4', '5 - Very Satisfied']
+                    },
+                    {
+                        'id': 'q5',
+                        'type': 'multiselect',
+                        'question': 'What factors contributed to your decision to leave? (Select all that apply)',
+                        'required': True,
+                        'options': [
+                            'Career advancement opportunities',
+                            'Compensation and benefits',
+                            'Work-life balance',
+                            'Management style',
+                            'Company culture',
+                            'Job responsibilities',
+                            'Work environment',
+                            'Other (please specify)'
+                        ]
+                    },
+                    {
+                        'id': 'q6',
+                        'type': 'text',
+                        'question': 'What would have made you stay?',
+                        'required': False,
+                        'placeholder': 'Optional feedback...'
+                    }
+                ]
+            },
+            {
+                'id': 'section3',
+                'title': 'Knowledge Transfer',
+                'questions': [
+                    {
+                        'id': 'q7',
+                        'type': 'text',
+                        'question': 'Please provide details about your current projects and their status',
+                        'required': True,
+                        'placeholder': 'Project details and current status...'
+                    },
+                    {
+                        'id': 'q8',
+                        'type': 'text',
+                        'question': 'List any important documents or resources you\'ve created',
+                        'required': False,
+                        'placeholder': 'Document names and locations...'
+                    },
+                    {
+                        'id': 'q9',
+                        'type': 'text',
+                        'question': 'Who are the key contacts for your projects?',
+                        'required': False,
+                        'placeholder': 'Names and contact information...'
+                    }
+                ]
+            }
+        ]
+    }
+
+    # Offboarding checklist
+    offboarding_checklist = {
+        'id': 'checklist1',
+        'title': 'Offboarding Checklist',
+        'items': [
+            {
+                'id': 'item1',
+                'task': 'Return company equipment (laptop, badge, etc.)',
+                'status': 'completed',
+                'assigned_to': 'Employee',
+                'due_date': (datetime.now() + timedelta(days=2)).strftime('%Y-%m-%d'),
+                'category': 'Equipment',
+                'notes': 'Laptop and badge need to be returned to IT department'
+            },
+            {
+                'id': 'item2',
+                'task': 'Complete exit interview',
+                'status': 'in_progress',
+                'assigned_to': 'HR Department',
+                'due_date': (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d'),
+                'category': 'HR',
+                'notes': 'Scheduled with Jane Smith from HR'
+            },
+            {
+                'id': 'item3',
+                'task': 'Submit final expense reports',
+                'status': 'pending',
+                'assigned_to': 'Employee',
+                'due_date': (datetime.now() + timedelta(days=3)).strftime('%Y-%m-%d'),
+                'category': 'Finance',
+                'notes': 'All receipts must be attached'
+            },
+            {
+                'id': 'item4',
+                'task': 'Knowledge transfer to team',
+                'status': 'in_progress',
+                'assigned_to': 'Team Lead',
+                'due_date': (datetime.now() + timedelta(days=2)).strftime('%Y-%m-%d'),
+                'category': 'Knowledge Transfer',
+                'notes': 'Schedule with Alex and Sam from the team'
+            },
+            {
+                'id': 'item5',
+                'task': 'Revoke system access',
+                'status': 'not_started',
+                'assigned_to': 'IT Department',
+                'due_date': (datetime.now() + timedelta(days=5)).strftime('%Y-%m-%d'),
+                'category': 'IT',
+                'notes': 'Will be done automatically on last working day'
+            },
+            {
+                'id': 'item6',
+                'task': 'Exit survey completion',
+                'status': 'in_progress',
+                'assigned_to': 'Employee',
+                'due_date': (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d'),
+                'category': 'HR',
+                'notes': 'Complete the online exit survey form'
+            },
+            {
+                'id': 'item7',
+                'task': 'Beneficiary updates',
+                'status': 'pending',
+                'assigned_to': 'HR Department',
+                'due_date': (datetime.now() + timedelta(days=3)).strftime('%Y-%m-%d'),
+                'category': 'Benefits',
+                'notes': 'Update or confirm beneficiary information'
+            }
+        ]
+    }
+
+    # Knowledge transfer templates
+    knowledge_transfer_templates = [
+        {
+            'id': 'kt1',
+            'name': 'Project Handover Template',
+            'description': 'Template for documenting project details, contacts, and next steps',
+            'file_type': 'docx',
+            'download_url': '/templates/project_handover.docx'
+        },
+        {
+            'id': 'kt2',
+            'name': 'Role Responsibilities',
+            'description': 'Template for documenting key responsibilities and processes',
+            'file_type': 'pdf',
+            'download_url': '/templates/role_responsibilities.pdf'
+        },
+        {
+            'id': 'kt3',
+            'name': 'Frequently Used Resources',
+            'description': 'Template for listing important documents and resources',
+            'file_type': 'xlsx',
+            'download_url': '/templates/resources_list.xlsx'
+        }
+    ]
+
+    # Exit interview schedule
+    exit_interview_schedule = {
+        'id': 'schedule1',
+        'scheduled_date': '2023-11-10',
+        'scheduled_time': '2:00 PM',
+        'location': 'Conference Room A',
+        'interviewer': 'Jane Smith (HR Manager)',
+        'status': 'scheduled',
+        'duration': '60 minutes',
+        'prep_notes': 'Please review the exit survey questions before the meeting.'
+    }
+
+    return {
+        'exit_survey': exit_survey,
+        'offboarding_checklist': offboarding_checklist,
+        'knowledge_transfer_templates': knowledge_transfer_templates,
+        'exit_interview': exit_interview_schedule,
+        'employee_info': {
+            'name': 'John Doe',
+            'employee_id': 'EMP-10045',
+            'department': 'Engineering',
+            'position': 'Senior Developer',
+            'start_date': '2021-05-15',
+            'last_working_day': '2023-11-15',
+            'manager': 'Sarah Johnson',
+            'email': 'john.doe@company.com',
+            'phone': '(555) 789-0123'
+        }
+    }
+
+@app.route('/exit', methods=['GET', 'POST'])
 def exit_route():
-    return render_template('exit.html')
+    if request.method == 'GET':
+        # Get mock data for the exit interview page
+        exit_data = get_exit_interview_data()
+        # Add current date to the template context
+        from datetime import datetime
+        exit_data['current_date'] = datetime.now().strftime('%Y-%m-%d')
+        return render_template('exit.html', **exit_data)
+    
+    elif request.method == 'POST':
+        try:
+            # Handle form submission for exit survey
+            form_data = request.form
+            # In a real application, you would save this data to a database
+            print("Exit survey submitted:", form_data)
+            return jsonify({'status': 'success', 'message': 'Thank you for your feedback!'})
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/onboarding', methods=['GET', 'POST'])
+def onboarding_route():
+    # Get onboarding data
+    onboarding_data = get_mock_onboarding_data()
+    
+    # Sample job positions and descriptions
+    job_positions = [
+        {
+            'id': 1,
+            'title': 'Senior Software Engineer',
+            'description': 'We are looking for an experienced Senior Software Engineer with expertise in Python, Django, and modern web technologies. The ideal candidate will have 5+ years of experience in building scalable web applications.',
+            'required_skills': ['Python', 'Django', 'REST APIs', 'PostgreSQL', 'AWS', 'Docker', 'CI/CD'],
+            'experience_required': '5+ years',
+            'location': 'Remote',
+            'type': 'Full-time'
+        },
+        {
+            'id': 2,
+            'title': 'Data Scientist',
+            'description': 'Seeking a Data Scientist with strong background in machine learning and data analysis. The role involves developing predictive models and providing data-driven insights.',
+            'required_skills': ['Python', 'Machine Learning', 'TensorFlow', 'Pandas', 'SQL', 'Data Visualization'],
+            'experience_required': '3+ years',
+            'location': 'New York, NY',
+            'type': 'Full-time'
+        },
+        {
+            'id': 3,
+            'title': 'DevOps Engineer',
+            'description': 'Looking for a DevOps Engineer to automate and optimize our infrastructure and deployment processes.',
+            'required_skills': ['AWS', 'Docker', 'Kubernetes', 'CI/CD', 'Terraform', 'Linux'],
+            'experience_required': '4+ years',
+            'location': 'San Francisco, CA',
+            'type': 'Full-time'
+        }
+    ]
+    
+    # Initialize candidates list from session or use default empty list
+    candidates = session.get('candidates', [])
+    
+    # Handle form submission
+    if request.method == 'POST':
+        if 'resume' in request.files and 'job_position' in request.form:
+            try:
+                # Get selected job position
+                selected_job_id = int(request.form.get('job_position'))
+                selected_job = next((job for job in job_positions if job['id'] == selected_job_id), None)
+                
+                if not selected_job:
+                    flash('Invalid job position selected', 'error')
+                    return redirect(url_for('onboarding_route'))
+                
+                # Handle file upload
+                resume_file = request.files['resume']
+                if resume_file.filename != '':
+                    # Save the file temporarily
+                    uploads_dir = os.path.join('uploads')
+                    os.makedirs(uploads_dir, exist_ok=True)
+                    
+                    # Generate a unique filename
+                    filename = secure_filename(resume_file.filename)
+                    filepath = os.path.join(uploads_dir, filename)
+                    resume_file.save(filepath)
+                    
+                    # Parse the resume
+                    parser = ResumeParser()
+                    resume_data = parser.parse_resume(filepath)
+                    
+                    # Calculate match score based on job requirements
+                    required_skills = set(skill.lower() for skill in selected_job['required_skills'])
+                    candidate_skills = set(skill.lower() for skill in (resume_data.skills or []))
+                    matched_skills = required_skills.intersection(candidate_skills)
+                    match_score = int((len(matched_skills) / len(required_skills)) * 100) if required_skills else 0
+                    
+                    # Get experience in years
+                    experience_years = 0
+                    if resume_data.experience:
+                        for exp in resume_data.experience:
+                            if 'start_date' in exp and exp['start_date']:
+                                try:
+                                    start_year = int(exp['start_date'].split('-')[0])
+                                    end_year = datetime.now().year
+                                    if 'end_date' in exp and exp['end_date'] and exp['end_date'].lower() != 'present':
+                                        end_year = int(exp['end_date'].split('-')[0])
+                                    experience_years += (end_year - start_year)
+                                except (ValueError, IndexError):
+                                    pass
+                    
+                    # Create a new candidate from the parsed resume
+                    new_candidate = {
+                        'id': len(candidates) + 1,
+                        'name': f"{resume_data.first_name} {resume_data.last_name}".strip() or 'New Candidate',
+                        'email': resume_data.email or f"candidate{len(candidates) + 1}@example.com",
+                        'position': selected_job['title'],
+                        'status': 'New',
+                        'applied_date': datetime.now().strftime('%Y-%m-%d'),
+                        'start_date': (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d'),
+                        'resume_uploaded': True,
+                        'resume_file': filename,
+                        'job_position': selected_job,
+                        'resume_analysis': {
+                            'match_score': match_score,
+                            'matched_skills': list(matched_skills),
+                            'missing_skills': list(required_skills - candidate_skills),
+                            'skills': resume_data.skills or [],
+                            'experience': f"{experience_years} years" if experience_years > 0 else 'Not specified',
+                            'education': resume_data.education[0]['degree'] if resume_data.education else 'Not specified',
+                            'status': 'Pending Review',
+                            'summary': resume_data.summary or 'No summary available',
+                            'experience_details': [
+                                {
+                                    'title': exp.get('title', 'Not specified'),
+                                    'company': exp.get('company', 'Not specified'),
+                                    'duration': f"{exp.get('start_date', '')} - {exp.get('end_date', 'Present')}",
+                                    'description': exp.get('description', 'No description')
+                                }
+                                for exp in (resume_data.experience or [])[:3]  # Show up to 3 most recent experiences
+                            ]
+                        },
+                        'avatar': f"https://ui-avatars.com/api/?name={resume_data.first_name}+{resume_data.last_name if resume_data.last_name else 'Candidate'}&background=random"
+                    }
+                    
+                    # Add the new candidate to the list
+                    candidates.append(new_candidate)
+                    session['candidates'] = candidates
+                    
+                    # Clean up the temporary file
+                    if os.path.exists(filepath):
+                        os.remove(filepath)
+                    
+                    flash(f'Resume uploaded and analyzed! Match score: {match_score}% for {selected_job["title"]}', 'success')
+                    return redirect(url_for('onboarding_route'))
+                else:
+                    flash('No file selected', 'error')
+                    return redirect(url_for('onboarding_route'))
+                    
+            except Exception as e:
+                import traceback
+                print(f"Error processing resume: {str(e)}\n{traceback.format_exc()}")
+                flash(f'Error processing resume: {str(e)}', 'error')
+                return redirect(url_for('onboarding_route'))
+        else:
+            flash('Please select both a resume and a job position', 'error')
+            return redirect(url_for('onboarding_route'))
+    
+    # Generate mock candidates if none exist
+    if not candidates:
+        candidates = [
+            {
+                'id': 1,
+                'name': 'John Smith',
+                'email': 'john.smith@example.com',
+                'position': 'Senior Software Engineer',
+                'avatar': 'https://randomuser.me/api/portraits/men/32.jpg',
+                'applied_date': '2023-10-28',
+                'status': 'New',
+                'resume_analysis': {
+                    'match_score': 87,
+                    'skills': ['Python', 'JavaScript', 'Docker', 'AWS', 'React', 'Node.js'],
+                    'experience': '8 years',
+                    'education': 'MSc Computer Science'
+                }
+            },
+            {
+                'id': 2,
+                'name': 'Sarah Johnson',
+                'email': 'sarah.j@example.com',
+                'position': 'UX/UI Designer',
+                'avatar': 'https://randomuser.me/api/portraits/women/44.jpg',
+                'applied_date': '2023-10-27',
+                'status': 'In Review',
+                'resume_analysis': {
+                    'match_score': 92,
+                    'skills': ['Figma', 'Sketch', 'Adobe XD', 'User Research', 'Prototyping'],
+                    'experience': '5 years',
+                    'education': 'BFA in Design'
+                }
+            },
+            {
+                'id': 3,
+                'name': 'Michael Chen',
+                'email': 'michael.c@example.com',
+                'position': 'Data Scientist',
+                'avatar': 'https://randomuser.me/api/portraits/men/67.jpg',
+                'applied_date': '2023-10-26',
+                'status': 'Screening',
+                'resume_analysis': {
+                    'match_score': 78,
+                    'skills': ['Python', 'Machine Learning', 'TensorFlow', 'Data Analysis', 'SQL'],
+                    'experience': '6 years',
+                    'education': 'PhD in Data Science'
+                }
+            }
+        ]
+
+    # Mock new hire data
+    new_hire = {
+        'name': 'New Employee',  # Default name, you can customize this
+        'position': 'New Position',
+        'start_date': datetime.now().strftime('%B %d, %Y'),
+        'department': 'Engineering',
+        'manager': 'John Doe',
+        'email': 'new.employee@example.com'
+    }
+    
+    # Mock onboarding checklist
+    onboarding_checklist = {
+        'Pre-arrival': [
+            'Complete new hire paperwork',
+            'Submit tax forms',
+            'Complete I-9 verification',
+            'Enroll in benefits',
+            'Set up direct deposit'
+        ],
+        'First Day': [
+            'Office tour',
+            'IT setup and access',
+            'Meet the team',
+            'Review company policies',
+            'Set up email and accounts'
+        ],
+        'First Week': [
+            'Complete training modules',
+            'Meet with manager',
+            'Project onboarding',
+            'Team introduction',
+            'Goal setting session'
+        ],
+        'First 30 Days': [
+            'Complete all required training',
+            'Meet with HR for check-in',
+            'Deliver first project milestone',
+            'Attend team building event',
+            '30-day performance review'
+        ]
+    }
+    
+    # For GET requests or after successful POST
+    return render_template('onboarding.html', 
+                         onboarding_data=onboarding_data,
+                         candidates=candidates,
+                         job_positions=job_positions,
+                         sample_candidates=candidates[:2],  # First 2 candidates as sample
+                         new_hire=new_hire,
+                         onboarding_checklist=onboarding_checklist)
+
+def get_mock_interview_data(candidate_id=None):
+    """Generate mock interview data for the interview evaluation page"""
+    # List of possible candidates
+    candidates = [
+        {
+            'id': 1,
+            'name': 'Louis Litt',
+            'email': 'louis.litt@example.com',
+            'position': 'Senior Software Engineer',
+            'experience': '7 years',
+            'status': 'Interview Scheduled',
+            'avatar': 'https://randomuser.me/api/portraits/men/32.jpg',
+            'applied_date': '2023-10-15',
+            'resume_match': '92%',
+            'skills': ['Python', 'Django', 'React', 'AWS', 'Docker', 'PostgreSQL'],
+            'education': 'MSc in Computer Science, Stanford University',
+            'current_company': 'Tech Solutions Inc.',
+            'notice_period': '30 days',
+            'expected_salary': '$120,000',
+            'location': 'San Francisco, CA',
+            'phone': '(555) 123-4567',
+            'linkedin': 'linkedin.com/in/johndoe',
+            'github': 'github.com/johndoe',
+            'portfolio': 'johndoe.dev',
+            'interview_date': '2023-11-15 14:30',
+            'interview_type': 'Technical',
+            'interviewer': 'Stanley Lipschitz',
+            'interview_notes': 'Strong technical background with extensive experience in full-stack development.',
+            'evaluation': {
+                'technical_skills': 4,
+                'problem_solving': 5,
+                'communication': 4,
+                'cultural_fit': 4,
+                'overall_rating': 4.25,
+                'strengths': ['Strong problem-solving skills', 'Deep technical knowledge', 'Good communication'],
+                'areas_for_improvement': ['Could demonstrate more leadership experience', 'Limited experience with microservices'],
+                'recommendation': 'Strong Hire',
+                'notes': 'Candidate performed exceptionally well in the technical assessment.'
+            },
+            'interview_transcript': [
+                {'speaker': 'Interviewer', 'text': 'Can you tell me about a challenging project you worked on?'},
+                {'speaker': 'Candidate', 'text': 'At my current role, I led the migration of our monolith to microservices...'},
+                {'speaker': 'Interviewer', 'text': 'How did you handle the database schema changes?'},
+                {'speaker': 'Candidate', 'text': 'We used a blue-green deployment strategy with feature flags...'}
+            ]
+        },
+        {
+            'id': 2,
+            'name': 'Rachel Zane',
+            'email': 'rachel.zane@example.com',
+            'position': 'Frontend Developer',
+            'experience': '5 years',
+            'status': 'Technical Interview',
+            'avatar': 'https://randomuser.me/api/portraits/women/44.jpg',
+            'applied_date': '2023-10-20',
+            'resume_match': '88%',
+            'skills': ['JavaScript', 'React', 'TypeScript', 'Redux', 'CSS', 'Jest'],
+            'education': 'BSc in Computer Science, MIT',
+            'current_company': 'WebCraft LLC',
+            'notice_period': '15 days',
+            'expected_salary': '$110,000',
+            'location': 'New York, NY',
+            'phone': '(555) 987-6543',
+            'linkedin': 'linkedin.com/in/janesmith',
+            'github': 'github.com/janesmith',
+            'portfolio': 'janesmith.dev',
+            'interview_date': '2023-11-16 11:00',
+            'interview_type': 'Technical',
+            'interviewer': 'Michael Ross',
+            'interview_notes': 'Excellent frontend skills with a good eye for design. Strong in React and modern JavaScript.',
+            'evaluation': {
+                'technical_skills': 5,
+                'problem_solving': 4,
+                'communication': 5,
+                'cultural_fit': 5,
+                'overall_rating': 4.75,
+                'strengths': ['Exceptional UI/UX skills', 'Strong React knowledge', 'Great team player'],
+                'areas_for_improvement': ['Could improve test coverage', 'Limited backend experience'],
+                'recommendation': 'Hire',
+                'notes': 'Top candidate for the frontend role. Would be a great cultural fit.'
+            },
+            'interview_transcript': [
+                {'speaker': 'Interviewer', 'text': 'How do you approach state management in React applications?'},
+                {'speaker': 'Candidate', 'text': 'I prefer using Redux for global state and React Context for theme and auth...'},
+                {'speaker': 'Interviewer', 'text': 'Can you explain how you optimize performance in React?'},
+                {'speaker': 'Candidate', 'text': 'I use React.memo, useCallback, and useMemo to prevent unnecessary re-renders...'}
+            ]
+        },
+        {
+            'id': 3,
+            'name': 'Alex James Wheeler',
+            'email': 'alex.j@example.com',
+            'position': 'DevOps Engineer',
+            'experience': '6 years',
+            'status': 'Pending Review',
+            'avatar': 'https://randomuser.me/api/portraits/men/68.jpg',
+            'applied_date': '2023-10-25',
+            'resume_match': '95%',
+            'skills': ['AWS', 'Kubernetes', 'Docker', 'Terraform', 'CI/CD', 'Python'],
+            'education': 'BSc in Computer Engineering, UC Berkeley',
+            'current_company': 'CloudScale Inc.',
+            'notice_period': '60 days',
+            'expected_salary': '$130,000',
+            'location': 'Seattle, WA',
+            'phone': '(555) 456-7890',
+            'linkedin': 'linkedin.com/in/alexjohnson',
+            'github': 'github.com/alexjohnson',
+            'portfolio': 'alexjohnson.tech',
+            'interview_date': '2023-11-17 13:30',
+            'interview_type': 'Technical',
+            'interviewer': 'David Kim',
+            'interview_notes': 'Strong experience with cloud infrastructure and automation. Needs to demonstrate more leadership experience.',
+            'evaluation': {
+                'technical_skills': 5,
+                'problem_solving': 4,
+                'communication': 4,
+                'cultural_fit': 3,
+                'overall_rating': 4.0,
+                'strengths': ['Extensive cloud experience', 'Strong automation skills', 'Good problem-solving'],
+                'areas_for_improvement': ['Could improve documentation skills', 'Needs more leadership experience'],
+                'recommendation': 'Maybe',
+                'notes': 'Technically strong but might need more experience leading teams.'
+            },
+            'interview_transcript': [
+                {'speaker': 'Interviewer', 'text': 'How would you design a highly available system on AWS?'},
+                {'speaker': 'Candidate', 'text': 'I would use multiple AZs, Auto Scaling Groups, and a combination of ALB and Route 53...'},
+                {'speaker': 'Interviewer', 'text': 'How do you handle secrets management?'},
+                {'speaker': 'Candidate', 'text': 'I prefer using AWS Secrets Manager with IAM roles and least privilege access...'}
+            ]
+        },
+        {
+            'id': 4,
+            'name': 'Chloe Decker',
+            'email': 'chloe.decker@example.com',
+            'position': 'Data Scientist',
+            'experience': '4 years',
+            'status': 'Technical Interview',
+            'avatar': 'https://randomuser.me/api/portraits/women/32.jpg',
+            'applied_date': '2023-10-22',
+            'resume_match': '89%',
+            'skills': ['Python', 'Machine Learning', 'TensorFlow', 'PyTorch', 'SQL', 'Data Visualization'],
+            'education': 'MSc in Data Science, University of Washington',
+            'current_company': 'DataInsights Inc.',
+            'notice_period': '30 days',
+            'expected_salary': '$115,000',
+            'location': 'Boston, MA',
+            'phone': '(555) 234-5678',
+            'linkedin': 'linkedin.com/in/priyapatel',
+            'github': 'github.com/priyapatel',
+            'portfolio': 'priyapatel-ds.com',
+            'interview_date': '2023-11-18 10:00',
+            'interview_type': 'Technical',
+            'interviewer': ' Samantha Williams',
+            'interview_notes': 'Strong background in ML with experience in NLP and computer vision. Good communication skills.',
+            'evaluation': {
+                'technical_skills': 5,
+                'problem_solving': 5,
+                'communication': 4,
+                'cultural_fit': 4,
+                'overall_rating': 4.5,
+                'strengths': ['Strong ML fundamentals', 'Good presentation skills', 'Experience with big data'],
+                'areas_for_improvement': ['Could improve production deployment experience', 'Limited experience with cloud platforms'],
+                'recommendation': 'Strong Hire',
+                'notes': 'Excellent candidate for our ML team. Strong technical skills and good cultural fit.'
+            },
+            'interview_transcript': [
+                {'speaker': 'Interviewer', 'text': 'Can you explain how you would approach a classification problem with imbalanced classes?'},
+                {'speaker': 'Candidate', 'text': 'For imbalanced datasets, I would first analyze the class distribution and consider techniques like SMOTE...'},
+                {'speaker': 'Interviewer', 'text': 'How do you evaluate model performance beyond accuracy?'},
+                {'speaker': 'Candidate', 'text': 'I look at precision, recall, F1 score, and ROC-AUC. For imbalanced data, precision-recall curves...'}
+            ]
+        },
+        {
+            'id': 5,
+            'name': 'James Wilson',
+            'email': 'james.wilson@example.com',
+            'position': 'Backend Engineer',
+            'experience': '5 years',
+            'status': 'Technical Interview',
+            'avatar': 'https://randomuser.me/api/portraits/men/45.jpg',
+            'applied_date': '2023-10-23',
+            'resume_match': '91%',
+            'skills': ['Java', 'Spring Boot', 'Microservices', 'Kafka', 'MongoDB', 'Docker'],
+            'education': 'BSc in Computer Science, University of Texas at Austin',
+            'current_company': 'TechNova Solutions',
+            'notice_period': '45 days',
+            'expected_salary': '$125,000',
+            'location': 'Austin, TX',
+            'phone': '(555) 345-6789',
+            'linkedin': 'linkedin.com/in/jameswilson',
+            'github': 'github.com/jameswilson',
+            'portfolio': 'jameswilson.dev',
+            'interview_date': '2023-11-19 14:30',
+            'interview_type': 'Technical',
+            'interviewer': 'Walter Rodriguez',
+            'interview_notes': 'Strong Java backend experience with microservices. Needs to demonstrate more system design knowledge.',
+            'evaluation': {
+                'technical_skills': 4,
+                'problem_solving': 4,
+                'communication': 3,
+                'cultural_fit': 4,
+                'overall_rating': 3.75,
+                'strengths': ['Strong Java skills', 'Experience with distributed systems', 'Good debugging skills'],
+                'areas_for_improvement': ['Could improve communication', 'Needs more experience with cloud platforms'],
+                'recommendation': 'Maybe',
+                'notes': 'Technically strong but would need to improve communication skills.'
+            },
+            'interview_transcript': [
+                {'speaker': 'Interviewer', 'text': 'How would you design a URL shortening service like bit.ly?'},
+                {'speaker': 'Candidate', 'text': 'I would start with the API design, then discuss the data model using a key-value store...'},
+                {'speaker': 'Interviewer', 'text': 'How would you handle high traffic to popular URLs?'},
+                {'speaker': 'Candidate', 'text': 'I would implement caching using Redis and use consistent hashing...'}
+            ]
+        },
+        {
+            'id': 6,
+            'name': 'Aisha Mohammed',
+            'email': 'aisha.m@example.com',
+            'position': 'UX/UI Designer',
+            'experience': '3 years',
+            'status': 'Design Review',
+            'avatar': 'https://randomuser.me/api/portraits/women/67.jpg',
+            'applied_date': '2023-10-24',
+            'resume_match': '87%',
+            'skills': ['Figma', 'Sketch', 'User Research', 'Prototyping', 'UI/UX', 'Design Systems'],
+            'education': 'BFA in Design, Rhode Island School of Design',
+            'current_company': 'DesignCraft Studio',
+            'notice_period': '30 days',
+            'expected_salary': '$95,000',
+            'location': 'Chicago, IL',
+            'phone': '(555) 456-7890',
+            'linkedin': 'linkedin.com/in/aishamohammed',
+            'dribbble': 'dribbble.com/aisham',
+            'portfolio': 'aishamohammed.design',
+            'interview_date': '2023-11-20 11:00',
+            'interview_type': 'Portfolio Review',
+            'interviewer': 'Emily Stone',
+            'interview_notes': 'Strong visual design skills with good understanding of user-centered design principles.',
+            'evaluation': {
+                'technical_skills': 4,
+                'problem_solving': 4,
+                'communication': 5,
+                'cultural_fit': 5,
+                'overall_rating': 4.5,
+                'strengths': ['Strong visual design', 'Good presentation skills', 'User research experience'],
+                'areas_for_improvement': ['Limited experience with design systems', 'Could improve prototyping skills'],
+                'recommendation': 'Hire',
+                'notes': 'Great cultural fit with strong design skills. Would be a valuable addition to the design team.'
+            },
+            'interview_transcript': [
+                {'speaker': 'Interviewer', 'text': 'Can you walk us through your design process?'},
+                {'speaker': 'Candidate', 'text': 'I start with user research to understand pain points, then create user personas...'},
+                {'speaker': 'Interviewer', 'text': 'How do you handle feedback on your designs?'},
+                {'speaker': 'Candidate', 'text': 'I welcome feedback and use it as an opportunity to improve...'}
+            ]
+        },
+        {
+            'id': 7,
+            'name': 'Carlos Mendez',
+            'email': 'carlos.m@example.com',
+            'position': 'Mobile Developer',
+            'experience': '4 years',
+            'status': 'Code Review',
+            'avatar': 'https://randomuser.me/api/portraits/men/52.jpg',
+            'applied_date': '2023-10-25',
+            'resume_match': '90%',
+            'skills': ['Swift', 'iOS', 'SwiftUI', 'Objective-C', 'XCTest', 'Firebase'],
+            'education': 'BSc in Computer Science, University of Florida',
+            'current_company': 'AppVenture Inc.',
+            'notice_period': '30 days',
+            'expected_salary': '$110,000',
+            'location': 'Miami, FL',
+            'phone': '(555) 567-8901',
+            'linkedin': 'linkedin.com/in/carlosmendez',
+            'github': 'github.com/carlosmendez',
+            'portfolio': 'carlosmendez.dev',
+            'interview_date': '2023-11-21 13:30',
+            'interview_type': 'Technical',
+            'interviewer': 'David Kim',
+            'interview_notes': 'Strong iOS development skills with experience in both Swift and Objective-C. Good problem-solving abilities.',
+            'evaluation': {
+                'technical_skills': 5,
+                'problem_solving': 4,
+                'communication': 4,
+                'cultural_fit': 4,
+                'overall_rating': 4.25,
+                'strengths': ['Strong Swift knowledge', 'Good debugging skills', 'Experience with app store submission'],
+                'areas_for_improvement': ['Could improve testing coverage', 'Limited experience with cross-platform development'],
+                'recommendation': 'Strong Hire',
+                'notes': 'Excellent iOS developer who would be a great addition to our mobile team.'
+            },
+            'interview_transcript': [
+                {'speaker': 'Interviewer', 'text': 'How do you handle memory management in iOS?'},
+                {'speaker': 'Candidate', 'text': 'I use ARC and am careful with strong reference cycles...'},
+                {'speaker': 'Interviewer', 'text': 'How would you implement offline support in a mobile app?'},
+                {'speaker': 'Candidate', 'text': 'I would use Core Data with a sync manager to handle offline operations...'}
+            ]
+        },
+        {
+            'id': 8,
+            'name': 'Olivia Paulsen',
+            'email': 'olivia.paulsen@example.com',
+            'position': 'Product Manager',
+            'experience': '6 years',
+            'status': 'Final Round',
+            'avatar': 'https://randomuser.me/api/portraits/women/28.jpg',
+            'applied_date': '2023-10-20',
+            'resume_match': '93%',
+            'skills': ['Product Strategy', 'Agile', 'JIRA', 'SQL', 'A/B Testing', 'Market Research'],
+            'education': 'MBA, Harvard Business School',
+            'current_company': 'ProductLabs',
+            'notice_period': '60 days',
+            'expected_salary': '$140,000',
+            'location': 'San Francisco, CA',
+            'phone': '(555) 678-9012',
+            'linkedin': 'linkedin.com/in/oliviapaulsen',
+            'portfolio': 'oliviapaulsen.com',
+            'interview_date': '2023-11-22 15:00',
+            'interview_type': 'Executive',
+            'interviewer': 'CEO Sarah Johnson',
+            'interview_notes': 'Experienced PM with strong strategic thinking and leadership skills. Has successfully launched multiple products.',
+            'evaluation': {
+                'technical_skills': 4,
+                'problem_solving': 5,
+                'communication': 5,
+                'cultural_fit': 5,
+                'overall_rating': 4.75,
+                'strengths': ['Strong leadership', 'Excellent communication', 'Data-driven decision making'],
+                'areas_for_improvement': ['Could improve technical depth', 'Limited experience in our industry'],
+                'recommendation': 'Strong Hire',
+                'notes': 'Exceptional candidate with proven track record. Would be a great addition to the leadership team.'
+            },
+            'interview_transcript': [
+                {'speaker': 'Interviewer', 'text': 'How do you prioritize features for a new product?'},
+                {'speaker': 'Candidate', 'text': 'I use a combination of business impact, user value, and technical feasibility...'},
+                {'speaker': 'Interviewer', 'text': 'How do you handle conflicts between stakeholders?'},
+                {'speaker': 'Candidate', 'text': 'I focus on finding common ground and making data-driven decisions...'}
+            ]
+        },
+        {
+            'id': 9,
+            'name': 'Marcus Johnson',
+            'email': 'marcus.j@example.com',
+            'position': 'Security Engineer',
+            'experience': '7 years',
+            'status': 'Background Check',
+            'avatar': 'https://randomuser.me/api/portraits/men/75.jpg',
+            'applied_date': '2023-10-18',
+            'resume_match': '94%',
+            'skills': ['Cybersecurity', 'Penetration Testing', 'SIEM', 'Firewalls', 'Incident Response', 'AWS Security'],
+            'education': 'MSc in Cybersecurity, Georgia Tech',
+            'current_company': 'SecureNet Inc.',
+            'notice_period': '30 days',
+            'expected_salary': '$150,000',
+            'location': 'Washington, DC',
+            'phone': '(555) 789-0123',
+            'linkedin': 'linkedin.com/in/marcusjohnson',
+            'github': 'github.com/marcusjohnson',
+            'portfolio': 'marcusjohnson.security',
+            'interview_date': '2023-11-23 10:00',
+            'interview_type': 'Technical',
+            'interviewer': 'CISO Robert Taylor',
+            'interview_notes': 'Extensive experience in cybersecurity with a focus on cloud security and incident response. Holds multiple security certifications.',
+            'evaluation': {
+                'technical_skills': 5,
+                'problem_solving': 5,
+                'communication': 4,
+                'cultural_fit': 4,
+                'overall_rating': 4.5,
+                'strengths': ['Deep security expertise', 'Strong problem-solving skills', 'Experience with compliance'],
+                'areas_for_improvement': ['Could improve documentation', 'Needs to work on simplifying technical concepts for non-technical stakeholders'],
+                'recommendation': 'Hire',
+                'notes': 'Top candidate for the security engineering role. Strong technical skills and good cultural fit.'
+            },
+            'interview_transcript': [
+                {'speaker': 'Interviewer', 'text': 'How would you secure a new cloud infrastructure?'},
+                {'speaker': 'Candidate', 'text': 'I would start with a secure baseline configuration, implement network segmentation...'},
+                {'speaker': 'Interviewer', 'text': 'How do you stay updated with the latest security threats?'},
+                {'speaker': 'Candidate', 'text': 'I follow security blogs, attend conferences, and participate in CTF competitions...'}
+            ]
+        }
+    ]
+    
+    # If a specific candidate ID is provided, return that candidate's data
+    if candidate_id:
+        for candidate in candidates:
+            if candidate['id'] == int(candidate_id):
+                return candidate
+        return None
+    
+    # Otherwise return all candidates
+    return candidates
 
 @app.route('/interview')
 def interview_route():
-    return render_template('interview.html')
+    # Get candidate ID from query parameters, default to first candidate
+    candidate_id = int(request.args.get('candidate_id', 1))
+    
+    # Get the specific candidate's data
+    candidate = get_mock_interview_data(candidate_id)
+    
+    # If candidate not found, redirect to first candidate
+    if not candidate:
+        return redirect(url_for('interview_route', candidate_id=1))
+    
+    # Import AIAnalyzer (moved here to avoid circular imports)
+    from candidate_analyzer import AIAnalyzer
+    
+    # Generate AI analysis for the candidate
+    analyzer = AIAnalyzer()
+    ai_analysis = analyzer.analyze_candidate(candidate)
+    
+    # Add AI analysis to candidate data
+    candidate['ai_analysis'] = ai_analysis
+    
+    all_candidates = get_mock_interview_data()
+    
+    # Get the current candidate's index for navigation
+    current_index = next((i for i, c in enumerate(all_candidates) if c['id'] == candidate['id']), 0)
+    prev_candidate = all_candidates[current_index - 1] if current_index > 0 else None
+    next_candidate = all_candidates[current_index + 1] if current_index < len(all_candidates) - 1 else None
+    
+    return render_template('interview.html', 
+                         candidate=candidate, 
+                         candidates=all_candidates,
+                         prev_candidate=prev_candidate,
+                         next_candidate=next_candidate,
+                         ai_analysis=ai_analysis,
+                         title=f"Interview Evaluation - {candidate['name']}")
 
 # Initialize the NLP chatbot
 try:
@@ -432,260 +1378,718 @@ def train_chatbot():
         print(f"Error in train endpoint: {str(e)}")
         return jsonify({'error': 'An error occurred while training the chatbot'}), 500
 
-@app.route('/onboarding', methods=['GET', 'POST'])
-def onboarding_route():
-    if request.method == 'POST':
-        try:
-            # Get form data
-            candidate_name = request.form.get('candidateName')
-            job_title = request.form.get('jobDescriptionTitle')
-            job_description = request.form.get('jobDescription')
-            resume_text = request.form.get('resumeText')
-            
-            # Save the resume text to a temporary file for parsing
-            temp_file = os.path.join(app.config['UPLOAD_FOLDER'], 'temp_resume.txt')
-            with open(temp_file, 'w', encoding='utf-8') as f:
-                f.write(resume_text)
-            
-            # Parse the resume
-            try:
-                parser = ResumeParser()
-                resume_data = parser.parse_resume(temp_file)
-            except Exception as e:
-                app.logger.error(f"Error parsing resume: {str(e)}")
-                resume_data = ResumeData()  # Create empty ResumeData object if parsing fails
-            
-            # Add job title from form if not in resume
-            if not resume_data.name and candidate_name:
-                resume_data.name = candidate_name
-            
-            # Prepare analysis results
-            analysis = {
-                'candidate': {
-                    'name': resume_data.name or candidate_name,
-                    'email': resume_data.email,
-                    'phone': resume_data.phone
-                },
-                'job': {
-                    'title': job_title,
-                    'description': job_description
-                },
-                'skills': resume_data.skills or [],
-                'experience': resume_data.experience or [],
-                'match_score': calculate_match_score(resume_data, job_title, job_description)
+def get_mock_onboarding_data():
+    """Generate comprehensive mock data for the onboarding page"""
+    # Mock data for onboarding progress
+    onboarding_progress = {
+        'overall_completion': 35,
+        'stages': [
+            {
+                'id': 'pre_arrival',
+                'name': 'Pre-Arrival',
+                'progress': 40,
+                'completed_tasks': 2,
+                'total_tasks': 5,
+                'tasks': [
+                    {'id': 'task1', 'name': 'Send welcome email', 'completed': True, 'completed_date': '2023-10-27'},
+                    {'id': 'task2', 'name': 'Collect personal information', 'completed': True, 'completed_date': '2023-10-28'},
+                    {'id': 'task3', 'name': 'Setup company email', 'completed': False, 'due_date': '2023-10-30'},
+                    {'id': 'task4', 'name': 'Order equipment', 'completed': False, 'due_date': '2023-10-31'},
+                    {'id': 'task5', 'name': 'Schedule first day', 'completed': False, 'due_date': '2023-11-01'}
+                ]
+            },
+            {
+                'id': 'first_day',
+                'name': 'First Day',
+                'progress': 20,
+                'completed_tasks': 1,
+                'total_tasks': 8,
+                'tasks': [
+                    {'id': 'task6', 'name': 'Office tour', 'completed': True, 'completed_date': '2023-10-29'},
+                    {'id': 'task7', 'name': 'Team introductions', 'completed': False, 'due_date': '2023-11-02'},
+                    {'id': 'task8', 'name': 'IT setup', 'completed': False, 'due_date': '2023-11-02'},
+                    {'id': 'task9', 'name': 'Company policies review', 'completed': False, 'due_date': '2023-11-03'},
+                    {'id': 'task10', 'name': 'HR paperwork', 'completed': False, 'due_date': '2023-11-03'}
+                ]
+            },
+            {
+                'id': 'first_week',
+                'name': 'First Week',
+                'progress': 0,
+                'completed_tasks': 0,
+                'total_tasks': 6,
+                'tasks': [
+                    {'id': 'task11', 'name': 'Complete training modules', 'completed': False, 'due_date': '2023-11-06'},
+                    {'id': 'task12', 'name': 'Meet with mentor', 'completed': False, 'due_date': '2023-11-07'},
+                    {'id': 'task13', 'name': 'Project kickoff', 'completed': False, 'due_date': '2023-11-08'}
+                ]
+            },
+            {
+                'id': 'first_month',
+                'name': 'First Month',
+                'progress': 0,
+                'completed_tasks': 0,
+                'total_tasks': 4,
+                'tasks': [
+                    {'id': 'task14', 'name': '30-day check-in', 'completed': False, 'due_date': '2023-11-30'},
+                    {'id': 'task15', 'name': 'Initial performance review', 'completed': False, 'due_date': '2023-12-01'}
+                ]
             }
-            
-            # Store in session to display results
-            session['last_analysis'] = analysis
-            
-            # Clean up temp file
-            try:
-                os.remove(temp_file)
-            except:
-                pass
-                
-            return redirect(url_for('onboarding_route'))
-            
-        except Exception as e:
-            app.logger.error(f"Error analyzing resume: {str(e)}")
-            flash('Error analyzing resume. Please try again.', 'error')
-            return redirect(url_for('onboarding_route'))
+        ]
+    }
+
+    # Mock data for document collection
+    documents = [
+        {
+            'id': 'doc1',
+            'name': 'Employment Contract',
+            'type': 'pdf',
+            'status': 'received',
+            'received_date': '2023-10-27',
+            'required': True,
+            'size': '1.2 MB',
+            'uploaded_by': 'HR Department'
+        },
+        {
+            'id': 'doc2',
+            'name': 'Tax Forms (W-4)',
+            'type': 'pdf',
+            'status': 'pending',
+            'due_date': '2023-11-03',
+            'required': True,
+            'size': '450 KB',
+            'uploaded_by': None
+        },
+        {
+            'id': 'doc3',
+            'name': 'Direct Deposit Form',
+            'type': 'docx',
+            'status': 'pending',
+            'due_date': '2023-11-03',
+            'required': True,
+            'size': '320 KB',
+            'uploaded_by': None
+        },
+        {
+            'id': 'doc4',
+            'name': 'Employee Handbook Acknowledgment',
+            'type': 'pdf',
+            'status': 'not_started',
+            'required': True,
+            'size': '2.1 MB',
+            'uploaded_by': None
+        },
+        {
+            'id': 'doc5',
+            'name': 'Emergency Contact Information',
+            'type': 'form',
+            'status': 'not_started',
+            'required': True,
+            'size': None,
+            'uploaded_by': None
+        }
+    ]
+
+    # Mock data for team members
+    team_members = [
+        {
+            'id': 'tm1',
+            'name': 'Sarah Johnson',
+            'title': 'Team Lead',
+            'department': 'Engineering',
+            'email': 'sarah.johnson@company.com',
+            'phone': '(555) 123-4567',
+            'photo': 'https://randomuser.me/api/portraits/women/44.jpg',
+            'is_mentor': False,
+            'bio': '10+ years of experience in software development. Enjoys mentoring new team members and hiking on weekends.'
+        },
+        {
+            'id': 'tm2',
+            'name': 'Michael Chen',
+            'title': 'Senior Developer',
+            'department': 'Engineering',
+            'email': 'michael.chen@company.com',
+            'phone': '(555) 234-5678',
+            'photo': 'https://randomuser.me/api/portraits/men/32.jpg',
+            'is_mentor': True,
+            'bio': 'Your onboarding mentor. 8 years of experience in full-stack development. Loves open source contributions and coffee.'
+        },
+        {
+            'id': 'tm3',
+            'name': 'Priya Patel',
+            'title': 'Product Manager',
+            'department': 'Product',
+            'email': 'priya.patel@company.com',
+            'phone': '(555) 345-6789',
+            'photo': 'https://randomuser.me/api/portraits/women/68.jpg',
+            'is_mentor': False,
+            'bio': 'Product management expert with a background in UX design. Enjoys solving complex problems with simple solutions.'
+        }
+    ]
+
+    # Mock data for training assignments
+    training_assignments = [
+        {
+            'id': 'train1',
+            'title': 'Company Policies',
+            'type': 'e-learning',
+            'status': 'completed',
+            'progress': 100,
+            'due_date': '2023-10-25',
+            'completed_date': '2023-10-24',
+            'duration': '30 min',
+            'description': 'Overview of company policies, code of conduct, and compliance requirements.'
+        },
+        {
+            'id': 'train2',
+            'title': 'Security Awareness',
+            'type': 'e-learning',
+            'status': 'in_progress',
+            'progress': 30,
+            'due_date': '2023-11-05',
+            'duration': '45 min',
+            'description': 'Learn about information security best practices and company policies.'
+        },
+        {
+            'id': 'train3',
+            'title': 'Diversity & Inclusion',
+            'type': 'in-person',
+            'status': 'not_started',
+            'progress': 0,
+            'due_date': '2023-11-10',
+            'duration': '2 hours',
+            'description': 'Interactive session on building an inclusive workplace.'
+        },
+        {
+            'id': 'train4',
+            'title': 'Technical Onboarding',
+            'type': 'workshop',
+            'status': 'not_started',
+            'progress': 0,
+            'due_date': '2023-11-15',
+            'duration': '4 hours',
+            'description': 'Hands-on workshop for technical team members.'
+        }
+    ]
+
+    # Mock data for upcoming events
+    upcoming_events = [
+        {
+            'id': 'event1',
+            'title': 'Welcome Lunch',
+            'type': 'social',
+            'date': '2023-11-02',
+            'time': '12:00 PM',
+            'location': 'Main Cafeteria',
+            'description': 'Lunch with your team and manager',
+            'organizer': 'HR Department'
+        },
+        {
+            'id': 'event2',
+            'title': 'IT Setup Session',
+            'type': 'training',
+            'date': '2023-11-02',
+            'time': '2:00 PM',
+            'location': 'IT Department',
+            'description': 'Get your laptop and access set up',
+            'organizer': 'IT Support'
+        },
+        {
+            'id': 'event3',
+            'title': 'Team Meeting',
+            'type': 'meeting',
+            'date': '2023-11-03',
+            'time': '10:00 AM',
+            'location': 'Conference Room B',
+            'description': 'Weekly team sync',
+            'organizer': 'Sarah Johnson'
+        }
+    ]
+
+    return {
+        'onboarding_progress': onboarding_progress,
+        'documents': documents,
+        'team_members': team_members,
+        'training_assignments': training_assignments,
+        'upcoming_events': upcoming_events
+    }
+
+def onboarding_route():
+    from resume_parser import ResumeParser
     
-    # For GET requests, show the form with sample candidates
-    analysis = session.pop('last_analysis', None)
-    sample_resumes = {
-        1: """Michael Chen
+    # Initialize resume parser
+    resume_parser = ResumeParser()
+    
+    # Sample resume data (in a real app, this would come from file uploads)
+    sample_resumes = [
+        {
+            'name': 'Sarah Johnson',
+            'email': 'sarah.johnson@example.com',
+            'position': 'Senior Software Engineer',
+            'resume_text': '''Sarah Johnson
 Senior Software Engineer
+Email: sarah.johnson@example.com | Phone: (555) 123-4567 | Location: San Francisco, CA
+
+SUMMARY
+Experienced Senior Software Engineer with 5+ years of experience in full-stack development. 
+Expertise in Python, Django, React, and cloud technologies. Led multiple projects to successful deployment.
+
+TECHNICAL SKILLS
+• Programming: Python, JavaScript, TypeScript
+• Frameworks: Django, React, Node.js
+• Databases: PostgreSQL, MongoDB
+• DevOps: Docker, Kubernetes, AWS, CI/CD
+• Tools: Git, JIRA, Agile/Scrum
 
 EXPERIENCE
 Senior Software Engineer
-Tech Solutions Inc. | Jan 2020 - Present
-- Led team of 5 developers in building scalable microservices
-- Implemented CI/CD pipeline reducing deployment time by 60%
-- Technologies: Python, Django, React, AWS, Docker
+Tech Solutions Inc. | 2020 - Present
+• Led a team of 5 developers in building scalable web applications
+• Architected and implemented microservices using Django and React
+• Improved application performance by 40% through code optimization
 
-Software Developer
-WebApps Co. | Mar 2017 - Dec 2019
-- Developed and maintained web applications using Python/Flask
-- Improved application performance by 45% through query optimization
+Software Engineer
+WebDev Co. | 2018 - 2020
+• Developed and maintained RESTful APIs using Django REST Framework
+• Implemented frontend components with React and Redux
+• Collaborated with cross-functional teams to deliver features on time
 
 EDUCATION
-MS in Computer Science
-Stanford University | 2015-2017
+MSc in Computer Science
+Stanford University | 2016 - 2018
+GPA: 3.8/4.0
 
-SKILLS
-Python, JavaScript, AWS, Docker, Kubernetes, CI/CD, Microservices
-""",
-        2: """Priya Patel
+BSc in Computer Science
+University of California, Berkeley | 2012 - 2016
+GPA: 3.7/4.0'''
+        },
+        {
+            'name': 'Michael Chen',
+            'email': 'michael.chen@example.com',
+            'position': 'Data Scientist',
+            'resume_text': '''Michael Chen
 Data Scientist
+Email: michael.chen@example.com | Phone: (555) 987-6543 | Location: New York, NY
+
+SUMMARY
+Data Scientist with 4+ years of experience in machine learning and data analysis. 
+Specialized in natural language processing and predictive modeling.
+
+TECHNICAL SKILLS
+• Programming: Python, R, SQL
+• Machine Learning: TensorFlow, PyTorch, scikit-learn
+• Data Analysis: Pandas, NumPy, Matplotlib
+• Big Data: Spark, Hadoop
+• Cloud: AWS, Google Cloud Platform
 
 EXPERIENCE
 Data Scientist
-Data Insights LLC | May 2019 - Present
-- Built ML models for predictive analytics with 92% accuracy
-- Led data visualization projects using Tableau and D3.js
-- Technologies: Python, TensorFlow, PyTorch, SQL, Spark
+Data Insights Co. | 2019 - Present
+• Developed and deployed machine learning models for predictive analytics
+• Built NLP pipelines for text classification and sentiment analysis
+• Led a team of 3 junior data scientists
 
 Data Analyst
-Analytics Pro | Jun 2017 - Apr 2019
-- Performed data cleaning and analysis for enterprise clients
-- Created dashboards that reduced reporting time by 70%
+Analytics Pro | 2017 - 2019
+• Performed data cleaning and exploratory data analysis
+• Created dashboards and reports using Tableau
+• Automated data pipelines using Python and SQL
 
 EDUCATION
 PhD in Data Science
-MIT | 2013-2017
+Massachusetts Institute of Technology | 2013 - 2017
+Thesis: "Advanced Machine Learning Techniques for Natural Language Processing"
 
-SKILLS
-Machine Learning, Python, R, SQL, Tableau, Big Data
-""",
-        3: """Marcus Rodriguez
-DevOps Engineer
+BSc in Computer Science
+Carnegie Mellon University | 2009 - 2013
+GPA: 3.9/4.0'''
+        }
+    ]
+    
+    # Parse resumes using the resume parser
+    candidates = []
+    for i, resume in enumerate(sample_resumes):
+        # In a real app, we would parse the actual file
+        # For now, we'll use the text directly
+        parsed_resume = resume_parser.parse_text(resume['resume_text'])
+        
+        # Calculate ATS score (simplified for this example)
+        ats_score = min(100, 70 + (i * 15))  # Just for demo purposes
+        
+        candidates.append({
+            'id': i + 1,
+            'name': resume['name'],
+            'email': resume['email'],
+            'position': resume['position'],
+            'status': 'New',
+            'start_date': (datetime.now() + timedelta(days=14 + (i * 7))).strftime('%Y-%m-%d'),
+            'resume_uploaded': True,
+            'resume_file': f"{resume['name'].lower().replace(' ', '_')}_resume.pdf",
+            'resume_analysis': {
+                'match_score': ats_score,
+                'skills': [skill['name'] for skill in parsed_resume.skills][:10],  # Top 10 skills
+                'experience': f"{len(parsed_resume.experience)} years",
+                'education': parsed_resume.education[0]['degree'] if parsed_resume.education else 'Not specified',
+                'status': 'Pending Review',
+                'summary': parsed_resume.raw_text[:200] + '...' if parsed_resume.raw_text else 'No summary available',
+                'experience_details': [
+                    {
+                        'title': exp['title'],
+                        'company': exp.get('company', 'Unknown Company'),
+                        'duration': f"{exp.get('start', 'N/A')} - {exp.get('end', 'Present')}",
+                        'description': exp.get('description', 'No description provided')
+                    }
+                    for exp in parsed_resume.experience[:3]  # Show up to 3 most recent positions
+                ],
+                'ats_score': ats_score,
+                'missing_skills': parsed_resume.missing_skills[:5],  # Top 5 missing skills
+                'compliance_issues': parsed_resume.compliance_issues
+            },
+            'avatar': f"https://ui-avatars.com/api/?name={resume['name'].replace(' ', '+')}&background=random"
+        })
+
+    # Handle sample candidate selection
+    if request.method == 'POST' and 'use_sample' in request.form:
+        sample_id = int(request.form.get('sample_id', 0))
+        if sample_id == 1:
+            sample_resume = """Sarah Johnson
+Senior Software Engineer
+
+CONTACT
+Email: sarah.johnson@example.com
+Phone: (555) 123-4567
+Location: San Francisco, CA
+LinkedIn: linkedin.com/in/sarahjohnson
+
+SUMMARY
+Experienced full-stack developer with 5+ years of experience in building scalable web applications using Python, Django, and React. Strong background in cloud technologies and DevOps practices.
 
 EXPERIENCE
-DevOps Engineer
-CloudScale Inc. | Aug 2018 - Present
-- Automated deployment processes reducing manual work by 80%
-- Managed Kubernetes clusters with 99.99% uptime
-- Technologies: AWS, Kubernetes, Terraform, Ansible, Jenkins
 
-Systems Administrator
-TechCorp | Jan 2016 - Jul 2018
-- Managed Linux servers and cloud infrastructure
-- Implemented monitoring solutions reducing incident response time
+Senior Software Engineer
+Tech Solutions Inc. | 2020 - Present
+- Led a team of 5 developers in building a scalable e-commerce platform
+- Implemented CI/CD pipelines using GitHub Actions and Docker
+- Optimized database queries, reducing page load time by 40%
 
-EDUCATION
-BS in Computer Engineering
-UC Berkeley | 2012-2016
-
-SKILLS
-AWS, Kubernetes, Docker, Terraform, CI/CD, Linux, Bash
-""",
-        4: """Aisha Johnson
-Frontend Developer
-
-EXPERIENCE
-Frontend Developer
-WebCraft Studios | Mar 2019 - Present
-- Developed responsive web applications using React and TypeScript
-- Improved page load performance by 50% through code optimization
-- Technologies: React, TypeScript, Redux, GraphQL, Jest
-
-UI/UX Designer
-DesignHub | Jun 2017 - Feb 2019
-- Created user-centered designs and prototypes
-- Conducted user research and usability testing
+Software Developer
+WebDev Agency | 2018 - 2020
+- Developed and maintained RESTful APIs using Django REST Framework
+- Created responsive UIs with React and Redux
+- Collaborated with cross-functional teams to deliver high-quality software
 
 EDUCATION
-BFA in Design
-Rhode Island School of Design | 2013-2017
+MSc in Computer Science
+Stanford University | 2016 - 2018
 
 SKILLS
-React, TypeScript, JavaScript, CSS, UI/UX, Figma, Responsive Design
+- Programming: Python, JavaScript, TypeScript
+- Frameworks: Django, React, Node.js
+- Tools: Git, Docker, AWS, Kubernetes
+- Databases: PostgreSQL, MongoDB
+
+PROJECTS
+E-commerce Platform
+- Built a full-stack e-commerce platform with payment integration
+- Implemented real-time inventory management
+- Technologies: Django, React, PostgreSQL, Redis
 """
-    }
+            # Create a temporary file with sample resume content
+            os.makedirs('uploads', exist_ok=True)
+            filepath = os.path.join('uploads', 'sample_resume_1.txt')
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write(sample_resume)
+            
+            try:
+                # Parse the sample resume
+                parser = ResumeParser()
+                resume_data = parser.parse_resume(filepath)
+                
+                # Create a new candidate with parsed data
+                new_candidate = {
+                    'id': max(c['id'] for c in candidates) + 1 if candidates else 1,
+                    'name': resume_data.name or 'Sample Candidate',
+                    'email': resume_data.email or 'sample@example.com',
+                    'position': 'Senior Software Engineer',
+                    'status': 'New',
+                    'start_date': (datetime.now() + timedelta(days=14)).strftime('%Y-%m-%d'),
+                    'resume_uploaded': True,
+                    'resume_file': 'sample_resume_1.txt',
+                    'resume_analysis': {
+                        'match_score': 85,
+                        'skills': resume_data.skills or ['Python', 'Django', 'React', 'AWS', 'Docker'],
+                        'experience': resume_data.experience or '5 years',
+                        'education': resume_data.education or 'MSc in Computer Science',
+                        'status': 'Sample Resume',
+                        'summary': resume_data.summary or 'Experienced full-stack developer with expertise in Python and JavaScript.',
+                        'experience_details': [
+                            {
+                                'title': exp.get('title', 'Unknown Position'),
+                                'company': exp.get('company', 'Unknown Company'),
+                                'duration': exp.get('duration', ''),
+                                'description': exp.get('description', '')
+                            } for exp in (resume_data.experience or [])
+                        ] or [
+                            {
+                                'title': 'Senior Software Engineer',
+                                'company': 'Tech Solutions Inc.',
+                                'duration': '2020 - Present',
+                                'description': 'Led a team of developers in building scalable web applications.'
+                            }
+                        ]
+                    },
+                    'avatar': f'https://ui-avatars.com/api/?name={(resume_data.name or "Sample").replace(" ", "+")}&background=random'
+                }
+                
+                # Add the new candidate to the list
+                candidates.append(new_candidate)
+                session['candidates'] = candidates
+                
+                flash('Sample resume analyzed successfully!', 'success')
+                
+            except Exception as e:
+                flash(f'Error processing sample resume: {str(e)}', 'danger')
+                
+            finally:
+                # Clean up the temporary file
+                try:
+                    os.remove(filepath)
+                except:
+                    pass
     
-    # Prepare sample candidates data with resume text
-    sample_candidates = []
+    # Handle file upload
+    elif request.method == 'POST' and 'resume' in request.files:
+        from resume_parser import ResumeParser
+        import os
+        import uuid
+        
+        resume_file = request.files['resume']
+        if resume_file.filename != '':
+            # Create uploads directory if it doesn't exist
+            os.makedirs('uploads', exist_ok=True)
+            
+            # Save the uploaded file with a unique name
+            filename = f"{uuid.uuid4()}_{resume_file.filename}"
+            filepath = os.path.join('uploads', filename)
+            resume_file.save(filepath)
+            
+            try:
+                # Parse the resume
+                parser = ResumeParser()
+                resume_data = parser.parse_resume(filepath)
+                
+                # Create a new candidate with parsed data
+                new_candidate = {
+                    'id': max(c['id'] for c in candidates) + 1 if candidates else 1,
+                    'name': resume_data.name or 'New Candidate',
+                    'email': resume_data.email or '',
+                    'position': request.form.get('position', 'Not specified'),
+                    'status': 'New',
+                    'start_date': (datetime.now() + timedelta(days=14)).strftime('%Y-%m-%d'),
+                    'resume_uploaded': True,
+                    'resume_file': resume_file.filename,
+                    'resume_analysis': {
+                        'match_score': 0,  # You can calculate this based on job requirements
+                        'skills': resume_data.skills or [],
+                        'experience': resume_data.experience or 'Not specified',
+                        'education': resume_data.education or 'Not specified',
+                        'status': 'Pending Review',
+                        'summary': resume_data.summary or '',
+                        'experience_details': [
+                            {
+                                'title': exp.get('title', 'Unknown Position'),
+                                'company': exp.get('company', 'Unknown Company'),
+                                'duration': exp.get('duration', ''),
+                                'description': exp.get('description', '')
+                            } for exp in (resume_data.experience or [])
+                        ]
+                    },
+                    'avatar': f'https://ui-avatars.com/api/?name={(resume_data.name or "New Candidate").replace(" ", "+")}&background=random'
+                }
+                
+                # Add the new candidate to the list
+                candidates.append(new_candidate)
+                session['candidates'] = candidates
+                
+                flash('Resume uploaded and analyzed successfully!', 'success')
+                
+            except Exception as e:
+                flash(f'Error processing resume: {str(e)}', 'danger')
+                
+            finally:
+                # Clean up the temporary file
+                try:
+                    os.remove(filepath)
+                except:
+                    pass
     
-    # If no candidates in database, create sample data
-    candidates = Candidate.query.all()
-    if not candidates:
-        # Create sample candidates with diverse backgrounds
-        sample_candidates = [
-            {
-                'id': 1,
-                'name': 'Michael Chen',
-                'position': 'Senior Software Engineer',
-                'experience': '8 years',
-                'status': 'New',
-                'email': 'michael.chen@example.com',
-                'phone': '(555) 123-4567',
-                'job_desc': 'Senior Software Engineer • 8 years experience',
-                'resume_text': sample_resumes[1] if 1 in sample_resumes else ''
-            },
-            {
-                'id': 2,
-                'name': 'Priya Patel',
-                'position': 'Data Scientist',
-                'experience': '5 years',
-                'status': 'New',
-                'email': 'priya.patel@example.com',
-                'phone': '(555) 234-5678',
-                'job_desc': 'Data Scientist • 5 years experience',
-                'resume_text': sample_resumes[2] if 2 in sample_resumes else ''
-            },
-            {
-                'id': 3,
-                'name': 'Marcus Rodriguez',
-                'position': 'DevOps Engineer',
-                'experience': '6 years',
-                'status': 'New',
-                'email': 'marcus.rodriguez@example.com',
-                'phone': '(555) 345-6789',
-                'job_desc': 'DevOps Engineer • 6 years experience',
-                'resume_text': sample_resumes[3] if 3 in sample_resumes else ''
-            },
-            {
-                'id': 4,
-                'name': 'Aisha Johnson',
-                'position': 'Frontend Developer',
-                'experience': '4 years',
-                'status': 'New',
-                'email': 'aisha.johnson@example.com',
-                'phone': '(555) 456-7890',
-                'job_desc': 'Frontend Developer • 4 years experience',
-                'resume_text': sample_resumes[4] if 4 in sample_resumes else ''
-            }
-        ]
-    else:
-        # Use existing candidates from database
-        for candidate in candidates:
-            if candidate.id in sample_resumes:
-                sample_candidates.append({
-                    'id': candidate.id,
-                    'name': f"{candidate.first_name} {candidate.last_name}",
-                    'position': candidate.current_job_title or 'Not specified',
-                    'experience': f"{candidate.years_of_experience or 0} years" if candidate.years_of_experience is not None else 'Experience not specified',
-                    'status': candidate.status or 'New',
-                    'email': candidate.email,
-                    'phone': candidate.phone or 'Not provided',
-                    'job_desc': f"{candidate.current_job_title or 'Not specified'} • {candidate.years_of_experience or 0} years experience",
-                    'resume_text': sample_resumes[candidate.id]
-            })
-    
-    # Ensure analysis has all required fields with defaults
-    analysis = analysis or {}
-    analysis.setdefault('candidate', {
-        'name': 'Not specified',
-        'email': 'Not specified',
-        'phone': 'Not specified'
-    })
-    analysis.setdefault('job', {
-        'title': 'Not specified',
-        'description': 'Not specified'
-    })
-    analysis.setdefault('match_score', {
-        'score': 0,
-        'experience_match': 0,
-        'experience_level': 'Not specified',
-        'matched_skills': [],
-        'missing_skills': []
-    })
-    
-    # Set default values for the template
-    match_score = analysis['match_score']
-    
-    return render_template('onboarding.html', 
-                         sample_candidates=sample_candidates,
-                         analysis=analysis,
-                         match_score=match_score,
-                         score=match_score.get('score', 0),
-                         experience_match=match_score.get('experience_match', 0),
-                         experience_level=match_score.get('experience_level', 'Not specified'))
+    # Add candidates to the onboarding data
+    onboarding_data['candidates'] = candidates
+    return render_template('onboarding.html', **onboarding_data)
 
 @app.route('/resume-review')
-def resume_review_route():
-    return render_template('resume_review.html')
+@app.route('/resume-review/<int:candidate_id>')
+def resume_review_route(candidate_id=None):
+    # Sample candidates data (same as in onboarding_route)
+    candidates = [
+        {
+            'id': 1,
+            'name': 'Sarah Johnson',
+            'email': 'sarah.johnson@example.com',
+            'position': 'Senior Software Engineer',
+            'status': 'New',
+            'start_date': (datetime.now() + timedelta(days=14)).strftime('%Y-%m-%d'),
+            'resume_uploaded': True,
+            'resume_file': 'sarah_johnson_resume.pdf',
+            'resume_analysis': {
+                'match_score': 87,
+                'skills': ['Python', 'Django', 'React', 'AWS', 'Docker', 'Kubernetes', 'REST APIs', 'Microservices'],
+                'experience': '8 years',
+                'education': 'Masters in Computer Science',
+                'status': 'Pending Review',
+                'summary': 'Experienced full-stack developer with strong backend skills in Python and Django, and frontend experience with React. Has led multiple successful projects from conception to deployment.',
+                'experience_details': [
+                    {
+                        'title': 'Senior Software Engineer',
+                        'company': 'Tech Solutions Inc.',
+                        'duration': '3 years',
+                        'description': 'Led a team of 5 developers in building scalable microservices.'
+                    },
+                    {
+                        'title': 'Software Engineer',
+                        'company': 'WebCraft Studios',
+                        'duration': '4 years',
+                        'description': 'Developed and maintained multiple web applications using Django and React.'
+                    }
+                ]
+            },
+            'avatar': 'https://randomuser.me/api/portraits/women/44.jpg'
+        },
+        {
+            'id': 2,
+            'name': 'Michael Chen',
+            'email': 'michael.chen@example.com',
+            'position': 'Data Scientist',
+            'status': 'In Progress',
+            'start_date': (datetime.now() + timedelta(days=21)).strftime('%Y-%m-%d'),
+            'resume_uploaded': True,
+            'resume_file': 'michael_chen_resume.pdf',
+            'resume_analysis': {
+                'match_score': 92,
+                'skills': ['Python', 'Machine Learning', 'TensorFlow', 'SQL', 'Data Visualization', 'Pandas', 'NLP', 'Deep Learning'],
+                'experience': '5 years',
+                'education': 'PhD in Data Science',
+                'status': 'Reviewed',
+                'summary': 'Data scientist with expertise in machine learning and deep learning. Strong background in natural language processing and computer vision.',
+                'experience_details': [
+                    {
+                        'title': 'Data Scientist',
+                        'company': 'DataInsights Inc.',
+                        'duration': '3 years',
+                        'description': 'Developed and deployed ML models for customer behavior prediction.'
+                    },
+                    {
+                        'title': 'Machine Learning Engineer',
+                        'company': 'AI Research Lab',
+                        'duration': '2 years',
+                        'description': 'Researched and implemented state-of-the-art deep learning models.'
+                    }
+                ]
+            },
+            'avatar': 'https://randomuser.me/api/portraits/men/32.jpg'
+        },
+        {
+            'id': 3,
+            'name': 'Emily Rodriguez',
+            'email': 'emily.rodriguez@example.com',
+            'position': 'UX/UI Designer',
+            'status': 'New',
+            'start_date': (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d'),
+            'resume_uploaded': False,
+            'resume_analysis': None,
+            'avatar': 'https://randomuser.me/api/portraits/women/68.jpg'
+        },
+        {
+            'id': 4,
+            'name': 'David Kim',
+            'email': 'david.kim@example.com',
+            'position': 'DevOps Engineer',
+            'status': 'In Progress',
+            'start_date': (datetime.now() + timedelta(days=10)).strftime('%Y-%m-%d'),
+            'resume_uploaded': True,
+            'resume_file': 'david_kim_resume.pdf',
+            'resume_analysis': {
+                'match_score': 78,
+                'skills': ['AWS', 'Terraform', 'Docker', 'Kubernetes', 'CI/CD', 'Linux', 'Bash', 'Jenkins'],
+                'experience': '6 years',
+                'education': 'Bachelors in Computer Engineering',
+                'status': 'Pending Review',
+                'summary': 'DevOps engineer with extensive experience in cloud infrastructure and CI/CD pipelines. Strong background in automation and system administration.',
+                'experience_details': [
+                    {
+                        'title': 'DevOps Engineer',
+                        'company': 'CloudScale Technologies',
+                        'duration': '3 years',
+                        'description': 'Managed cloud infrastructure and implemented CI/CD pipelines.'
+                    },
+                    {
+                        'title': 'System Administrator',
+                        'company': 'Tech Solutions Inc.',
+                        'duration': '3 years',
+                        'description': 'Maintained and optimized server infrastructure.'
+                    }
+                ]
+            },
+            'avatar': 'https://randomuser.me/api/portraits/men/75.jpg'
+        },
+        {
+            'id': 5,
+            'name': 'Priya Patel',
+            'email': 'priya.patel@example.com',
+            'position': 'Product Manager',
+            'status': 'Completed',
+            'start_date': (datetime.now() - timedelta(days=5)).strftime('%Y-%m-%d'),
+            'resume_uploaded': True,
+            'resume_file': 'priya_patel_resume.pdf',
+            'resume_analysis': {
+                'match_score': 95,
+                'skills': ['Product Strategy', 'Agile', 'JIRA', 'Market Research', 'Roadmapping', 'User Stories', 'Product Lifecycle'],
+                'experience': '7 years',
+                'education': 'MBA in Technology Management',
+                'status': 'Hired',
+                'summary': 'Results-driven product manager with a track record of successful product launches. Strong background in agile methodologies and cross-functional team leadership.',
+                'experience_details': [
+                    {
+                        'title': 'Senior Product Manager',
+                        'company': 'ProductLabs Inc.',
+                        'duration': '4 years',
+                        'description': 'Led product strategy and roadmap for multiple successful products.'
+                    },
+                    {
+                        'title': 'Product Owner',
+                        'company': 'TechStart Inc.',
+                        'duration': '3 years',
+                        'description': 'Managed product backlog and worked closely with development teams.'
+                    }
+                ]
+            },
+            'avatar': 'https://randomuser.me/api/portraits/women/22.jpg'
+        }
+    ]
+    
+    # If a specific candidate is requested, return their data
+    if candidate_id:
+        candidate = next((c for c in candidates if c['id'] == candidate_id), None)
+        if not candidate:
+            abort(404)
+        return render_template('resume_review.html', 
+                            candidate=candidate,
+                            candidates=candidates)
+    
+    # Otherwise, show the first candidate by default
+    return render_template('resume_review.html', 
+                         candidate=candidates[0] if candidates else None,
+                         candidates=candidates)
 
 # Mock data for Data Scientist position
 MOCK_DATA_SCIENTIST_DATA = {
@@ -960,6 +2364,234 @@ def manage_appointment(appointment_id):
                          candidates=candidates,
                          interviewers=interviewers)
 
+@app.route('/api/recruitment-pipeline')
+def get_recruitment_pipeline():
+    """
+    API endpoint to get detailed recruitment pipeline data with enhanced mock data.
+    
+    The recruitment pipeline consists of the following stages:
+    - sourced: Candidates identified through various channels but haven't applied yet
+    - applied: Candidates who have submitted job applications
+    - phone_screen: Initial screening call to assess basic qualifications
+    - technical_interview: In-depth evaluation of technical skills and knowledge
+    - final_interview: Final round with key stakeholders/management
+    - offer_extended: Job offer has been made to the candidate
+    - hired: Candidate has accepted the offer and joined the company
+    
+    Returns:
+        JSON: Pipeline data with candidate counts and details for each stage
+    """
+    pipeline_data = {}
+    
+    # Define all pipeline stages with their display names and realistic counts
+    stages = [
+        {'id': 'sourced', 'name': 'Sourced', 'count_range': (120, 180), 'days_ago_range': (60, 90)},
+        {'id': 'applied', 'name': 'Applied', 'count_range': (80, 120), 'days_ago_range': (30, 60)},
+        {'id': 'phone_screen', 'name': 'Phone Screen', 'count_range': (40, 60), 'days_ago_range': (15, 30)},
+        {'id': 'technical_interview', 'name': 'Technical Interview', 'count_range': (20, 30), 'days_ago_range': (7, 21)},
+        {'id': 'final_interview', 'name': 'Final Interview', 'count_range': (8, 15), 'days_ago_range': (3, 14)},
+        {'id': 'offer_extended', 'name': 'Offer Extended', 'count_range': (3, 8), 'days_ago_range': (1, 7)},
+        {'id': 'hired', 'name': 'Hired', 'count_range': (1, 3), 'days_ago_range': (0, 3)}
+    ]
+    
+    # Common position titles
+    positions = [
+        'Senior Software Engineer', 'Frontend Developer', 'Backend Developer',
+        'Full Stack Developer', 'DevOps Engineer', 'Data Scientist',
+        'Machine Learning Engineer', 'Mobile Developer', 'QA Engineer',
+        'Product Manager', 'UX/UI Designer', 'Technical Lead'
+    ]
+    
+    # Common first and last names for realistic candidate names
+    first_names = ['James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph',
+                  'Thomas', 'Charles', 'Mary', 'Patricia', 'Jennifer', 'Linda', 'Elizabeth',
+                  'Barbara', 'Susan', 'Jessica', 'Sarah', 'Karen', 'Lisa', 'Nancy', 'Betty']
+    last_names = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis',
+                 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson',
+                 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'Thompson', 'White']
+    
+    for stage in stages:
+        stage_id = stage['id']
+        stage_name = stage['name']
+        count = random.randint(*stage['count_range'])
+        
+        candidates = []
+        for i in range(1, count + 1):
+            first_name = random.choice(first_names)
+            last_name = random.choice(last_names)
+            email = f"{first_name.lower()}.{last_name.lower()}{i}@example.com"
+            
+            # Generate a realistic application date based on stage
+            days_ago = random.randint(*stage['days_ago_range'])
+            applied_date = (datetime.now() - timedelta(days=days_ago)).strftime('%Y-%m-%d')
+            
+            # Generate a realistic score that tends to increase through the pipeline
+            base_score = {
+                'sourced': 50,
+                'applied': 60,
+                'phone_screen': 65,
+                'technical_interview': 70,
+                'final_interview': 80,
+                'offer_extended': 90,
+                'hired': 95
+            }[stage_id]
+            
+            # Add some variation to the score
+            score = base_score + random.randint(-5, 5)
+            score = max(0, min(100, score))  # Ensure score is between 0-100
+            
+            candidates.append({
+                'id': f"{stage_id[:3].upper()}{i:04d}",
+                'name': f"{first_name} {last_name}",
+                'email': email,
+                'phone': f"+1 (555) {random.randint(100, 999)}-{random.randint(1000, 9999)}",
+                'applied_date': applied_date,
+                'status': stage_name,
+                'score': score,
+                'position': random.choice(positions),
+                'experience': f"{random.randint(2, 15)} years",
+                'location': f"{random.choice(['San Francisco', 'New York', 'Austin', 'Seattle', 'Boston', 'Chicago', 'Remote'])}",
+                'source': random.choice(['LinkedIn', 'Company Website', 'Referral', 'Job Board', 'Campus Recruiting', 'Agency']),
+                'last_updated': (datetime.now() - timedelta(days=random.randint(0, 7))).strftime('%Y-%m-%d')
+            })
+        
+        pipeline_data[stage_id] = {
+            'name': stage_name,
+            'count': count,
+            'candidates': candidates
+        }
+    
+    return jsonify(pipeline_data)
+
+
+"""
+    API endpoint to get top candidates data with enhanced mock data.
+    
+    Returns:
+        JSON: List of top candidates with detailed information
+    """
+@app.route('/api/top-candidates')
+def get_top_candidates():
+    # More comprehensive position titles
+    positions = [
+        'Senior Software Engineer', 'Frontend Developer', 'Backend Developer',
+        'Full Stack Developer', 'DevOps Engineer', 'Data Scientist',
+        'Machine Learning Engineer', 'Mobile Developer', 'QA Engineer',
+        'Product Manager', 'UX/UI Designer', 'Technical Lead',
+        'Cloud Architect', 'Data Engineer', 'Security Engineer',
+        'Site Reliability Engineer', 'Engineering Manager', 'CTO'
+    ]
+    
+    # More detailed candidate statuses with realistic weights
+    statuses = [
+        {'status': 'New Application', 'weight': 25},
+        {'status': 'Resume Review', 'weight': 20},
+        {'status': 'Phone Screen Scheduled', 'weight': 15},
+        {'status': 'Technical Assessment', 'weight': 15},
+        {'status': 'Onsite Interview', 'weight': 10},
+        {'status': 'Final Interview', 'weight': 8},
+        {'status': 'Reference Check', 'weight': 5},
+        {'status': 'Offer Extended', 'weight': 2}
+    ]
+    
+    # Skills matrix for different roles
+    role_skills = {
+        'Senior Software Engineer': ['Python', 'Java', 'System Design', 'Algorithms', 'Microservices'],
+        'Frontend Developer': ['React', 'TypeScript', 'JavaScript', 'HTML/CSS', 'Redux'],
+        'Backend Developer': ['Node.js', 'Python', 'Java', 'REST APIs', 'Databases'],
+        'DevOps Engineer': ['AWS', 'Docker', 'Kubernetes', 'CI/CD', 'Terraform'],
+        'Data Scientist': ['Python', 'Machine Learning', 'Pandas', 'SQL', 'Statistics']
+    }
+    
+    # Common first and last names for realistic candidate names
+    first_names = ['James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph',
+                  'Thomas', 'Charles', 'Mary', 'Patricia', 'Jennifer', 'Linda', 'Elizabeth',
+                  'Barbara', 'Susan', 'Jessica', 'Sarah', 'Karen', 'Lisa', 'Nancy', 'Betty']
+    last_names = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis',
+                 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson',
+                 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'Thompson', 'White']
+    
+    top_candidates = []
+    
+    for i in range(1, 31):  # Generate 30 top candidates
+        # Select a random position and get relevant skills
+        position = random.choice(positions)
+        skills = []
+        
+        # Get relevant skills for the position if available, otherwise use common skills
+        for role, role_skills_list in role_skills.items():
+            if role.lower() in position.lower():
+                skills = role_skills_list
+                break
+        
+        if not skills:  # If no specific skills found, use common ones
+            skills = ['Python', 'JavaScript', 'SQL', 'Git', 'REST APIs', 'Problem Solving']
+        
+        # Add 2-4 more random skills
+        all_skills = [
+            'React', 'Node.js', 'Docker', 'Kubernetes', 'AWS', 'Azure', 'GCP',
+            'TypeScript', 'Java', 'C#', 'Go', 'Ruby', 'PHP', 'Swift', 'Kotlin',
+            'Machine Learning', 'Data Analysis', 'Big Data', 'AI', 'Blockchain',
+            'Cybersecurity', 'DevOps', 'Agile', 'Scrum', 'TDD', 'CI/CD', 'Microservices'
+        ]
+        
+        additional_skills = random.sample(
+            [s for s in all_skills if s not in skills],
+            k=random.randint(2, 4)
+        )
+        skills.extend(additional_skills)
+        
+        # Generate candidate details
+        first_name = random.choice(first_names)
+        last_name = random.choice(last_names)
+        email = f"{first_name.lower()}.{last_name.lower()}{i}@example.com"
+        
+        # Generate a realistic score (80-100 for top candidates)
+        score = random.randint(80, 100)
+        
+        # Select status with weights
+        status = random.choices(
+            [s['status'] for s in statuses],
+            weights=[s['weight'] for s in statuses],
+            k=1
+        )[0]
+        
+        candidate = {
+            'id': f"TC{i:03d}",
+            'name': f"{random.choice(['John', 'Jane', 'Robert', 'Emily', 'Michael', 'Sarah'])} {random.choice(['Smith', 'Johnson', 'Williams', 'Brown', 'Jones'])}",
+            'email': f"candidate.top{i}@example.com",
+            'phone': f"+1 (555) {random.randint(100, 999)}-{random.randint(1000, 9999)}",
+            'position': random.choice(positions),
+            'score': score,
+            'status': status,
+            'experience': f"{random.randint(2, 15)}+ years",
+            'location': f"{random.choice(['San Francisco', 'New York', 'Remote', 'Austin', 'Seattle'])}",
+            'last_updated': (datetime.now() - timedelta(days=random.randint(1, 14))).strftime('%Y-%m-%d'),
+            'skills': [
+                random.choice(['Python', 'JavaScript', 'Java', 'C++', 'TypeScript']),
+                random.choice(['React', 'Node.js', 'Django', 'Spring', 'Angular']),
+                random.choice(['AWS', 'Docker', 'Kubernetes', 'CI/CD'])
+            ]
+        }
+        
+        top_candidates.append(candidate)
+    
+    # Sort by score in descending order
+    top_candidates.sort(key=lambda x: x['score'], reverse=True)
+    
+    return jsonify({
+        'total': len(top_candidates),
+        'candidates': top_candidates
+    })
+
+# HR Profile
+@app.route('/hr/profile')
+def hr_profile():
+    """HR Profile page"""
+    if 'user_role' not in session or session['user_role'] != 'hr':
+        return redirect(url_for('select_role'))
+    return render_template('hr_profile.html')
+
 # HR Dashboard
 @app.route('/hr/dashboard')
 def hr_dashboard():
@@ -1031,13 +2663,157 @@ def hr_dashboard():
         
         hiring_trends[month_year] = hired_count
     
-    # Sample sentiment data (in a real app, this would come from your database)
+    # Enhanced sentiment analysis data with more detailed metrics
     sentiment_data = {
-        'Positive': random.randint(15, 25),
-        'Neutral': random.randint(5, 15),
-        'Negative': random.randint(1, 5)
+        'positive': {
+            'count': 24,
+            'change': 3,  # 3 more than last month
+            'trend': 'up',
+            'comments': [
+                'Great work environment and team collaboration',
+                'Management is supportive and approachable',
+                'Good work-life balance',
+                'Excellent learning opportunities',
+                'Competitive compensation and benefits'
+            ]
+        },
+        'neutral': {
+            'count': 15,
+            'change': -2,  # 2 less than last month
+            'trend': 'down',
+            'comments': [
+                'Standard work environment',
+                'Company policies are reasonable',
+                'Typical corporate culture',
+                'Average benefits package',
+                'Management is adequate'
+            ]
+        },
+        'negative': {
+            'count': 6,
+            'change': 1,  # 1 more than last month
+            'trend': 'up',
+            'comments': [
+                'Limited career growth opportunities',
+                'Workload can be overwhelming at times',
+                'Communication between departments needs improvement',
+                'Salary increments could be better',
+                'Some processes are outdated'
+            ]
+        },
+        'sentiment_score': 68,  # Out of 100
+        'previous_score': 65,   # Previous month's score
+        'total_responses': 45,
+        'response_rate': '78%',
+        'key_improvement_areas': [
+            'Career Development (32% of feedback)',
+            'Workload Management (28% of feedback)',
+            'Communication (22% of feedback)',
+            'Compensation (18% of feedback)'
+        ]
     }
-    sentiment_total = sum(sentiment_data.values())
+    
+    # Calculate total responses from sentiment data
+    sentiment_total = sum(sentiment_data[category]['count'] for category in ['positive', 'neutral', 'negative'])
+    
+    # Recruitment pipeline data matching the modal mock data
+    recruitment_pipeline = {
+        'Sourced': 12,
+        'Applied': 8,
+        'Phone Screen': 6,
+        'Technical Interview': 4,
+        'Final Interview': 3,
+        'Offer Extended': 2,
+        'Hired': 1
+    }
+    
+    # Enhanced top candidates data with more details
+    enhanced_top_candidates = [
+        {
+            'id': 'TC001',
+            'name': 'Alex Johnson',
+            'email': 'alex.johnson@example.com',
+            'score': 98,
+            'position': 'Senior Full Stack Developer',
+            'status': 'Final Interview',
+            'last_updated': (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+        },
+        {
+            'id': 'TC002',
+            'name': 'Sarah Williams',
+            'email': 'sarah.williams@example.com',
+            'score': 95,
+            'position': 'Data Scientist',
+            'status': 'Technical Interview',
+            'last_updated': (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d')
+        },
+        {
+            'id': 'TC003',
+            'name': 'Michael Chen',
+            'email': 'michael.chen@example.com',
+            'score': 92,
+            'position': 'DevOps Engineer',
+            'status': 'Phone Screen',
+            'last_updated': (datetime.now() - timedelta(days=3)).strftime('%Y-%m-%d')
+        },
+        {
+            'id': 'TC004',
+            'name': 'Emily Davis',
+            'email': 'emily.davis@example.com',
+            'score': 90,
+            'position': 'UX Designer',
+            'status': 'Applied',
+            'last_updated': (datetime.now() - timedelta(days=4)).strftime('%Y-%m-%d')
+        }
+    ]
+    
+    # Skill distribution data - matching the modal
+    skill_distribution = {
+        'Programming Languages': {
+            'Python': 85,
+            'JavaScript': 78,
+            'Java': 65,
+            'C++': 55,
+            'TypeScript': 72
+        },
+        'Frameworks': {
+            'React': 82,
+            'Node.js': 75,
+            'Django': 68,
+            'Spring': 58,
+            'Angular': 62
+        },
+        'Cloud & DevOps': {
+            'AWS': 78,
+            'Docker': 72,
+            'Kubernetes': 65,
+            'CI/CD': 70,
+            'Terraform': 58
+        },
+        'AI/ML': {
+            'TensorFlow': 68,
+            'PyTorch': 72,
+            'NLP': 65,
+            'Computer Vision': 60,
+            'Reinforcement Learning': 55
+        },
+        'Databases': {
+            'PostgreSQL': 75,
+            'MongoDB': 70,
+            'Redis': 65,
+            'MySQL': 68,
+            'Elasticsearch': 60
+        }
+    }
+    
+    # Time to fill positions (in days)
+    time_to_fill = {
+        'Engineering': random.randint(25, 45),
+        'Product': random.randint(20, 40),
+        'Design': random.randint(15, 35),
+        'Marketing': random.randint(10, 30),
+        'Sales': random.randint(5, 25)
+    }
     
     return render_template(
         'dashboard.html',
@@ -1046,51 +2822,372 @@ def hr_dashboard():
         interviews_scheduled=interviews_scheduled,
         jobs_posted=jobs_posted,
         recent_activities=recent_activities,
-        top_candidates=top_candidates,
+        top_candidates=enhanced_top_candidates,
         status_counts=status_counts,
         score_distribution=score_distribution,
         hiring_trends=hiring_trends,
         avg_ats_score=avg_ats_score,
         hiring_rate=hiring_rate,
         sentiment_data=sentiment_data,
-        sentiment_total=sentiment_total if sentiment_total > 0 else 1  # Avoid division by zero
+        sentiment_total=sentiment_total if sentiment_total > 0 else 1,  # Avoid division by zero
+        recruitment_pipeline=recruitment_pipeline,
+        skill_distribution=skill_distribution,
+        time_to_fill=time_to_fill
     )
+
+# Candidate Routes
+
+@app.route('/candidate/documents')
+def candidate_documents():
+    """Candidate documents management route"""
+    if 'user_role' not in session or session['user_role'] != 'candidate':
+        return redirect(url_for('login_candidate'))
+    
+    # In a real app, this would come from the database
+    documents = [
+        {'id': 1, 'name': 'Resume.pdf', 'type': 'Resume', 'uploaded': '2023-10-01'},
+        {'id': 2, 'name': 'Cover_Letter.pdf', 'type': 'Cover Letter', 'uploaded': '2023-10-02'},
+    ]
+    
+    return render_template('candidate_documents.html', documents=documents)
+
+
+@app.route('/candidate/interviews')
+def candidate_interviews():
+    """Candidate interviews route"""
+    if 'user_role' not in session or session['user_role'] != 'candidate':
+        return redirect(url_for('login_candidate'))
+    
+    # Mock interview data with future dates
+    interviews = [
+        {
+            'id': 1,
+            'job_title': 'Senior Developer',
+            'company': 'TechCorp Inc.',
+            'date': datetime.now().strftime('%Y-%m-%d 14:00'),  # Changed to today
+            'type': 'Technical',
+            'round': 'Round 2',
+            'duration': '1 hour',
+            'platform': 'Zoom Meeting',
+            'status': 'upcoming',
+            'notify_me': False
+        },
+        {
+            'id': 2,
+            'job_title': 'Product Manager',
+            'company': 'InnovateX',
+            'date': (datetime.now() + timedelta(weeks=2, days=3)).strftime('%Y-%m-%d 10:00'),
+            'type': 'HR',
+            'round': 'Final Round',
+            'duration': '45 minutes',
+            'platform': 'Phone Call',
+            'status': 'upcoming',
+            'notify_me': False
+        },
+        {
+            'id': 3,
+            'job_title': 'Data Scientist',
+            'company': 'DataSphere',
+            'date': (datetime.now() + timedelta(weeks=5, days=2)).strftime('%Y-%m-%d 15:30'),
+            'type': 'Technical',
+            'round': 'Round 1',
+            'duration': '1 hour',
+            'platform': 'Microsoft Teams',
+            'status': 'upcoming',
+            'notify_me': False
+        }
+    ]
+    
+    # Check if there are any notifications in the session
+    notification = session.pop('notification', None)
+    
+    return render_template('candidate_interviews.html', 
+                         interviews=interviews,
+                         notification=notification)
+
+
+@app.route('/candidate/profile', methods=['GET', 'POST'])
+def candidate_profile():
+    """Candidate profile management route"""
+    if 'user_role' not in session or session['user_role'] != 'candidate':
+        return redirect(url_for('login_candidate'))
+    
+    # In a real app, this would come from and update the database
+    profile = {
+        'first_name': 'John',
+        'last_name': 'Doe',
+        'email': 'john.doe@example.com',
+        'phone': '+1234567890',
+        'location': 'New York, USA',
+        'bio': 'Experienced software developer with 5+ years of experience...',
+        'skills': ['Python', 'JavaScript', 'React', 'SQL']
+    }
+    
+    if request.method == 'POST':
+        # Handle profile update logic here
+        flash('Profile updated successfully!', 'success')
+        return redirect(url_for('candidate_profile'))
+    
+    return render_template('candidate_profile.html', profile=profile)
+
+@app.route('/candidate/onboarding', methods=['GET', 'POST'])
+def candidate_onboarding():
+    """
+    Candidate onboarding dashboard
+    Handles both displaying the onboarding progress and processing form submissions
+    """
+    # Authentication check
+    if 'user_role' not in session or session['user_role'] != 'candidate':
+        return redirect(url_for('login_candidate'))
+    
+    # Get candidate ID from session
+    candidate_id = session.get('user_id')
+    
+    # In a real app, you would fetch this from the database
+    # For now, we'll use mock data
+    
+    # Check profile completion (mock implementation)
+    def is_profile_complete(candidate_id):
+        # In a real app, check if all required profile fields are filled
+        # For now, we'll assume it's complete if the user has a name
+        return bool(session.get('user_name'))
+    
+    # Check documents (mock implementation)
+    def has_uploaded_documents(candidate_id):
+        # In a real app, check if required documents are uploaded
+        # For now, we'll return False to show the upload prompt
+        return False
+    
+    # Check assessment completion (mock implementation)
+    def is_assessment_complete(candidate_id):
+        # In a real app, check if assessment is completed
+        return False
+    
+    # Check preferences (mock implementation)
+    def are_preferences_set(candidate_id):
+        # In a real app, check if job preferences are set
+        return False
+    
+    # Handle form submission for completing steps
+    if request.method == 'POST':
+        step = request.form.get('step')
+        if step == 'complete_profile':
+            return redirect(url_for('candidate_profile'))
+        elif step == 'upload_documents':
+            return redirect(url_for('candidate_documents'))
+        elif step == 'start_assessment':
+            # In a real app, this would start an assessment
+            flash('Assessment started!', 'info')
+            return redirect(url_for('candidate_onboarding'))
+        elif step == 'set_preferences':
+            return redirect(url_for('candidate_profile') + '#preferences')
+    
+    # Get completion status for each step
+    profile_complete = is_profile_complete(candidate_id)
+    documents_uploaded = has_uploaded_documents(candidate_id)
+    assessment_complete = is_assessment_complete(candidate_id)
+    preferences_set = are_preferences_set(candidate_id)
+    
+    # Calculate progress
+    completed_steps = sum([
+        profile_complete,
+        documents_uploaded,
+        assessment_complete,
+        preferences_set
+    ])
+    progress_percentage = min(100, (completed_steps / 4) * 100)
+    
+    # Determine if onboarding is complete
+    onboarding_complete = all([
+        profile_complete,
+        documents_uploaded,
+        assessment_complete,
+        preferences_set
+    ])
+    
+    return render_template(
+        'candidate_onboarding.html',
+        profile_complete=profile_complete,
+        documents_uploaded=documents_uploaded,
+        assessment_complete=assessment_complete,
+        preferences_set=preferences_set,
+        progress_percentage=progress_percentage,
+        onboarding_complete=onboarding_complete,
+        candidate_name=session.get('user_name', 'Candidate')
+    )
+
+@app.route('/candidate/settings', methods=['GET', 'POST'])
+def candidate_settings():
+    """Candidate account settings route"""
+    if 'user_role' not in session or session['user_role'] != 'candidate':
+        return redirect(url_for('login_candidate'))
+    
+    if request.method == 'POST':
+        # Handle settings update logic here
+        flash('Settings updated successfully!', 'success')
+        return redirect(url_for('candidate_settings'))
+    
+    # In a real app, these would come from the database
+    settings = {
+        'notifications': {
+            'email': True,
+            'sms': False,
+            'push': True,
+            'email_notifications': True
+        },
+        'privacy': {
+            'profile_visibility': 'public',
+            'search_engine_indexing': True,
+            'resume_visibility': 'public'
+        },
+        'account': {
+            'email': session.get('user_email', 'user@example.com'),
+            'phone': '+1234567890',
+            'timezone': 'UTC'
+        }
+    }
+    
+    return render_template('candidate_settings.html', settings=settings)
 
 # Candidate Routes
 def get_recent_activities(applications):
     """Generate recent activities from application status updates."""
     activities = []
     
-    for app in applications:
-        # Add application submission as first activity
-        activities.append({
-            'date': app['applied_date'],
-            'description': f'Application submitted for {app["job_title"]} at {app["company"]}',
-            'status': 'Submitted',
-            'position': app['job_title']
-        })
+    # Mock activities data if no applications are provided
+    if not applications or (isinstance(applications, list) and not applications):
+        now = datetime.now()
         
-        # Add all status updates as activities
-        if 'application_status' in app:
-            for status_update in app['application_status']:
-                if status_update['status'] != 'Application Submitted':  # Skip duplicate of submission
-                    activities.append({
-                        'date': status_update['date'],
-                        'description': f"{status_update['status']}: {app['job_title']} at {app['company']}",
-                        'details': status_update.get('details', ''),
-                        'status': status_update['status'],
-                        'position': app['job_title']
-                    })
+        mock_activities = [
+            {
+                'title': 'New Application',
+                'description': 'John Doe applied for Senior Developer position',
+                'status': 'New',
+                'status_class': 'primary',
+                'time_ago': '5 min ago',
+                'user': 'System',
+                'date': now - timedelta(minutes=5)
+            },
+            {
+                'title': 'Interview Scheduled',
+                'description': 'Interview scheduled with Sarah Williams for Data Scientist role',
+                'status': 'Scheduled',
+                'status_class': 'info',
+                'time_ago': '1 hour ago',
+                'user': 'Alex Johnson',
+                'date': now - timedelta(hours=1)
+            },
+            {
+                'title': 'Offer Extended',
+                'description': 'Offer extended to Michael Chen for DevOps Engineer position',
+                'status': 'Offer',
+                'status_class': 'success',
+                'time_ago': '3 hours ago',
+                'user': 'HR Team',
+                'date': now - timedelta(hours=3)
+            },
+            {
+                'title': 'Document Uploaded',
+                'description': 'Emily Davis uploaded signed offer letter',
+                'status': 'Completed',
+                'status_class': 'success',
+                'time_ago': '1 day ago',
+                'user': 'Emily Davis',
+                'date': now - timedelta(days=1)
+            },
+            {
+                'title': 'Interview Completed',
+                'description': 'Technical interview completed with Robert Brown',
+                'status': 'Review',
+                'status_class': 'warning',
+                'time_ago': '2 days ago',
+                'user': 'Interview Panel',
+                'date': now - timedelta(days=2)
+            },
+            {
+                'title': 'Resume Shortlisted',
+                'description': 'Resume shortlisted for Lisa Ray - Senior UX Designer',
+                'status': 'In Review',
+                'status_class': 'info',
+                'time_ago': '45 min ago',
+                'user': 'Design Team',
+                'date': now - timedelta(minutes=45)
+            },
+            {
+                'title': 'Assessment Sent',
+                'description': 'Coding assessment sent to David Kim for Backend Developer role',
+                'status': 'Pending',
+                'status_class': 'warning',
+                'time_ago': '2 hours ago',
+                'user': 'Tech Team',
+                'date': now - timedelta(hours=2)
+            },
+            {
+                'title': 'Reference Check',
+                'description': 'Reference check completed for Maria Garcia - Project Manager',
+                'status': 'Completed',
+                'status_class': 'success',
+                'time_ago': '4 hours ago',
+                'user': 'HR Team',
+                'date': now - timedelta(hours=4)
+            },
+            {
+                'title': 'Interview Rescheduled',
+                'description': 'Interview with Alex Turner rescheduled to next Monday',
+                'status': 'Updated',
+                'status_class': 'info',
+                'time_ago': '6 hours ago',
+                'user': 'Recruitment Team',
+                'date': now - timedelta(hours=6)
+            },
+            {
+                'title': 'New Job Posting',
+                'description': 'New job posted: Senior Data Engineer (Remote)',
+                'status': 'Active',
+                'status_class': 'primary',
+                'time_ago': '1 day ago',
+                'user': 'HR Team',
+                'date': now - timedelta(days=1)
+            }
+        ]
+        return mock_activities
+    
+    # Process real applications if available
+    for app in applications:
+        if isinstance(app, dict):
+            # Handle dictionary format
+            activities.append({
+                'title': 'Application Received',
+                'description': f'New application from {app.get("name", "Candidate")} for {app.get("position", "a position")}',
+                'status': 'New',
+                'status_class': 'primary',
+                'time_ago': 'Recently',
+                'user': app.get('name', 'System'),
+                'date': app.get('applied_date', datetime.now())
+            })
+        else:
+            # Handle SQLAlchemy model
+            activities.append({
+                'title': 'Application Received',
+                'description': f'New application from {getattr(app, "name", "Candidate")} for {getattr(app, "position", "a position")}',
+                'status': 'New',
+                'status_class': 'primary',
+                'time_ago': 'Recently',
+                'user': getattr(app, 'name', 'System'),
+                'date': getattr(app, 'applied_date', datetime.now())
+            })
     
     # Sort activities by date in descending order and return only the 5 most recent
-    activities.sort(key=lambda x: x['date'], reverse=True)
+    activities.sort(key=lambda x: x['date'] if isinstance(x['date'], datetime) else datetime.min, reverse=True)
     return activities[:5]
 
 @app.route('/candidate/dashboard')
 def candidate_dashboard():
     # Get candidate's activities and interviews from database
-    candidate_name = session.get('username', 'Candidate')
-    candidate = Candidate.query.filter_by(name=candidate_name).first()
+    candidate_name = session.get('user_name', 'Candidate User')
+    # For now, just get the first candidate since we're using mock data
+    # In a real app, you'd want to use the authenticated user's ID
+    candidate = Candidate.query.first()
     
     # Mock applications data (matching the applications page)
     applications = [
@@ -1177,9 +3274,13 @@ def candidate_dashboard():
                 'meeting_link': app.get('meeting_link')
             })
     
+    # Get current datetime for the template
+    current_time = datetime.now()
+    
     return render_template('candidate_dashboard.html',
                          activities=activities,
-                         upcoming_interviews=upcoming_interviews)
+                         upcoming_interviews=upcoming_interviews,
+                         now=current_time)
 
 @app.route('/candidate/resume/submit', methods=['POST'])
 def submit_resume():
@@ -1332,33 +3433,362 @@ def onboarding():
 @app.route('/hr/interviews')
 def hr_interviews():
     """HR Interviews management"""
-    # Get all interviews with candidate details
-    interviews = []
-    for interview in db.interviews:
-        candidate = next((c for c in db.candidates if c.id == interview.candidate_id), None)
-        if candidate:
-            interview.candidate_name = f"{candidate.first_name} {candidate.last_name}"
-            interview.candidate_email = candidate.email
-            interview.candidate_phone = candidate.phone
-            interviews.append(interview)
-    
-    # Sort interviews by date (most recent first)
-    interviews.sort(key=lambda x: x.interview_date, reverse=True)
+    # For demo purposes, we'll use mock data
+    mock_interviews = get_mock_interview_data()
     
     # Group interviews by status
-    upcoming = [i for i in interviews if i.status == 'scheduled' and i.interview_date >= datetime.now()]
-    completed = [i for i in interviews if i.status == 'completed']
-    cancelled = [i for i in interviews if i.status == 'cancelled']
+    now = datetime.utcnow()
+    upcoming = [i for i in mock_interviews if i['status'] == 'Scheduled' and datetime.strptime(i['scheduled_time'], '%Y-%m-%dT%H:%M') >= now]
+    completed = [i for i in mock_interviews if i['status'] == 'Completed']
+    cancelled = [i for i in mock_interviews if i['status'] == 'Cancelled']
+    
+    # Mock candidates for the dropdown
+    candidates = [
+        {'id': 1, 'name': 'John Doe', 'email': 'john.doe@example.com'},
+        {'id': 2, 'name': 'Jane Smith', 'email': 'jane.smith@example.com'},
+        {'id': 3, 'name': 'Robert Johnson', 'email': 'robert.j@example.com'}
+    ]
+    
+    # Mock users for the interviewer dropdown
+    users = [
+        {'id': 1, 'name': 'Sarah Johnson', 'role': 'HR Manager'},
+        {'id': 2, 'name': 'Michael Chen', 'role': 'Technical Lead'},
+        {'id': 3, 'name': 'David Wilson', 'role': 'Hiring Manager'}
+    ]
     
     return render_template('interviews.html', 
                          upcoming=upcoming,
                          completed=completed,
-                         cancelled=cancelled)
+                         cancelled=cancelled,
+                         candidates=candidates,
+                         users=users,
+                         mock_interviews=mock_interviews)
+
+@app.route('/interview/<int:interview_id>')
+def view_interview(interview_id):
+    """View interview details"""
+    # Get the interview from mock data
+    interviews = get_mock_interview_data()
+    interview = next((i for i in interviews if i['id'] == interview_id), None)
+    
+    if not interview:
+        flash('Interview not found', 'danger')
+        return redirect(url_for('hr_interviews'))
+    
+    # Get related data
+    candidates = [
+        {'id': 1, 'name': 'John Doe', 'email': 'john.doe@example.com'},
+        {'id': 2, 'name': 'Jane Smith', 'email': 'jane.smith@example.com'},
+        {'id': 3, 'name': 'Robert Johnson', 'email': 'robert.j@example.com'}
+    ]
+    
+    users = [
+        {'id': 1, 'name': 'Sarah Johnson', 'role': 'HR Manager'},
+        {'id': 2, 'name': 'Michael Chen', 'role': 'Technical Lead'},
+        {'id': 3, 'name': 'David Wilson', 'role': 'Hiring Manager'}
+    ]
+    
+    return render_template('view_interview.html', 
+                         interview=interview,
+                         candidates=candidates,
+                         users=users)
 
 @app.route('/candidate/interview')
 def candidate_interview():
     # For candidates, show the interview screen
-    return render_template('candidate/interview_screen.html')
+    return render_template('candidate_interviews.html')
+
+from ai_interview import AIInterviewer
+from interview_questions import InterviewQuestionBank, InterviewQuestion
+from functools import wraps
+import json
+from datetime import datetime
+
+# Initialize the question bank
+question_bank = InterviewQuestionBank()
+
+def candidate_required(f):
+    """Decorator to ensure the user is logged in as a candidate."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_role' not in session or session['user_role'] != 'candidate':
+            return jsonify({'error': 'Unauthorized'}), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_required(f):
+    """Decorator to ensure the user is an admin."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_role' not in session or session['user_role'] != 'admin':
+            return jsonify({'error': 'Admin access required'}), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Helper function to convert InterviewQuestion to dict
+def question_to_dict(question: InterviewQuestion) -> dict:
+    return {
+        'id': question.id,
+        'category': question.category,
+        'question': question.question,
+        'difficulty': question.difficulty,
+        'tags': question.tags,
+        'tips': question.tips,
+        'sample_answers': question.sample_answers,
+        'created_at': question.created_at,
+        'updated_at': question.updated_at
+    }
+
+# API Endpoints for Interview Questions
+
+@app.route('/api/interview-questions', methods=['GET'])
+@candidate_required
+def get_questions():
+    """Get all questions with optional filtering."""
+    category = request.args.get('category')
+    difficulty = request.args.get('difficulty')
+    tag = request.args.get('tag')
+    search = request.args.get('search')
+    
+    questions = []
+    
+    if category:
+        questions = question_bank.get_questions_by_category(category)
+    elif difficulty:
+        questions = question_bank.get_questions_by_difficulty(difficulty)
+    elif tag:
+        questions = question_bank.get_questions_by_tag(tag)
+    elif search:
+        questions = question_bank.search_questions(search)
+    else:
+        questions = list(question_bank.questions.values())
+    
+    return jsonify({
+        'success': True,
+        'count': len(questions),
+        'questions': [question_to_dict(q) for q in questions]
+    })
+
+@app.route('/api/interview-questions/categories', methods=['GET'])
+@candidate_required
+def get_question_categories():
+    """Get all unique categories."""
+    return jsonify({
+        'success': True,
+        'categories': question_bank.get_all_categories()
+    })
+
+@app.route('/api/interview-questions/tags', methods=['GET'])
+@candidate_required
+def get_question_tags():
+    """Get all unique tags."""
+    return jsonify({
+        'success': True,
+        'tags': question_bank.get_all_tags()
+    })
+
+@app.route('/api/interview-questions/random', methods=['GET'])
+@candidate_required
+def get_random_question():
+    """Get a random question, optionally filtered by category and/or difficulty."""
+    category = request.args.get('category')
+    difficulty = request.args.get('difficulty')
+    
+    question = question_bank.get_random_question(category, difficulty)
+    
+    if not question:
+        return jsonify({
+            'success': False,
+            'error': 'No questions found matching the criteria'
+        }), 404
+    
+    return jsonify({
+        'success': True,
+        'question': question_to_dict(question)
+    })
+
+@app.route('/api/interview-questions', methods=['POST'])
+@admin_required
+def create_question():
+    """Create a new interview question (admin only)."""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['question', 'category']
+        for field in required_fields:
+            if field not in data or not data[field].strip():
+                return jsonify({
+                    'success': False,
+                    'error': f'Missing required field: {field}'
+                }), 400
+        
+        # Create the question
+        question = question_bank.add_question(data)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Question created successfully',
+            'question': question_to_dict(question)
+        }), 201
+        
+    except ValueError as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 400
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'An error occurred while creating the question'
+        }), 500
+
+@app.route('/api/interview-questions/<question_id>', methods=['GET'])
+@candidate_required
+def get_question(question_id):
+    """Get a specific question by ID."""
+    question = question_bank.get_question(question_id)
+    
+    if not question:
+        return jsonify({
+            'success': False,
+            'error': 'Question not found'
+        }), 404
+    
+    return jsonify({
+        'success': True,
+        'question': question_to_dict(question)
+    })
+
+@app.route('/api/interview-questions/<question_id>', methods=['PUT'])
+@admin_required
+def update_question(question_id):
+    """Update an existing question (admin only)."""
+    question = question_bank.get_question(question_id)
+    
+    if not question:
+        return jsonify({
+            'success': False,
+            'error': 'Question not found'
+        }), 404
+    
+    try:
+        data = request.get_json()
+        
+        # Don't allow updating the question text (would change the ID)
+        if 'question' in data:
+            del data['question']
+        
+        updated_question = question_bank.update_question(question_id, data)
+        
+        if not updated_question:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to update question'
+            }), 500
+        
+        return jsonify({
+            'success': True,
+            'message': 'Question updated successfully',
+            'question': question_to_dict(updated_question)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'An error occurred while updating the question'
+        }), 500
+
+@app.route('/api/interview-questions/<question_id>', methods=['DELETE'])
+@admin_required
+def delete_question(question_id):
+    """Delete a question (admin only)."""
+    if not question_bank.get_question(question_id):
+        return jsonify({
+            'success': False,
+            'error': 'Question not found'
+        }), 404
+    
+    success = question_bank.delete_question(question_id)
+    
+    if not success:
+        return jsonify({
+            'success': False,
+            'error': 'Failed to delete question'
+        }), 500
+    
+    return jsonify({
+        'success': True,
+        'message': 'Question deleted successfully'
+    })
+
+# AI interview practice route
+@app.route('/ai-interview-practice', methods=['GET', 'POST'])
+@candidate_required
+def ai_interview_practice():
+    """AI-powered interview practice page and API endpoint"""
+    # Initialize or retrieve the AI interviewer from the session
+    if 'ai_interviewer' not in session:
+        session['ai_interviewer'] = AIInterviewer().__dict__
+    
+    # Handle POST requests (user answers)
+    if request.method == 'POST':
+        data = request.get_json()
+        action = data.get('action')
+        
+        # Load the current state
+        interviewer = AIInterviewer()
+        interviewer.__dict__.update(session['ai_interviewer'])
+        
+        if action == 'get_question':
+            # Get the next question
+            response = interviewer.get_next_question()
+        elif action == 'submit_answer':
+            # Process the user's answer
+            question = data.get('question', '')
+            answer = data.get('answer', '')
+            response = interviewer.process_answer(answer, question)
+        elif action == 'end_interview':
+            # End the interview and get final feedback
+            response = interviewer._generate_final_feedback()
+            # Clear the interview from session when done
+            session.pop('ai_interviewer', None)
+        else:
+            return jsonify({'error': 'Invalid action'}), 400
+        
+        # Save the updated state
+        session['ai_interviewer'] = interviewer.__dict__
+        session.modified = True
+        
+        return jsonify(response)
+    
+    # For GET requests, just render the template
+    return render_template('ai_interview_practice.html')
+
+@app.route('/api/interview/notify-me/<int:interview_id>', methods=['POST'])
+def notify_me(interview_id):
+    """Handle the 'Notify Me' button click for interviews."""
+    try:
+        # In a real application, you would:
+        # 1. Get the current user's email from the session
+        # 2. Get the interview details from the database
+        # 3. Schedule a reminder email 24 hours before the interview
+        
+        # For demo purposes, we'll just log the request and return success
+        print(f"Notification requested for interview ID: {interview_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Notification scheduled successfully',
+            'interview_id': interview_id
+        }), 200
+    except Exception as e:
+        print(f"Error scheduling notification: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': 'Failed to schedule notification',
+            'error': str(e)
+        }), 500
 
 @app.route('/interview-complete')
 def interview_complete():
@@ -1601,7 +4031,10 @@ def candidate_applications():
             'attachments': ['resume.pdf', 'ml_portfolio.pdf']
         }
     ]
-    return render_template('candidate/applications.html', applications=applications)
+    from datetime import datetime
+    return render_template('candidate_applications.html', 
+                         applications=applications,
+                         now=datetime.utcnow())
 
 @app.route('/candidate/application/<int:app_id>')
 def view_application(app_id):
@@ -1700,8 +4133,26 @@ def view_application(app_id):
 
 @app.route('/candidate/resume/upload')
 def candidate_resume_upload():
-    # Resume upload page
-    return render_template('candidate/resume_upload.html')
+    #def candidate_resume_upload():
+    return render_template('candidate_resume_upload.html')
+
+@app.route('/contact-support', methods=['GET', 'POST'])
+def contact_support():
+    if request.method == 'POST':
+        # Handle form submission
+        name = request.form.get('name', '')
+        email = request.form.get('email', '')
+        subject = request.form.get('subject', '')
+        message = request.form.get('message', '')
+        
+        # In a real app, you would process the support request here
+        # For example, send an email or save to a database
+        
+        flash('Your support request has been submitted. We\'ll get back to you soon!', 'success')
+        return redirect(url_for('candidate_dashboard'))
+    
+    # For GET request, show the contact form
+    return render_template('contact_support.html')
 
 @app.route('/candidate/resume/review')
 def resume_review():
@@ -1720,10 +4171,182 @@ def resume_review():
                          resume_data=resume_data,
                          analysis_results=analysis_results)
 
-@app.route('/schedule-interview/<int:candidate_id>', methods=['GET', 'POST'])
-def schedule_interview(candidate_id):
-    candidate = Candidate.query.get_or_404(candidate_id)
+def get_mock_interview_data(interview_id=None):
+    """Generate mock interview data for testing"""
+    mock_interviews = [
+        {
+            'id': 1,
+            'candidate_name': 'John Doe',
+            'candidate_email': 'john.doe@example.com',
+            'candidate_phone': '+1 (555) 123-4567',
+            'position': 'Senior Software Engineer',
+            'interview_type': 'Technical',
+            'scheduled_time': (datetime.utcnow() + timedelta(days=2)).strftime('%Y-%m-%dT%H:%M'),
+            'duration': 60,
+            'interviewer': 'Sarah Johnson',
+            'status': 'Scheduled',
+            'meeting_link': 'https://meet.google.com/abc-xyz-123',
+            'feedback': {
+                'overall_score': 8,
+                'technical_skills': 9,
+                'communication': 8,
+                'problem_solving': 8,
+                'notes': 'Strong candidate with excellent technical skills.'
+            },
+            'notes': 'Focus on system design and algorithms',
+            'resume': 'john_doe_resume.pdf'
+        },
+        {
+            'id': 2,
+            'candidate_name': 'Jane Smith',
+            'candidate_email': 'jane.smith@example.com',
+            'candidate_phone': '+1 (555) 234-5678',
+            'position': 'Frontend Developer',
+            'interview_type': 'Technical',
+            'scheduled_time': (datetime.utcnow() + timedelta(days=1)).strftime('%Y-%m-%dT%H:%M'),
+            'feedback': {
+                'overall_score': 7,
+                'technical_skills': 8,
+                'communication': 7,
+                'problem_solving': 7,
+                'notes': 'Good understanding of frontend technologies.'
+            },
+            'duration': 45,
+            'interviewer': 'Michael Chen',
+            'status': 'Scheduled',
+            'meeting_link': 'https://meet.google.com/def-456-uvw',
+            'notes': 'Focus on React and JavaScript',
+            'resume': 'jane_smith_resume.pdf'
+        },
+        {
+            'id': 3,
+            'candidate_name': 'Robert Johnson',
+            'candidate_email': 'robert.j@example.com',
+            'candidate_phone': '+1 (555) 345-6789',
+            'position': 'Product Manager',
+            'interview_type': 'Behavioral',
+            'scheduled_time': (datetime.utcnow() - timedelta(days=1)).strftime('%Y-%m-%dT%H:%M'),
+            'feedback': {
+                'overall_score': 9,
+                'technical_skills': 8,
+                'communication': 9,
+                'problem_solving': 9,
+                'notes': 'Excellent product sense and leadership skills.'
+            },
+            'duration': 60,
+            'interviewer': 'David Wilson',
+            'status': 'Completed',
+            'meeting_link': 'https://meet.google.com/ghi-789-xyz',
+            'notes': 'Focus on product management and leadership skills',
+            'resume': 'robert_johnson_resume.pdf'
+        }
+    ]
     
+    if interview_id:
+        return next((i for i in mock_interviews if i['id'] == interview_id), None)
+    return mock_interviews
+
+@app.route('/api/interviews/mock', methods=['GET'])
+def get_mock_interviews():
+    """API endpoint to get mock interview data"""
+    return jsonify(get_mock_interview_data())
+
+@app.route('/api/interviews/mock/<int:interview_id>', methods=['GET'])
+def get_mock_interview(interview_id):
+    """API endpoint to get a single mock interview by ID"""
+    interview = get_mock_interview_data(interview_id)
+    if not interview:
+        return jsonify({'error': 'Interview not found'}), 404
+    return jsonify(interview)
+
+@app.route('/reschedule-interview/<int:interview_id>', methods=['POST'])
+def reschedule_interview(interview_id):
+    """Handle interview rescheduling"""
+    if request.method == 'POST':
+        try:
+            # Get form data
+            new_date_str = request.form.get('new_date')
+            reason = request.form.get('reason', 'No reason provided')
+            
+            # Convert string to datetime
+            new_date = datetime.strptime(new_date_str, '%Y-%m-%dT%H:%M')
+            
+            # In a real application, you would update the interview in the database here
+            # For now, we'll just flash a success message
+            flash(f'Interview #{interview_id} has been rescheduled to {new_date.strftime("%B %d, %Y at %I:%M %p")}', 'success')
+            
+            return redirect(url_for('hr_interviews'))
+            
+        except Exception as e:
+            flash(f'Error rescheduling interview: {str(e)}', 'danger')
+            return redirect(url_for('hr_interviews'))
+
+@app.route('/cancel-interview/<int:interview_id>', methods=['POST'])
+def cancel_interview(interview_id):
+    """Handle interview cancellation"""
+    if request.method == 'POST':
+        try:
+            # Get form data
+            reason = request.form.get('reason', 'No reason provided')
+            notify_candidate = request.form.get('notify_candidate') == 'on'
+            
+            # In a real application, you would update the interview status in the database here
+            # and send a notification email if notify_candidate is True
+            
+            flash(f'Interview #{interview_id} has been cancelled. ' + 
+                 ('Candidate has been notified.' if notify_candidate else ''), 'warning')
+            
+            return redirect(url_for('hr_interviews'))
+            
+        except Exception as e:
+            flash(f'Error cancelling interview: {str(e)}', 'danger')
+            return redirect(url_for('hr_interviews'))
+
+@app.route('/schedule-interview', methods=['GET', 'POST'])
+def schedule_interview():
+    """Handle interview scheduling"""
+    if request.method == 'POST':
+        try:
+            # Get form data
+            candidate_id = request.form.get('candidate_id')
+            interview_type = request.form.get('interview_type')
+            interview_date = request.form.get('interview_date')
+            duration = request.form.get('duration', 30)
+            interviewer_id = request.form.get('interviewer_id')
+            meeting_link = request.form.get('meeting_link')
+            notes = request.form.get('notes')
+            
+            # For demo purposes, just show a success message with the form data
+            if all([candidate_id, interview_type, interview_date]):
+                flash(f'Interview scheduled successfully for candidate ID {candidate_id}!', 'success')
+            else:
+                flash('Please fill in all required fields', 'error')
+            
+            return redirect(url_for('hr_interviews'))
+            
+        except Exception as e:
+            app.logger.error(f'Error in schedule_interview: {str(e)}')
+            flash('An error occurred while scheduling the interview', 'error')
+            return redirect(url_for('hr_interviews'))
+    
+    # GET request - show the schedule form with mock data
+    mock_candidates = [
+        {'id': 1, 'name': 'John Doe', 'email': 'john.doe@example.com'},
+        {'id': 2, 'name': 'Jane Smith', 'email': 'jane.smith@example.com'},
+        {'id': 3, 'name': 'Robert Johnson', 'email': 'robert.j@example.com'}
+    ]
+    
+    mock_users = [
+        {'id': 1, 'name': 'Sarah Johnson', 'role': 'HR Manager'},
+        {'id': 2, 'name': 'Michael Chen', 'role': 'Technical Lead'},
+        {'id': 3, 'name': 'David Wilson', 'role': 'Hiring Manager'}
+    ]
+    
+    return render_template('interviews.html', 
+                         candidates=mock_candidates, 
+                         users=mock_users,
+                         mock_interviews=get_mock_interview_data())
+
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
@@ -1788,32 +4411,88 @@ def api_manage_appointment(appointment_id):
         db.session.commit()
         return jsonify({'status': 'success', 'message': 'Appointment deleted successfully'})
 
+def get_mock_applications():
+    """Return a list of mock job applications with interview details."""
+    return [
+        {
+            'id': 1,
+            'job_title': 'Senior Software Engineer',
+            'company': 'TechNova Systems',
+            'status': 'Interview Scheduled',
+            'interview_scheduled': '2023-11-25 10:00:00',
+            'meeting_link': 'https://meet.google.com/xyz-abc-123',
+            'interview_type': 'Technical Interview',
+            'interviewer_name': 'Sarah Johnson',
+            'interviewer_role': 'Engineering Manager',
+            'interview_duration': '60 minutes',
+            'interview_format': 'Video Call',
+            'preparation_materials': [
+                'Review our tech stack: Python, Django, React, AWS',
+                'Prepare to discuss system design concepts',
+                'Be ready for live coding exercises'
+            ],
+            'contact_person': 'Sarah Johnson',
+            'contact_email': 'sarah.johnson@technova.com',
+            'interview_notes': 'Please have your ID ready for verification at the start of the interview.'
+        },
+        # Add more mock applications as needed
+    ]
+
 @app.route('/interview/<int:application_id>')
 def interview_screen(application_id):
-    # Get the application details
-    applications = get_mock_applications()
-    application = next((app for app in applications if app['id'] == application_id), None)
-    
-    if not application:
-        flash('Application not found', 'error')
+    """Display the interview details for a specific application."""
+    try:
+        # Get the application details
+        applications = get_mock_applications()
+        application = next((app for app in applications if app['id'] == application_id), None)
+        
+        if not application:
+            flash('Application not found', 'error')
+            return redirect(url_for('candidate_applications'))
+        
+        # Check if interview is scheduled
+        if not application.get('interview_scheduled'):
+            flash('No interview scheduled for this application', 'warning')
+            return redirect(url_for('candidate_applications'))
+        
+        # Prepare interview data with additional details
+        interview_data = {
+            'job_title': application['job_title'],
+            'company': application['company'],
+            'scheduled_time': application['interview_scheduled'],
+            'formatted_time': datetime.strptime(
+                application['interview_scheduled'], 
+                '%Y-%m-%d %H:%M:%S'
+            ).strftime('%A, %B %d, %Y at %I:%M %p'),
+            'time_until': (datetime.strptime(
+                application['interview_scheduled'], 
+                '%Y-%m-%d %H:%M:%S'
+            ) - datetime.now()).days,
+            'meeting_link': application.get('meeting_link', '#'),
+            'interview_type': application.get('interview_type', 'Interview'),
+            'interviewer_name': application.get('interviewer_name', 'Interviewer'),
+            'interviewer_role': application.get('interviewer_role', ''),
+            'interview_duration': application.get('interview_duration', '60 minutes'),
+            'interview_format': application.get('interview_format', 'Video Call'),
+            'preparation_materials': application.get('preparation_materials', []),
+            'contact_person': application.get('contact_person', 'HR Representative'),
+            'contact_email': application.get('contact_email', ''),
+            'interview_notes': application.get('interview_notes', '')
+        }
+        
+        return render_template('candidate/interview.html', 
+                            application=application,
+                            interview=interview_data)
+                            
+    except Exception as e:
+        app.logger.error(f"Error loading interview screen: {str(e)}")
+        flash('An error occurred while loading the interview details', 'error')
         return redirect(url_for('candidate_applications'))
-    
-    # Check if interview is scheduled
-    if not application.get('interview_scheduled'):
-        flash('No interview scheduled for this application', 'error')
-        return redirect(url_for('candidate_applications'))
-    
-    # Prepare interview data
-    interview_data = {
-        'job_title': application['job_title'],
-        'company': application['company'],
-        'scheduled_time': application['interview_scheduled'],
-        'meeting_link': application.get('meeting_link', '#')
-    }
-    
-    return render_template('candidate/interview.html', 
-                         application=application,
-                         interview=interview_data)
+
+@app.route('/workflow.html')
+def workflow_route():
+    """Route for the workflow page"""
+    return render_template('workflow.html')
 
 if __name__ == '__main__':
     with app.app_context():

@@ -1,42 +1,178 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8 text-center">
-            <h2 class="mb-4">Select Your Role</h2>
-            <p class="mb-5">Choose how you want to access SmartHire AI</p>
-            
-            <div class="row">
-                <!-- HR Portal Card -->
-                <div class="col-md-6 mb-4">
-                    <div class="card h-100">
-                        <div class="card-body">
-                            <div class="text-center mb-4">
-                                <i class="fas fa-user-tie fa-4x mb-3" style="color: #7b2cbf;"></i>
-                                <h3>HR Professional</h3>
-                                <p class="text-muted">Access the HR dashboard, manage candidates, and view analytics</p>
-                            </div>
-                            <a href="{{ url_for('hr_dashboard') }}" class="btn btn-primary btn-lg w-100">Continue as HR</a>
+<div class="container-fluid min-vh-100 d-flex align-items-center" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);">
+    <div class="container py-5">
+        <div class="text-center mb-5">
+            <h1 class="display-4 fw-bold text-white mb-3">Welcome to SmartHire AI</h1>
+            <p class="lead text-muted">Select your role to access the platform</p>
+        </div>
+        
+        <div class="row g-4 justify-content-center">
+            <!-- HR Role Card -->
+            <div class="col-lg-5 col-md-6">
+                <div class="card h-100 border-0 shadow-lg" style="background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px);">
+                    <div class="card-header border-0 text-center py-4" style="background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);">
+                        <div class="icon-wrapper mb-3">
+                            <i class="fas fa-user-tie fa-4x text-white"></i>
                         </div>
+                        <h2 class="h3 text-white mb-0">HR Professional</h2>
+                    </div>
+                    <div class="card-body p-4">
+                        <p class="text-muted mb-4">Access the HR dashboard to manage the entire hiring process efficiently.</p>
+                        
+                        <ul class="list-unstyled mb-4">
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Manage candidates and applications
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Schedule and conduct interviews
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Track onboarding progress
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Generate detailed reports
+                            </li>
+                        </ul>
+                        
+                        <a href="{{ url_for('login_hr') }}" class="btn btn-primary btn-lg w-100 py-3 fw-bold">
+                            <i class="fas fa-sign-in-alt me-2"></i> Continue as HR
+                        </a>
                     </div>
                 </div>
-                
-                <!-- Candidate Portal Card -->
-                <div class="col-md-6 mb-4">
-                    <div class="card h-100">
-                        <div class="card-body">
-                            <div class="text-center mb-4">
-                                <i class="fas fa-user-graduate fa-4x mb-3" style="color: #34A853;"></i>
-                                <h3>Candidate</h3>
-                                <p class="text-muted">Apply for positions, track your application, and schedule interviews</p>
-                            </div>
-                            <a href="{{ url_for('candidate_dashboard_route') }}" class="btn btn-success btn-lg w-100">Continue as Candidate</a>
+            </div>
+            
+            <div class="col-auto d-flex align-items-center">
+                <div class="vr d-none d-lg-block" style="height: 400px; opacity: 0.1;"></div>
+                <div class="my-4 d-lg-none w-100 text-center">
+                    <span class="text-muted">OR</span>
+                </div>
+            </div>
+            
+            <!-- Candidate Role Card -->
+            <div class="col-lg-5 col-md-6">
+                <div class="card h-100 border-0 shadow-lg" style="background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px);">
+                    <div class="card-header border-0 text-center py-4" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                        <div class="icon-wrapper mb-3">
+                            <i class="fas fa-user-graduate fa-4x text-white"></i>
                         </div>
+                        <h2 class="h3 text-white mb-0">Candidate</h2>
+                    </div>
+                    <div class="card-body p-4">
+                        <p class="text-muted mb-4">Access your personal dashboard to manage your job applications and onboarding.</p>
+                        
+                        <ul class="list-unstyled mb-4">
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Track application status
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Complete onboarding tasks
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                Upload required documents
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                View interview schedule
+                            </li>
+                        </ul>
+                        
+                        <a href="{{ url_for('login_candidate') }}" class="btn btn-outline-light btn-lg w-100 py-3 fw-bold">
+                            <i class="fas fa-user-graduate me-2"></i> Continue as Candidate
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
+        
+        <div class="text-center mt-5 pt-4 border-top border-secondary">
+            <p class="text-muted mb-0">
+                <i class="fas fa-question-circle me-2"></i>
+                Need help? <a href="#" class="text-decoration-none">Contact support</a>
+            </p>
+        </div>
     </div>
 </div>
+
+<style>
+    body {
+        overflow-x: hidden;
+    }
+    
+    .card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3) !important;
+    }
+    
+    .icon-wrapper {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+        margin: 0 auto;
+    }
+    
+    .btn {
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .btn:hover {
+        transform: translateY(-2px);
+    }
+    
+    .btn:active {
+        transform: translateY(0);
+    }
+    
+    .btn::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 5px;
+        height: 5px;
+        background: rgba(255, 255, 255, 0.5);
+        opacity: 0;
+        border-radius: 100%;
+        transform: scale(1, 1) translate(-50%, -50%);
+        transform-origin: 50% 50%;
+    }
+    
+    @keyframes ripple {
+        0% {
+            transform: scale(0, 0);
+            opacity: 1;
+        }
+        20% {
+            transform: scale(25, 25);
+            opacity: 1;
+        }
+        100% {
+            opacity: 0;
+            transform: scale(40, 40);
+        }
+    }
+    
+    .btn:focus:not(:active)::after {
+        animation: ripple 1s ease-out;
+    }
+</style>
 {% endblock %}
