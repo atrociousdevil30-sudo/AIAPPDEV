@@ -1,0 +1,1017 @@
+{% extends "base.html" %}
+
+{% block title %}Pre-Hire Pipeline - SmartHire AI{% endblock %}
+
+{% block extra_css %}
+{{ super() }}
+<style>
+    .candidate-card {
+        transition: all 0.3s ease;
+        height: 100%;
+        position: relative;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 0.75rem;
+    }
+    .candidate-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.2);
+        border-color: var(--primary-color);
+    }
+    
+    /* Progress bar styles */
+    .progress-bar-custom {
+        height: 6px;
+        background-color: var(--bg-color);
+    }
+    .progress-bar-bg-success { background-color: var(--success-color); }
+    .progress-bar-bg-info { background-color: var(--info-color); }
+    .progress-bar-bg-warning { background-color: var(--warning-color); }
+    .progress-bar-bg-danger { background-color: var(--danger-color); }
+    
+    .status-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        font-size: 0.75rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 50px;
+    }
+    
+    .candidate-avatar {
+        width: 80px;
+        height: 80px;
+        font-size: 2rem;
+        background: var(--primary-color);
+        color: white;
+    }
+    
+    .progress {
+        height: 8px;
+        background-color: var(--bg-color);
+    }
+    
+    .ats-score {
+        font-weight: 600;
+    }
+    
+    .ats-excellent { color: var(--success-color); }
+    .ats-good { color: var(--info-color); }
+    .ats-average { color: var(--warning-color); }
+    .ats-poor { color: var(--danger-color); }
+    
+    .skill-tag {
+        display: inline-block;
+        background: rgba(123, 44, 191, 0.1);
+        color: var(--primary-color);
+        padding: 0.25rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.8rem;
+        margin: 0.2rem;
+        border: 1px solid rgba(123, 44, 191, 0.2);
+        margin: 2px;
+        font-size: 0.8rem;
+    }
+    .analysis-section {
+        border-left: 3px solid #dee2e6;
+        padding-left: 1rem;
+        margin: 1rem 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">Pre-Hire Pipeline</h1>
+            <p class="text-muted mb-0">Manage and track candidates through the hiring process</p>
+            <p class="text-muted mb-0">Track and manage candidates from application to offer stage</p>
+        </div>
+        <div>
+            <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addCandidateModal">
+                <i class="fas fa-plus me-2"></i>Add Candidate
+            </button>
+            <button class="btn btn-outline-secondary">
+                <i class="fas fa-download me-2"></i>Export
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary bg-opacity-10 border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase text-muted mb-2">Total Candidates</h6>
+                            <h3 class="mb-0">{{ candidates|length }}</h3>
+                        </div>
+                        <div class="bg-primary bg-opacity-25 p-3 rounded-circle">
+                            <i class="fas fa-users text-primary"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success bg-opacity-10 border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase text-muted mb-2">New This Week</h6>
+                            <h3 class="mb-0">{{ new_this_week }}</h3>
+                        </div>
+                        <div class="bg-success bg-opacity-25 p-3 rounded-circle">
+                            <i class="fas fa-user-plus text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning bg-opacity-10 border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase text-muted mb-2">In Review</h6>
+                            <h3 class="mb-0">{{ in_review_count }}</h3>
+                        </div>
+                        <div class="bg-warning bg-opacity-25 p-3 rounded-circle">
+                            <i class="fas fa-search text-warning"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info bg-opacity-10 border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase text-muted mb-2">Interview Stage</h6>
+                            <h3 class="mb-0">{{ interview_count }}</h3>
+                        </div>
+                        <div class="bg-info bg-opacity-25 p-3 rounded-circle">
+                            <i class="fas fa-comments text-info"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Candidate List -->
+    <div class="card onboarding-card">
+        <div class="card-header bg-transparent border-0 py-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-0">Candidates</h5>
+                    <p class="text-muted mb-0 mt-1">Manage your recruitment pipeline</p>
+                </div>
+                <div class="d-flex">
+                    <div class="input-group input-group-sm me-2" style="width: 250px;">
+                        <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                        <input type="text" class="form-control" placeholder="Search candidates..." id="candidateSearch">
+                    </div>
+                    <div class="dropdown me-2">
+                        <button class="btn btn-sm btn-outline-primary dropdown-toggle d-flex align-items-center" type="button" id="statusFilter" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-filter me-1"></i> Stage
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="statusFilter">
+                            <li><a class="dropdown-item active" href="#" data-status="all">All Candidates</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header">Pre-Offer Stages</h6></li>
+                            <li><a class="dropdown-item" href="#" data-status="sourced"><span class="badge bg-secondary me-2">Sourced</span> Sourced</a></li>
+                            <li><a class="dropdown-item" href="#" data-status="applied"><span class="badge bg-primary me-2">New</span> Applied</a></li>
+                            <li><a class="dropdown-item" href="#" data-status="screening"><span class="badge bg-info me-2">Screening</span> Screening</a></li>
+                            <li><a class="dropdown-item" href="#" data-status="interview"><span class="badge bg-warning me-2">Interview</span> Interview</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header">Post-Offer Stages</h6></li>
+                            <li><a class="dropdown-item" href="#" data-status="offer"><span class="badge bg-success me-2">Offer</span> Offer Stage</a></li>
+                            <li><a class="dropdown-item" href="#" data-status="hired"><span class="badge bg-dark me-2">Hired</span> Hired</a></li>
+                        </ul>
+                    </div>
+                    <div class="dropdown me-2">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="sourceFilter" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-funnel-dollar me-1"></i> Source
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="sourceFilter">
+                            <li><a class="dropdown-item" href="#" data-source="all">All Sources</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" data-source="career_site">Career Site</a></li>
+                            <li><a class="dropdown-item" href="#" data-source="linkedin">LinkedIn</a></li>
+                            <li><a class="dropdown-item" href="#" data-source="indeed">Indeed</a></li>
+                            <li><a class="dropdown-item" href="#" data-source="referral">Employee Referral</a></li>
+                            <li><a class="dropdown-item" href="#" data-source="agency">Recruitment Agency</a></li>
+                        </ul>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-primary dropdown-toggle d-flex align-items-center" type="button" id="sortBy" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-sort me-1"></i> Sort
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="sortBy">
+                            <li><h6 class="dropdown-header">Sort By</h6></li>
+                            <li><a class="dropdown-item" href="#" data-sort="date_desc"><i class="fas fa-calendar-alt me-2"></i>Newest First</a></li>
+                            <li><a class="dropdown-item" href="#" data-sort="date_asc"><i class="fas fa-calendar me-2"></i>Oldest First</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" data-sort="score_desc"><i class="fas fa-sort-numeric-down me-2"></i>Highest Score</a></li>
+                            <li><a class="dropdown-item" href="#" data-sort="score_asc"><i class="fas fa-sort-numeric-up me-2"></i>Lowest Score</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-dark bg-opacity-25">
+                        <tr>
+                            <th>Candidate</th>
+                            <th>Position</th>
+                            <th>Source</th>
+                            <th>Applied</th>
+                            <th>Stage</th>
+                            <th>Match Score</th>
+                            <th>Last Contact</th>
+                            <th>Next Step</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for candidate in candidates %}
+                        <tr class="candidate-row" data-status="{{ candidate.status|lower }}">
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar bg-primary text-white rounded-circle me-2" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
+                                        {{ candidate.first_name[0] }}{{ candidate.last_name[0] if candidate.last_name }}
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold">{{ candidate.first_name }} {{ candidate.last_name }}</div>
+                                        <small class="text-muted">{{ candidate.email }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>{{ candidate.position_applied or 'Not specified' }}</td>
+                            <td>
+                                <span class="badge bg-light text-dark">
+                                    {% if candidate.source %}
+                                        {{ candidate.source }}
+                                    {% else %}
+                                        Manual
+                                    {% endif %}
+                                </span>
+                            </td>
+                            <td>{{ candidate.applied|default('N/A') }}</td>
+                            <td>
+                                {% set status_class = {
+                                    'sourced': 'bg-secondary',
+                                    'applied': 'bg-primary',
+                                    'screening': 'bg-info',
+                                    'interview': 'bg-warning',
+                                    'offer': 'bg-success',
+                                    'hired': 'bg-dark',
+                                    'rejected': 'bg-danger'
+                                }.get(candidate.status|lower, 'bg-secondary') %}
+                                <span class="badge {{ status_class }}">
+                                    {{ candidate.status or 'Sourced' }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="progress progress-thin flex-grow-1 me-2">
+                                        {% set progress_width = candidate.ats_score|default(0)|int %}
+                                        {% set progress_class = 'bg-success' if progress_width >= 80 
+                                            else 'bg-info' if progress_width >= 60 
+                                            else 'bg-warning' if progress_width >= 40 
+                                            else 'bg-danger' %}
+                                        {% set progress_style = 'width: ' ~ progress_width ~ '%;' %}
+                                        <div class="progress-bar {{ progress_class }} progress-bar-striped progress-bar-animated" 
+                                             role="progressbar" 
+                                             style="{{ progress_style }}" 
+                                             aria-valuenow="{{ progress_width }}" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                    <div class="d-flex flex-column">
+                                        <small class="fw-bold {{ 
+                                            'text-success' if progress_width >= 80 
+                                            else 'text-info' if progress_width >= 60 
+                                            else 'text-warning' if progress_width >= 40 
+                                            else 'text-danger' 
+                                        }}">
+                                            {{ progress_width }}%
+                                        </small>
+                                        {% if candidate.resume_parsed %}
+                                        <small class="text-success" data-bs-toggle="tooltip" title="Resume Parsed">
+                                            <i class="fas fa-check-circle"></i>
+                                        </small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>{{ candidate.last_contact or 'N/A' }}</td>
+                            <td>
+                                <small class="text-muted">
+                                    {% if candidate.next_step %}
+                                        {{ candidate.next_step }}
+                                    {% elif candidate.status == 'sourced' %}
+                                        Initial contact needed
+                                    {% elif candidate.status == 'applied' %}
+                                        Review application
+                                    {% elif candidate.status == 'screening' %}
+                                        Schedule screening
+                                    {% elif candidate.status == 'interview' %}
+                                        Schedule next round
+                                    {% elif candidate.status == 'offer' %}
+                                        Prepare offer
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <!-- View/Edit Button -->
+                                    <button class="btn btn-outline-primary btn-sm rounded-start" 
+                                            data-bs-toggle="tooltip" 
+                                            title="View/Edit Candidate"
+                                            onclick="window.location.href='{{ url_for('candidate_evaluation', candidate_id=candidate.id) }}'"
+                                            type="button">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    
+                                    <!-- Stage-Specific Actions -->
+                                    {% if candidate.status in ['sourced', 'applied'] %}
+                                        <!-- For early stage candidates -->
+                                        <button class="btn btn-outline-info btn-sm" 
+                                                data-bs-toggle="tooltip" 
+                                                title="Screen Candidate"
+                                                onclick="screenCandidate('{{ candidate.id }}')">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                        <button class="btn btn-outline-success btn-sm" 
+                                                data-bs-toggle="tooltip" 
+                                                title="Schedule Interview"
+                                                onclick="scheduleInterview('{{ candidate.id }}')">
+                                            <i class="far fa-calendar-alt"></i>
+                                        </button>
+                                    
+                                    {% elif candidate.status == 'screening' %}
+                                        <!-- For candidates in screening -->
+                                        <button class="btn btn-outline-warning btn-sm" 
+                                                data-bs-toggle="tooltip" 
+                                                title="Add Screening Notes"
+                                                onclick="addScreeningNotes('{{ candidate.id }}')">
+                                            <i class="fas fa-clipboard"></i>
+                                        </button>
+                                        <button class="btn btn-outline-success btn-sm" 
+                                                data-bs-toggle="tooltip" 
+                                                title="Move to Interview"
+                                                onclick="advanceStage('{{ candidate.id }}', 'interview')">
+                                            <i class="fas fa-user-tie"></i>
+                                        </button>
+                                    
+                                    {% elif candidate.status == 'interview' %}
+                                        <!-- For candidates in interview stage -->
+                                        <button class="btn btn-outline-info btn-sm" 
+                                                data-bs-toggle="tooltip" 
+                                                title="View Interview Details"
+                                                onclick="viewInterviewDetails('{{ candidate.id }}')">
+                                            <i class="fas fa-clipboard-list"></i>
+                                        </button>
+                                        <div class="btn-group" role="group">
+                                            <button type="button" class="btn btn-outline-success btn-sm dropdown-toggle" 
+                                                    data-bs-toggle="dropdown" 
+                                                    aria-expanded="false"
+                                                    title="Next Steps">
+                                                <i class="fas fa-arrow-right"></i>
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                <li><a class="dropdown-item" href="#" 
+                                                    onclick="advanceStage('{{ candidate.id }}', 'offer')">
+                                                    <i class="fas fa-file-signature me-2"></i>Move to Offer
+                                                </a></li>
+                                                <li><a class="dropdown-item" href="#" 
+                                                    onclick="scheduleAdditionalInterview('{{ candidate.id }}')">
+                                                    <i class="fas fa-plus-circle me-2"></i>Add Interview Round
+                                                </a></li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li><a class="dropdown-item text-danger" href="#" 
+                                                    onclick="rejectCandidate('{{ candidate.id }}')">
+                                                    <i class="fas fa-times-circle me-2"></i>Reject
+                                                </a></li>
+                                            </ul>
+                                        </div>
+                                    
+                                    {% elif candidate.status == 'offer' %}
+                                        <!-- For candidates with offers -->
+                                        <button class="btn btn-outline-success btn-sm" 
+                                                data-bs-toggle="tooltip" 
+                                                title="View Offer Details"
+                                                onclick="viewOfferDetails('{{ candidate.id }}')">
+                                            <i class="fas fa-file-contract"></i>
+                                        </button>
+                                        <button class="btn btn-success btn-sm" 
+                                                data-bs-toggle="tooltip" 
+                                                title="Mark as Hired"
+                                                onclick="markAsHired('{{ candidate.id }}')">
+                                            <i class="fas fa-user-check"></i>
+                                        </button>
+                                    
+                                    {% else %}
+                                        <!-- Default actions -->
+                                        <button class="btn btn-outline-secondary btn-sm" 
+                                                data-bs-toggle="tooltip" 
+                                                title="View Details"
+                                                onclick="viewCandidate('{{ candidate.id }}')">
+                                            <i class="fas fa-info-circle"></i>
+                                        </button>
+                                    {% endif %}
+                                    
+                                    <!-- Quick Actions Dropdown -->
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle rounded-end" 
+                                                data-bs-toggle="dropdown" 
+                                                aria-expanded="false"
+                                                title="More Actions">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li>
+                                                <a class="dropdown-item" href="#" 
+                                                   onclick="sendEmail('{{ candidate.id }}')">
+                                                    <i class="fas fa-envelope me-2"></i>Send Email
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="#" 
+                                                   onclick="addNote('{{ candidate.id }}')">
+                                                    <i class="fas fa-sticky-note me-2"></i>Add Note
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="#" 
+                                                   onclick="scheduleCall('{{ candidate.id }}')">
+                                                    <i class="fas fa-phone me-2"></i>Schedule Call
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <a class="dropdown-item text-danger" href="#" 
+                                                   onclick="rejectCandidate('{{ candidate.id }}')">
+                                                    <i class="fas fa-user-slash me-2"></i>Reject
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <div class="text-muted">
+                                    <i class="fas fa-user-tie fa-3x mb-3"></i>
+                                    <p class="mb-0">No candidates found</p>
+                                    <button class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#addCandidateModal">
+                                        <i class="fas fa-plus me-2"></i>Add Your First Candidate
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer bg-white border-0 py-3">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mb-0">
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
+                    </li>
+                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                    <li class="page-item"><a class="page-link" href="#">2</a></li>
+                    <li class="page-item"><a class="page-link" href="#">3</a></li>
+                    <li class="page-item">
+                        <a class="page-link" href="#">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- Add Candidate Modal -->
+<div class="modal fade" id="addCandidateModal" tabindex="-1" aria-labelledby="addCandidateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addCandidateModalLabel">Add New Candidate</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="addCandidateForm" method="POST" action="{{ url_for('add_candidate') }}" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="firstName" class="form-label">First Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="firstName" name="first_name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="lastName" class="form-label">Last Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="lastName" name="last_name" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="email" name="email" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">Phone</label>
+                                <input type="tel" class="form-control" id="phone" name="phone">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="position" class="form-label">Position Applied For <span class="text-danger">*</span></label>
+                                <select class="form-select" id="position" name="position_applied" required>
+                                    <option value="">Select a position</option>
+                                    <option value="Software Engineer">Software Engineer</option>
+                                    <option value="Data Scientist">Data Scientist</option>
+                                    <option value="Product Manager">Product Manager</option>
+                                    <option value="UX Designer">UX Designer</option>
+                                    <option value="DevOps Engineer">DevOps Engineer</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="source" class="form-label">Source</label>
+                                <select class="form-select" id="source" name="source">
+                                    <option value="Career Site">Career Site</option>
+                                    <option value="LinkedIn">LinkedIn</option>
+                                    <option value="Referral">Referral</option>
+                                    <option value="Job Board">Job Board</option>
+                                    <option value="Agency">Agency</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="resume" class="form-label">Resume (PDF, DOCX, DOC)</label>
+                        <input class="form-control" type="file" id="resume" name="resume" accept=".pdf,.docx,.doc">
+                    </div>
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Candidate</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ATS Analysis Result Modal -->
+<div class="modal fade" id="atsAnalysisModal" tabindex="-1" aria-labelledby="atsAnalysisModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="atsAnalysisModalLabel">Resume ATS Analysis</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="atsAnalysisContent">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Analyzing...</span>
+                    </div>
+                    <p class="mt-3">Analyzing resume and matching with job requirements...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="scheduleFromAnalysis">Schedule Interview</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Interview Modal -->
+<div class="modal fade" id="scheduleInterviewModal" tabindex="-1" aria-labelledby="scheduleInterviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="scheduleInterviewModalLabel">Schedule Interview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="scheduleInterviewForm">
+                <div class="modal-body">
+                    <input type="hidden" id="candidateId" name="candidate_id">
+                    <div class="mb-3">
+                        <label for="interviewType" class="form-label">Interview Type</label>
+                        <select class="form-select" id="interviewType" name="interview_type" required>
+                            <option value="phone">Phone Screen</option>
+                            <option value="video">Video Interview</option>
+                            <option value="onsite">On-site Interview</option>
+                            <option value="technical">Technical Assessment</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="interviewDate" class="form-label">Date & Time</label>
+                        <input type="datetime-local" class="form-control" id="interviewDate" name="interview_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="interviewers" class="form-label">Interviewers</label>
+                        <select class="form-select" id="interviewers" name="interviewers" multiple>
+                            <option value="1">John Doe (Hiring Manager)</option>
+                            <option value="2">Jane Smith (Team Lead)</option>
+                            <option value="3">Mike Johnson (Technical Lead)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="interviewNotes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="interviewNotes" name="interview_notes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Schedule Interview</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Note Modal -->
+<div class="modal fade" id="addNoteModal" tabindex="-1" aria-labelledby="addNoteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addNoteModalLabel">Add Note</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="addNoteForm">
+                <div class="modal-body">
+                    <input type="hidden" id="noteCandidateId" name="candidate_id">
+                    <div class="mb-3">
+                        <label for="noteType" class="form-label">Type</label>
+                        <select class="form-select" id="noteType" name="note_type" required>
+                            <option value="general">General Note</option>
+                            <option value="phone">Phone Call</option>
+                            <option value="email">Email</option>
+                            <option value="interview">Interview</option>
+                            <option value="assessment">Assessment</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="noteContent" class="form-label">Note</label>
+                        <textarea class="form-control" id="noteContent" name="note_content" rows="5" required></textarea>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="isPrivate" name="is_private">
+                        <label class="form-check-label" for="isPrivate">
+                            Private Note (only visible to you)
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Note</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Candidate Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="rejectModalLabel">Reject Candidate</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="rejectCandidateForm">
+                <div class="modal-body">
+                    <input type="hidden" id="rejectCandidateId" name="candidate_id">
+                    <p>Are you sure you want to reject this candidate? This action cannot be undone.</p>
+                    <div class="mb-3">
+                        <label for="rejectReason" class="form-label">Reason for Rejection</label>
+                        <select class="form-select" id="rejectReason" name="reject_reason" required>
+                            <option value="">Select a reason</option>
+                            <option value="not_qualified">Not Qualified</option>
+                            <option value="not_good_fit">Not a Good Fit</option>
+                            <option value="position_filled">Position Filled</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="rejectNotes" class="form-label">Notes (Optional)</label>
+                        <textarea class="form-control" id="rejectNotes" name="reject_notes" rows="3"></textarea>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="sendEmail" name="send_email" checked>
+                        <label class="form-check-label" for="sendEmail">
+                            Send rejection email to candidate
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Reject Candidate</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Handle ATS Analysis
+    document.querySelectorAll('.analyze-resume').forEach(button => {
+        button.addEventListener('click', function() {
+            const candidateId = this.getAttribute('data-candidate-id');
+            const modal = new bootstrap.Modal(document.getElementById('atsAnalysisModal'));
+            
+            // Show loading state
+            document.getElementById('atsAnalysisContent').innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Analyzing...</span>
+                    </div>
+                    <p class="mt-3">Analyzing resume and matching with job requirements...</p>
+                </div>
+            `;
+            
+            modal.show();
+            
+            // Simulate API call to analyze resume
+            fetch(`/api/candidates/${candidateId}/analyze`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update modal with analysis results
+                    document.getElementById('atsAnalysisContent').innerHTML = `
+                        <div class="mb-4">
+                            <h5>ATS Score: <span class="${getScoreClass(data.score)}">${data.score}%</span></h5>
+                            <div class="progress" style="height: 10px;">
+                                <div class="progress-bar ${getProgressBarClass(data.score)}" role="progressbar" 
+                                     style="width: ${data.score}%" 
+                                     aria-valuenow="${data.score}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                            <p class="mt-2">${getScoreMessage(data.score)}</p>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0">Top Skills Matched</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        ${data.matched_skills && data.matched_skills.length > 0 ? 
+                                            data.matched_skills.map(skill => 
+                                                `<span class="badge bg-primary me-1 mb-1">${skill}</span>`
+                                            ).join('') : 
+                                            '<p class="text-muted mb-0">No skills matched</p>'
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0">Recommended Actions</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <ul class="list-unstyled mb-0">
+                                            ${data.recommendations && data.recommendations.length > 0 ? 
+                                                data.recommendations.map(rec => 
+                                                    `<li class="mb-1"><i class="fas fa-arrow-right text-primary me-2"></i>${rec}</li>`
+                                                ).join('') : 
+                                                '<li class="text-muted">No specific recommendations</li>'
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        ${data.missing_keywords && data.missing_keywords.length > 0 ? `
+                            <div class="alert alert-warning mt-3">
+                                <h6><i class="fas fa-exclamation-triangle me-2"></i>Missing Keywords</h6>
+                                <p class="mb-2">Consider adding these keywords to improve your resume:</p>
+                                ${data.missing_keywords.map(kw => 
+                                    `<span class="badge bg-warning text-dark me-1 mb-1">${kw}</span>`
+                                ).join('')}
+                            </div>
+                        ` : ''}
+                        
+                        <div class="mt-4">
+                            <h6>Analysis Details:</h6>
+                            <div class="analysis-section">
+                                <p class="mb-1"><strong>Experience Match:</strong> ${data.experience_match || 'N/A'}</p>
+                                <p class="mb-1"><strong>Education Match:</strong> ${data.education_match || 'N/A'}</p>
+                                <p class="mb-1"><strong>Skills Match:</strong> ${data.skills_match || 'N/A'}</p>
+                                <p class="mb-0"><strong>Last Analyzed:</strong> ${new Date().toLocaleString()}</p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Store candidate ID for scheduling
+                    document.getElementById('scheduleFromAnalysis').setAttribute('data-candidate-id', candidateId);
+                } else {
+                    throw new Error(data.message || 'Failed to analyze resume');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('atsAnalysisContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <h5>Error</h5>
+                        <p>${error.message || 'An error occurred while analyzing the resume. Please try again.'}</p>
+                    </div>
+                    <div class="text-center mt-3">
+                        <button class="btn btn-primary" onclick="window.location.reload()">
+                            <i class="fas fa-sync-alt me-2"></i>Try Again
+                        </button>
+                    </div>
+                `;
+            });
+        });
+    });
+    
+    // Handle interview scheduling from analysis
+    document.getElementById('scheduleFromAnalysis')?.addEventListener('click', function() {
+        const candidateId = this.getAttribute('data-candidate-id');
+        // Close the current modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('atsAnalysisModal'));
+        modal.hide();
+        
+        // Open schedule interview modal
+        const scheduleModal = new bootstrap.Modal(document.getElementById('scheduleInterviewModal'));
+        // You can pre-fill the form here if needed
+        scheduleModal.show();
+    });
+    
+    // Helper functions for ATS scoring
+    function getScoreClass(score) {
+        if (score >= 80) return 'text-success';
+        if (score >= 60) return 'text-info';
+        if (score >= 40) return 'text-warning';
+        return 'text-danger';
+    }
+    
+    function getProgressBarClass(score) {
+        if (score >= 80) return 'bg-success';
+        if (score >= 60) return 'bg-info';
+        if (score >= 40) return 'bg-warning';
+        return 'bg-danger';
+    }
+    
+    function getScoreMessage(score) {
+        if (score >= 80) return 'Excellent match! This candidate is highly qualified for the position.';
+        if (score >= 60) return 'Good match. This candidate meets most of the requirements.';
+        if (score >= 40) return 'Moderate match. Consider additional screening.';
+        return 'Low match. This candidate may not be the best fit for the position.';
+    }
+    
+    // Handle schedule interview modal
+    const scheduleInterviewModal = document.getElementById('scheduleInterviewModal');
+    if (scheduleInterviewModal) {
+        scheduleInterviewModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const candidateId = button.getAttribute('data-candidate-id');
+            const candidateName = button.getAttribute('data-candidate-name');
+            
+            // Update modal title with candidate name
+            const modalTitle = scheduleInterviewModal.querySelector('.modal-title');
+            modalTitle.textContent = `Schedule Interview for ${candidateName}`;
+            
+            // Set candidate ID in the form
+            const form = scheduleInterviewModal.querySelector('form');
+            if (form) {
+                // Check if the form has a candidate_id element before trying to set its value
+                if (form.elements['candidate_id']) {
+                    form.elements['candidate_id'].value = candidateId;
+                } else if (form.elements['candidateId']) {
+                    form.elements['candidateId'].value = candidateId;
+                }
+            }
+            
+            // Initialize datetime picker if it exists
+            const dateTimeInput = scheduleInterviewModal.querySelector('#interviewDateTime');
+            if (dateTimeInput) {
+                // Set minimum date to today
+                const today = new Date();
+                const tomorrow = new Date(today);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                dateTimeInput.min = tomorrow.toISOString().slice(0, 16);
+                
+                // Set default time to tomorrow at 10 AM
+                if (!dateTimeInput.value) {
+                    tomorrow.setHours(10, 0, 0, 0);
+                    dateTimeInput.value = tomorrow.toISOString().slice(0, 16);
+                }
+            }
+        });
+    }
+
+    // Handle row click
+    document.querySelectorAll('.candidate-row').forEach(row => {
+        row.addEventListener('click', function(e) {
+            // Don't trigger if clicking on a button or link
+            if (!e.target.closest('button, a, input, .dropdown')) {
+                const candidateId = this.getAttribute('data-candidate-id');
+                window.location.href = `/candidates/${candidateId}`;
+            }
+        });
+    });
+
+    // Filter candidates
+    document.getElementById('searchInput').addEventListener('keyup', function() {
+        const searchTerm = this.value.toLowerCase();
+        const rows = document.querySelectorAll('.candidate-row');
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchTerm) ? '' : 'none';
+        });
+    });
+
+    // Filter by status
+    document.querySelectorAll('[data-status]').forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const status = this.getAttribute('data-status');
+            const rows = document.querySelectorAll('.candidate-row');
+            
+            rows.forEach(row => {
+                if (status === 'all') {
+                    row.style.display = '';
+                } else {
+                    const rowStatus = row.getAttribute('data-status');
+                    row.style.display = rowStatus === status ? '' : 'none';
+                }
+            });
+        });
+    });
+
+    // This duplicate event listener has been removed as it was causing conflicts
+    // The modal is already handled by the previous event listener
+
+    const addNoteModal = document.getElementById('addNoteModal');
+    if (addNoteModal) {
+        addNoteModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const candidateId = button.getAttribute('data-candidate-id');
+            const modalCandidateId = addNoteModal.querySelector('#noteCandidateId');
+            modalCandidateId.value = candidateId;
+        });
+    }
+
+    const rejectModal = document.getElementById('rejectModal');
+    if (rejectModal) {
+        rejectModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const candidateId = button.getAttribute('data-candidate-id');
+            const modalCandidateId = rejectModal.querySelector('#rejectCandidateId');
+            modalCandidateId.value = candidateId;
+        });
+    }
+</script>
+{% endblock %}

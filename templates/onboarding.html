@@ -1,991 +1,265 @@
 {% extends "base.html" %}
 
-{% block title %}SmartHire AI - Onboarding Dashboard{% endblock %}
+{% block title %}Employee Onboarding - SmartHire AI{% endblock %}
 
-{% block styles %}
+{% block extra_css %}
+{{ super() }}
 <style>
-    .onboarding-hero {
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-        border-radius: 1rem;
-        overflow: hidden;
-        position: relative;
-    }
-    
-    .onboarding-stats-card {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-radius: 0.75rem;
+    /* Modern Card Styles */
+    .onboarding-card {
         transition: all 0.3s ease;
+        border: 1px solid var(--border-color);
+        border-radius: 0.75rem;
+        overflow: hidden;
+        height: 100%;
+        background: var(--card-bg);
     }
     
-    .onboarding-stats-card:hover {
+    .onboarding-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.1);
     }
     
-    .progress-thin {
-        height: 6px;
-        border-radius: 3px;
-    }
-    
-    .onboarding-step {
-        position: relative;
-        padding-left: 2rem;
-        margin-bottom: 1.5rem;
-    }
-    
-    .onboarding-step:before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 0.25rem;
-        width: 1.5rem;
-        height: 1.5rem;
-        border-radius: 50%;
-        background: #2d3748;
+    .step-icon {
+        width: 48px;
+        height: 48px;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: white;
-        font-weight: bold;
-        font-size: 0.75rem;
-    }
-    
-    .onboarding-step.completed:before {
-        content: '✓';
-        background: #10b981;
-    }
-    
-    .onboarding-step.active:before {
-        background: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
-    }
-    
-    .document-card {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px dashed rgba(255, 255, 255, 0.1);
-        border-radius: 0.5rem;
-        transition: all 0.3s ease;
-    }
-    
-    .document-card:hover {
-        background: rgba(255, 255, 255, 0.05);
-        border-color: #3b82f6;
-    }
-    
-    .drag-drop-zone {
-        border: 2px dashed #4a5568;
         border-radius: 0.75rem;
-        transition: all 0.3s ease;
+        font-size: 1.5rem;
+        margin-right: 1rem;
+        flex-shrink: 0;
     }
     
-    .drag-drop-zone.dragover {
-        border-color: #3b82f6;
-        background: rgba(59, 130, 246, 0.1);
+    .progress-thin {
+        height: 8px;
+        border-radius: 4px;
+    }
+    
+    .progress-bar-animated {
+        animation: progress-bar-stripes 1s linear infinite;
+    }
+    
+    .step-badge {
+        font-size: 0.75rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 50px;
+        background: linear-gradient(135deg, rgba(13, 110, 253, 0.1) 0%, rgba(13, 110, 253, 0.05) 100%);
+        border: 1px solid rgba(13, 110, 253, 0.15);
+    }
+    
+    .help-icon {
+        width: 56px;
+        height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 1rem;
+        font-size: 1.75rem;
+        margin-right: 1.25rem;
+        flex-shrink: 0;
+    }
+    
+    .btn-action {
+        min-width: 120px;
+    }
+    
+    /* Progress bars */
+    .onboarding-progress {
+        --progress-width: 0%;
+    }
+    
+    .progress-bar {
+        width: var(--progress-width, 0%);
+        transition: width 0.6s ease;
+    }
+    
+    .progress-thin {
+        height: 8px;
+    }
+    
+    /* Document upload styles */
+    .document-upload-area {
+        border: 2px dashed var(--border-color);
+        border-radius: 0.75rem;
+        padding: 2rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        background: var(--card-bg);
+    }
+    
+    .document-upload-area.dragover {
+        border-color: var(--primary);
+        background: rgba(var(--primary-rgb), 0.05);
+    }
+    
+    /* Task list styles */
+    .task-item {
+        padding: 0.75rem 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 0.5rem;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+    }
+    
+    .task-item.completed {
+        opacity: 0.7;
+    }
+    
+    .task-item.completed .task-title {
+        text-decoration: line-through;
+        color: var(--text-muted);
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .step-icon {
+            width: 36px;
+            height: 36px;
+            font-size: 1.25rem;
+        }
+        
+        .help-icon {
+            width: 44px;
+            height: 44px;
+            font-size: 1.5rem;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <!-- Sidebar -->
-        <nav id="sidebar" class="col-md-3 col-lg-2 d-md-block sidebar collapse">
-            <div class="position-sticky pt-3">
-                <div class="text-center mb-4">
-                    <h4 class="text-white">SmartHire</h4>
-                    <p class="text-muted small">Onboarding Portal</p>
-                </div>
-                <ul class="nav flex-column">
-                    <li class="nav-item">
-                        <a class="nav-link text-white" href="{{ url_for('hr_dashboard') }}">
-                            <i class="fas fa-home me-2"></i> Dashboard
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('workflow_route') }}">
-                            <i class="fas fa-project-diagram me-2"></i> Workflow
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="{{ url_for('onboarding_route') }}">
-                            <i class="fas fa-user-plus me-2"></i> Onboarding
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('hr_interviews') }}">
-                            <i class="fas fa-video me-2"></i> Interviews
-                        </a>
-                    </li>
-                </ul>
-                
-                <!-- Progress Overview -->
-                <div class="mt-5 px-3">
-                    <h6 class="text-uppercase text-muted mb-3">Onboarding Progress</h6>
-                    <div class="progress mb-3 bg-dark" style="height: 6px;">
-                        <div class="progress-bar bg-primary" role="progressbar" style="width: 65%;" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100"></div>
-                    </div>
-                    <p class="small text-muted mb-0">5 of 8 tasks completed</p>
-                </div>
-                
-                <div class="mt-4 px-3">
-                    <div class="card bg-dark border-0">
-                        <div class="card-body text-center p-3">
-                            <i class="fas fa-headset fa-2x text-primary mb-2"></i>
-                            <p class="small mb-2">Need help with onboarding?</p>
-                            <button class="btn btn-sm btn-outline-light w-100">
-                                <i class="fas fa-comment-alt me-1"></i> Chat Support
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </nav>
-
-        <!-- Main content -->
-        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
-            <!-- Page Header -->
-            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom border-secondary">
-                <h1 class="h3 mb-0 text-white">Employee Onboarding</h1>
-                <div class="btn-toolbar mb-2 mb-md-0">
-                    <button class="btn btn-sm btn-outline-secondary me-2">
-                        <i class="fas fa-download me-1"></i> Export
-                    </button>
-                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#newOnboardingModal">
-                        <i class="fas fa-plus me-1"></i> New Onboarding
-                    </button>
-                </div>
-            </div>
-            <!-- Header with Welcome -->
+<div class="container py-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h1 class="h3 text-white mb-1">Welcome back, <span class="text-primary">HR Team</span></h1>
-                    <p class="text-muted mb-0">Track and manage your new hires' onboarding journey</p>
+                    <h1 class="h3 mb-1">Employee Onboarding</h1>
+                    <p class="text-muted mb-0">Welcome to the SmartHire AI Employee Onboarding Portal</p>
                 </div>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-outline-light">
-                        <i class="fas fa-download me-1"></i> Export
-                    </button>
-                    <button class="btn btn-primary">
-                        <i class="fas fa-plus me-1"></i> New Onboarding
-                    </button>
-                </div>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newHireModal">
+                    <i class="fas fa-plus me-2"></i>Add New Hire
+                </button>
             </div>
             
-            <!-- Stats Overview -->
-            <!-- Stats Overview -->
+            <!-- Stats Cards -->
             <div class="row g-4 mb-4">
-                <!-- New Hires This Week -->
-                <div class="col-md-6 col-xl-3">
-                    <div class="card onboarding-stats-card h-100">
+                <div class="col-md-3">
+                    <div class="card onboarding-card">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6 class="text-uppercase text-muted mb-1">New Hires This Week</h6>
-                                    <h3 class="mb-0 text-white">8</h3>
-                                    <p class="text-success small mb-0">
-                                        <i class="fas fa-arrow-up me-1"></i> 2 from last week
-                                    </p>
+                                    <h6 class="text-uppercase text-muted small mb-1">In Progress</h6>
+                                    <h3 class="mb-0">12</h3>
                                 </div>
-                                <div class="bg-success bg-opacity-10 p-3 rounded-circle">
-                                    <i class="fas fa-user-plus fa-2x text-success"></i>
+                                <div class="bg-primary bg-opacity-10 p-3 rounded">
+                                    <i class="fas fa-user-clock text-primary"></i>
                                 </div>
                             </div>
-                            <div class="mt-3">
-                                <div class="d-flex justify-content-between small text-muted mb-1">
-                                    <span>On Track</span>
-                                    <span>75%</span>
-                                </div>
-                                <div class="progress progress-thin bg-dark">
-                                    <div class="progress-bar bg-success" style="width: 75%"></div>
-                                </div>
+                            <div class="progress mt-3" style="height: 6px;">
+                                <div class="progress-bar bg-primary" style="width: 65%;"></div>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Documents Pending -->
-                <div class="col-md-6 col-xl-3">
-                    <div class="card onboarding-stats-card h-100">
+                <div class="col-md-3">
+                    <div class="card onboarding-card">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6 class="text-uppercase text-muted mb-1">Documents Pending</h6>
-                                    <h3 class="mb-0 text-white">5</h3>
-                                    <p class="text-danger small mb-0">
-                                        <i class="fas fa-exclamation-triangle me-1"></i> 2 require attention
-                                    </p>
+                                    <h6 class="text-uppercase text-muted small mb-1">Pending Start</h6>
+                                    <h3 class="mb-0">5</h3>
                                 </div>
-                                <div class="bg-danger bg-opacity-10 p-3 rounded-circle">
-                                    <i class="fas fa-file-alt fa-2x text-danger"></i>
+                                <div class="bg-warning bg-opacity-10 p-3 rounded">
+                                    <i class="fas fa-calendar-alt text-warning"></i>
                                 </div>
                             </div>
-                            <div class="mt-3">
-                                <div class="d-flex justify-content-between small text-muted mb-1">
-                                    <span>Approval Rate</span>
-                                    <span>92%</span>
-                                </div>
-                                <div class="progress progress-thin bg-dark">
-                                    <div class="progress-bar bg-danger" style="width: 92%"></div>
-                                </div>
+                            <div class="progress mt-3" style="height: 6px;">
+                                <div class="progress-bar bg-warning" style="width: 30%;"></div>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Active Onboardings -->
-                <div class="col-md-6 col-xl-3">
-                    <div class="card onboarding-stats-card h-100">
+                <div class="col-md-3">
+                    <div class="card onboarding-card">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6 class="text-uppercase text-muted mb-1">Active Onboardings</h6>
-                                    <h3 class="mb-0 text-white">12</h3>
-                                    <p class="text-success small mb-0">
-                                        <i class="fas fa-arrow-up me-1"></i> 3 from last week
-                                    </p>
+                                    <h6 class="text-uppercase text-muted small mb-1">Completed</h6>
+                                    <h3 class="mb-0">24</h3>
                                 </div>
-                                <div class="bg-primary bg-opacity-10 p-3 rounded-circle">
-                                    <i class="fas fa-user-clock fa-2x text-primary"></i>
+                                <div class="bg-success bg-opacity-10 p-3 rounded">
+                                    <i class="fas fa-check-circle text-success"></i>
                                 </div>
                             </div>
-                            <div class="mt-3">
-                                <div class="d-flex justify-content-between small text-muted mb-1">
-                                    <span>Completion</span>
-                                    <span>65%</span>
-                                </div>
-                                <div class="progress progress-thin bg-dark">
-                                    <div class="progress-bar bg-primary" style="width: 65%"></div>
-                                </div>
+                            <div class="progress mt-3" style="height: 6px;">
+                                <div class="progress-bar bg-success" style="width: 85%;"></div>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- New Hires -->
-                <div class="col-md-6 col-xl-3">
-                    <div class="card onboarding-stats-card h-100">
+                <div class="col-md-3">
+                    <div class="card onboarding-card">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6 class="text-uppercase mb-1">New Hires</h6>
-                                    <h2 class="mb-0">24</h2>
-                                    <span class="badge bg-white text-primary">+5 this month</span>
+                                    <h6 class="text-uppercase text-muted small mb-1">Avg. Time</h6>
+                                    <h3 class="mb-0">7.5d</h3>
                                 </div>
-                                <i class="fas fa-user-plus fa-2x opacity-25"></i>
+                                <div class="bg-info bg-opacity-10 p-3 rounded">
+                                    <i class="fas fa-clock text-info"></i>
+                                </div>
+                            </div>
+                            <div class="progress mt-3" style="height: 6px;">
+                                <div class="progress-bar bg-info" style="width: 75%;"></div>
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                <!-- In Progress -->
-                <div class="col-md-6 col-xl-3">
-                    <div class="card bg-dark border-0 h-100">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-uppercase text-muted mb-1">In Progress</h6>
-                                    <h3 class="mb-0 text-white">12</h3>
-                                    <div class="progress mt-2" style="height: 4px;">
-                                        <div class="progress-bar bg-warning" style="width: 65%"></div>
-                                    </div>
-                                </div>
-                                <i class="fas fa-sync-alt text-warning"></i>
-                            </div>
-                        </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="row g-4 mb-4">
+        <!-- New Hires Starting Soon -->
+        <div class="col-md-6">
+            <div class="card onboarding-card h-100">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">New Hires Starting Soon</h5>
+                        <a href="#" class="btn btn-sm btn-outline-secondary">View All</a>
                     </div>
                 </div>
-                
-                <!-- Pending Tasks -->
-                <div class="col-md-6 col-xl-3">
-                    <div class="card bg-dark border-0 h-100">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-uppercase text-muted mb-1">Pending Tasks</h6>
-                                    <h3 class="mb-0 text-white">18</h3>
-                                    <span class="text-muted small">3 overdue</span>
-                                </div>
-                                <div class="bg-danger bg-opacity-10 p-3 rounded-circle">
-                                    <i class="fas fa-tasks text-danger"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Completion Rate -->
-                <div class="col-md-6 col-xl-3">
-                    <div class="card bg-dark border-0 h-100">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-uppercase text-muted mb-1">Completion Rate</h6>
-                                    <h3 class="mb-0 text-white">85%</h3>
-                                    <span class="text-success small">
-                                        <i class="fas fa-arrow-up"></i> 12% from last month
-                                    </span>
-                                </div>
-                                <div class="position-relative" style="width: 60px; height: 60px;">
-                                    <svg class="circular-chart" viewBox="0 0 36 36">
-                                        <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#2e3440" stroke-width="3"/>
-                                        <path class="circle" stroke-dasharray="85, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#4e73df" stroke-width="3" stroke-linecap="round"/>
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Onboarding Workflow -->
-                <div class="row g-4 mb-4">
-                    <!-- Steps -->
-                    <div class="col-lg-8">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0">Onboarding Checklist</h5>
-                                <div class="dropdown">
-                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                        <i class="fas fa-ellipsis-v"></i>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        <li><a class="dropdown-item" href="#">Export Checklist</a></li>
-                                        <li><a class="dropdown-item" href="#">Print</a></li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item text-danger" href="#">Reset Progress</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="onboarding-step completed">
-                                    <h6 class="text-white mb-1">Pre-arrival Setup</h6>
-                                    <p class="small text-muted mb-2">Complete all pre-employment documentation and system access requests</p>
-                                    <div class="d-flex align-items-center small text-muted">
-                                        <i class="fas fa-check-circle text-success me-1"></i>
-                                        <span>Completed 2 days ago</span>
-                                        <span class="mx-2">•</span>
-                                        <a href="#" class="text-primary">View Details</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-md-6 col-xl-3">
-                    <div class="card border-0 shadow-sm h-100 bg-dark">
-                        <div class="card-body">
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item border-0 py-3">
                             <div class="d-flex align-items-center">
-                                <div class="bg-info bg-opacity-10 p-3 rounded-3 me-3">
-                                    <i class="fas fa-users text-info"></i>
+                                <div class="avatar avatar-sm me-3 flex-shrink-0">
+                                    <span class="avatar-initial rounded-circle bg-success text-white">AS</span>
                                 </div>
-                                <div>
-                                    <p class="text-muted mb-0">Active Candidates</p>
-                                    <h4 class="mb-0 text-white">24</h4>
+                                <div class="flex-grow-1 me-3">
+                                    <h6 class="mb-1">Alex Smith</h6>
+                                    <small class="text-muted d-block">Product Manager • Jun 20, 2023</small>
                                 </div>
+                                <span class="badge bg-success bg-opacity-10 text-success">Pre-boarding</span>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Onboarding Workflow -->
-            <div class="row g-4 mb-4">
-                <!-- Steps -->
-                <div class="col-lg-8">
-                    <div class="card border-0 shadow-sm h-100">
-                        <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">Onboarding Checklist</h5>
-                            <div class="dropdown">
-                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="fas fa-ellipsis-v"></i>
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" href="#">Export Checklist</a></li>
-                                    <li><a class="dropdown-item" href="#">Print</a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger" href="#">Reset Progress</a></li>
-                                </ul>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="onboarding-step completed">
-                                <h6 class="text-white mb-1">Pre-arrival Setup</h6>
-                                <p class="small text-muted mb-2">Complete all pre-employment documentation and system access requests</p>
-                                <div class="d-flex align-items-center small text-muted">
-                                    <i class="fas fa-check-circle text-success me-1"></i>
-                                    <span>Completed 2 days ago</span>
-                                    <span class="mx-2">•</span>
-                                    <a href="#" class="text-primary">View Details</a>
+                        <div class="list-group-item border-0 py-3">
+                            <div class="d-flex align-items-center">
+                                <div class="avatar avatar-sm me-3 flex-shrink-0">
+                                    <span class="avatar-initial rounded-circle bg-primary text-white">MJ</span>
                                 </div>
-                            </div>
-                            
-                            <div class="onboarding-step completed">
-                                <h6 class="text-white mb-1">First Day Setup</h6>
-                                <p class="small text-muted mb-2">Prepare workspace, equipment, and access credentials</p>
-                                <div class="d-flex align-items-center small text-muted">
-                                    <i class="fas fa-check-circle text-success me-1"></i>
-                                    <span>Completed yesterday</span>
-                                    <span class="mx-2">•</span>
-                                    <a href="#" class="text-primary">View Details</a>
+                                <div class="flex-grow-1 me-3">
+                                    <h6 class="mb-1">Maria Garcia</h6>
+                                    <small class="text-muted d-block">UX Designer • Jun 22, 2023</small>
                                 </div>
-                            </div>
-                            
-                            <div class="onboarding-step active">
-                                <h6 class="text-white mb-1">Document Collection</h6>
-                                <p class="text-muted small mb-2">Gather and verify all required employee documents</p>
-                                <div class="d-flex align-items-center small text-warning">
-                                    <i class="fas fa-exclamation-circle me-1"></i>
-                                    <span>2 of 5 documents pending</span>
-                                    <span class="mx-2">•</span>
-                                    <a href="#" class="text-primary">Upload Now</a>
-                                </div>
-                                
-                                <!-- Document Status -->
-                                <div class="row mt-3 g-3">
-                                    <div class="col-md-6">
-                                        <div class="document-card p-3">
-                                            <div class="d-flex align-items-center">
-                                                <div class="bg-primary bg-opacity-10 p-2 rounded me-3">
-                                                    <i class="fas fa-file-pdf text-primary"></i>
-                                                </div>
-                                                <div class="flex-grow-1">
-                                                    <h6 class="mb-0 text-white">Employment Contract</h6>
-                                                    <small class="text-success">Signed & Verified</small>
-                                                </div>
-                                                <button class="btn btn-sm btn-link text-muted">
-                                                    <i class="fas fa-download"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="document-card p-3">
-                                            <div class="d-flex align-items-center">
-                                                <div class="bg-primary bg-opacity-10 p-2 rounded me-3">
-                                                    <i class="fas fa-id-card text-primary"></i>
-                                                </div>
-                                                <div class="flex-grow-1">
-                                                    <h6 class="mb-0 text-white">ID Verification</h6>
-                                                    <small class="text-success">Verified</small>
-                                                </div>
-                                                <button class="btn btn-sm btn-link text-muted">
-                                                    <i class="fas fa-download"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="document-card p-3 border-warning">
-                                            <div class="d-flex align-items-center">
-                                                <div class="bg-warning bg-opacity-10 p-2 rounded me-3">
-                                                    <i class="fas fa-file-invoice text-warning"></i>
-                                                </div>
-                                                <div class="flex-grow-1">
-                                                    <h6 class="mb-0 text-white">Tax Forms</h6>
-                                                    <small class="text-warning">Pending Review</small>
-                                                </div>
-                                                <button class="btn btn-sm btn-link text-muted">
-                                                    <i class="fas fa-upload"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="document-card p-3">
-                                            <div class="d-flex align-items-center">
-                                                <div class="bg-primary bg-opacity-10 p-2 rounded me-3">
-                                                    <i class="fas fa-briefcase text-primary"></i>
-                                                </div>
-                                                <div class="flex-grow-1">
-                                                    <h6 class="mb-0 text-white">NDA Agreement</h6>
-                                                    <small class="text-success">Signed</small>
-                                                </div>
-                                                <button class="btn btn-sm btn-link text-muted">
-                                                    <i class="fas fa-download"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="document-card p-3 border-danger">
-                                            <div class="d-flex align-items-center">
-                                                <div class="bg-danger bg-opacity-10 p-2 rounded me-3">
-                                                    <i class="fas fa-file-medical text-danger"></i>
-                                                </div>
-                                                <div class="flex-grow-1">
-                                                    <h6 class="mb-0 text-white">Health Insurance</h6>
-                                                    <small class="text-danger">Missing</small>
-                                                </div>
-                                                <button class="btn btn-sm btn-link text-muted">
-                                                    <i class="fas fa-upload"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="document-card p-3">
-                                            <div class="d-flex align-items-center">
-                                                <div class="bg-primary bg-opacity-10 p-2 rounded me-3">
-                                                    <i class="fas fa-university text-primary"></i>
-                                                </div>
-                                                <div class="flex-grow-1">
-                                                    <h6 class="mb-0 text-white">Bank Details</h6>
-                                                    <small class="text-success">Verified</small>
-                                                </div>
-                                                <button class="btn btn-sm btn-link text-muted">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Document Upload -->
-                                <div class="mt-4">
-                                    <div class="drag-drop-zone p-5 text-center rounded" id="documentDropZone">
-                                        <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
-                                        <h5 class="text-white mb-2">Drag & drop files here</h5>
-                                        <p class="text-muted small mb-3">or</p>
-                                        <button class="btn btn-outline-primary">
-                                            <i class="fas fa-folder-open me-2"></i>Browse Files
-                                        </button>
-                                        <input type="file" class="d-none" id="documentUpload" multiple>
-                                        <p class="small text-muted mt-2 mb-0">Supports PDF, JPG, PNG up to 10MB</p>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="onboarding-step">
-                                <h6 class="text-muted mb-1">Training & Orientation</h6>
-                                <p class="small text-muted mb-2">Complete required training modules and orientation sessions</p>
-                                <div class="d-flex align-items-center small text-muted">
-                                    <i class="far fa-clock me-1"></i>
-                                    <span>Scheduled for tomorrow</span>
-                                </div>
-                            </div>
-                            
-                            <div class="onboarding-step">
-                                <h6 class="text-muted mb-1">Team Introduction</h6>
-                                <p class="small text-muted mb-2">Meet with team members and key stakeholders</p>
-                                <div class="d-flex align-items-center small text-muted">
-                                    <i class="far fa-calendar me-1"></i>
-                                    <span>Scheduled for Friday</span>
-                                </div>
-                            </div>
-                            
-                            <div class="onboarding-step">
-                                <h6 class="text-muted mb-1">30-Day Review</h6>
-                                <p class="small text-muted mb-0">Initial performance review and feedback session</p>
-                            </div>
-                        </div>
-                        <div class="card-footer bg-transparent border-0 pt-0">
-                            <button class="btn btn-primary w-100">
-                                <i class="fas fa-check-circle me-2"></i>Mark Current Step as Complete
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Upcoming Tasks & Team -->
-                <div class="col-lg-4">
-                    <!-- Upcoming Tasks -->
-                    <div class="card border-0 shadow-sm mb-4">
-                        <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">Upcoming Tasks</h5>
-                            <a href="#" class="small text-primary">View All</a>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="list-group list-group-flush">
-                                <div class="list-group-item bg-transparent border-secondary">
-                                    <div class="d-flex align-items-center">
-                                        <div class="flex-shrink-0 me-3">
-                                            <div class="bg-primary bg-opacity-10 p-2 rounded-circle">
-                                                <i class="fas fa-video text-primary"></i>
-                                            </div>
-                                        </div>
-                                        <div class="flex-grow-1">
-                                            <h6 class="mb-0 text-white">Team Introduction Call</h6>
-                                            <small class="text-muted">Tomorrow, 10:00 AM - 11:00 AM</small>
-                                        </div>
-                                        <div class="dropdown">
-                                            <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="fas fa-ellipsis-v"></i>
-                                            </button>
-                                            <ul class="dropdown-menu dropdown-menu-end">
-                                                <li><a class="dropdown-item" href="#">Edit</a></li>
-                                                <li><a class="dropdown-item" href="#">Reschedule</a></li>
-                                                <li><a class="dropdown-item text-danger" href="#">Cancel</a></li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="list-group-item bg-transparent border-secondary">
-                                    <div class="d-flex align-items-center">
-                                        <div class="flex-shrink-0 me-3">
-                                            <div class="bg-warning bg-opacity-10 p-2 rounded-circle">
-                                                <i class="fas fa-book text-warning"></i>
-                                            </div>
-                                        </div>
-                                        <div class="flex-grow-1">
-                                            <h6 class="mb-0 text-white">Complete Training Modules</h6>
-                                            <small class="text-muted">Due in 2 days</small>
-                                        </div>
-                                        <div class="dropdown">
-                                            <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="fas fa-ellipsis-v"></i>
-                                            </button>
-                                            <ul class="dropdown-menu dropdown-menu-end">
-                                                <li><a class="dropdown-item" href="#">View Details</a></li>
-                                                <li><a class="dropdown-item" href="#">Request Extension</a></li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="list-group-item bg-transparent border-secondary">
-                                    <div class="d-flex align-items-center">
-                                        <div class="flex-shrink-0 me-3">
-                                            <div class="bg-info bg-opacity-10 p-2 rounded-circle">
-                                                <i class="fas fa-file-alt text-info"></i>
-                                            </div>
-                                        </div>
-                                        <div class="flex-grow-1">
-                                            <h6 class="mb-0 text-white">Submit Benefits Enrollment</h6>
-                                            <small class="text-muted">Due in 5 days</small>
-                                        </div>
-                                        <div class="dropdown">
-                                            <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="fas fa-ellipsis-v"></i>
-                                            </button>
-                                            <ul class="dropdown-menu dropdown-menu-end">
-                                                <li><a class="dropdown-item" href="#">View Details</a></li>
-                                                <li><a class="dropdown-item" href="#">Start Enrollment</a></li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="list-group-item bg-transparent border-0">
-                                    <div class="d-flex align-items-center">
-                                        <div class="flex-shrink-0 me-3">
-                                            <div class="bg-success bg-opacity-10 p-2 rounded-circle">
-                                                <i class="fas fa-users text-success"></i>
-                                            </div>
-                                        </div>
-                                        <div class="flex-grow-1">
-                                            <h6 class="mb-0 text-white">Team Lunch</h6>
-                                            <small class="text-muted">Friday, 12:30 PM</small>
-                                        </div>
-                                        <div class="dropdown">
-                                            <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="fas fa-ellipsis-v"></i>
-                                            </button>
-                                            <ul class="dropdown-menu dropdown-menu-end">
-                                                <li><a class="dropdown-item" href="#">View Details</a></li>
-                                                <li><a class="dropdown-item" href="#">Add to Calendar</a></li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-footer bg-transparent border-0 pt-0">
-                            <button class="btn btn-outline-primary w-100">
-                                <i class="fas fa-plus me-2"></i>Add New Task
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Team Members -->
-                    <div class="card border-0 shadow-sm">
-                        <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">Your Onboarding Team</h5>
-                            <a href="#" class="small text-primary">View All</a>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="list-group list-group-flush">
-                                <div class="list-group-item bg-transparent border-secondary">
-                                    <div class="d-flex align-items-center">
-                                        <img src="https://randomuser.me/api/portraits/women/32.jpg" alt="" class="rounded-circle me-3" width="40" height="40">
-                                        <div class="flex-grow-1">
-                                            <h6 class="mb-0 text-white">Sarah Johnson</h6>
-                                            <small class="text-muted">HR Manager</small>
-                                        </div>
-                                        <a href="#" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-envelope"></i>
-                                        </a>
-                                    </div>
-                                </div>
-                                <div class="list-group-item bg-transparent border-secondary">
-                                    <div class="d-flex align-items-center">
-                                        <img src="https://randomuser.me/api/portraits/men/45.jpg" alt="" class="rounded-circle me-3" width="40" height="40">
-                                        <div class="flex-grow-1">
-                                            <h6 class="mb-0 text-white">Michael Chen</h6>
-                                            <small class="text-muted">Team Lead</small>
-                                        </div>
-                                        <a href="#" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-envelope"></i>
-                                        </a>
-                                    </div>
-                                </div>
-                                <div class="list-group-item bg-transparent border-secondary">
-                                    <div class="d-flex align-items-center">
-                                        <img src="https://randomuser.me/api/portraits/women/22.jpg" alt="" class="rounded-circle me-3" width="40" height="40">
-                                        <div class="flex-grow-1">
-                                            <h6 class="mb-0 text-white">Emily Rodriguez</h6>
-                                            <small class="text-muted">IT Support</small>
-                                        </div>
-                                        <a href="#" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-envelope"></i>
-                                        </a>
-                                    </div>
-                                </div>
-                                <div class="list-group-item bg-transparent border-0">
-                                    <div class="d-flex align-items-center">
-                                        <img src="https://randomuser.me/api/portraits/men/68.jpg" alt="" class="rounded-circle me-3" width="40" height="40">
-                                        <div class="flex-grow-1">
-                                            <h6 class="mb-0 text-white">David Kim</h6>
-                                            <small class="text-muted">Mentor</small>
-                                        </div>
-                                        <a href="#" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-envelope"></i>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-footer bg-transparent border-0 pt-0">
-                            <button class="btn btn-outline-primary w-100">
-                                <i class="fas fa-plus me-2"></i>Add Team Member
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                            <h5 class="mb-0">Recent Activity</h5>
-                            <div class="dropdown">
-                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                    This Week
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" href="#">Today</a></li>
-                                    <li><a class="dropdown-item" href="#">This Week</a></li>
-                                    <li><a class="dropdown-item" href="#">This Month</a></li>
-                                </ul>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="timeline">
-                                <!-- Timeline Item 1 -->
-                                <div class="timeline-item">
-                                    <div class="timeline-marker bg-primary">
-                                        <i class="fas fa-user-check"></i>
-                                    </div>
-                                    <div class="timeline-content">
-                                        <div class="d-flex justify-content-between">
-                                            <h6 class="mb-1">New hire completed onboarding</h6>
-                                            <small class="text-muted">2 hours ago</small>
-                                        </div>
-                                        <p class="mb-0 text-muted small">Sarah Johnson completed all onboarding tasks</p>
-                                        <span class="badge bg-primary bg-opacity-10 text-primary">Completed</span>
-                                    </div>
-                                </div>
-                                
-                                <!-- Timeline Item 2 -->
-                                <div class="timeline-item">
-                                    <div class="timeline-marker bg-warning">
-                                        <i class="fas fa-tasks"></i>
-                                    </div>
-                                    <div class="timeline-content">
-                                        <div class="d-flex justify-content-between">
-                                            <h6 class="mb-1">Document upload required</h6>
-                                            <small class="text-muted">5 hours ago</small>
-                                        </div>
-                                        <p class="mb-0 text-muted small">John Doe needs to upload tax documents</p>
-                                        <span class="badge bg-warning bg-opacity-10 text-warning">Action Required</span>
-                                    </div>
-                                </div>
-                                
-                                <!-- Timeline Item 3 -->
-                                <div class="timeline-item">
-                                    <div class="timeline-marker bg-info">
-                                        <i class="fas fa-envelope"></i>
-                                    </div>
-                                    <div class="timeline-content">
-                                        <div class="d-flex justify-content-between">
-                                            <h6 class="mb-1">Welcome email sent</h6>
-                                            <small class="text-muted">1 day ago</small>
-                                        </div>
-                                        <p class="mb-0 text-muted small">Welcome package sent to 5 new hires</p>
-                                        <span class="badge bg-info bg-opacity-10 text-info">Completed</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="text-center mt-3">
-                                <a href="#" class="btn btn-sm btn-outline-primary">View All Activity</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Upcoming Onboardings -->
-                <div class="col-lg-4">
-                    <div class="card border-0 shadow-sm h-100">
-                        <div class="card-header bg-transparent border-0">
-                            <h5 class="mb-0">Upcoming Onboardings</h5>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="list-group list-group-flush">
-                                <!-- Onboarding Item 1 -->
-                                <div class="list-group-item border-0">
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar avatar-sm me-3">
-                                            <span class="avatar-title rounded-circle bg-primary bg-opacity-10 text-primary">
-                                                <i class="fas fa-user"></i>
-                                            </span>
-                                        </div>
-                                        <div class="flex-grow-1">
-                                            <h6 class="mb-0">Michael Chen</h6>
-                                            <small class="text-muted">Starts: Tomorrow, 9:00 AM</small>
-                                        </div>
-                                        <span class="badge bg-primary bg-opacity-10 text-primary">New</span>
-                                    </div>
-                                </div>
-                                
-                                <!-- Onboarding Item 2 -->
-                                <div class="list-group-item border-0">
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar avatar-sm me-3">
-                                            <span class="avatar-title rounded-circle bg-warning bg-opacity-10 text-warning">
-                                                <i class="fas fa-user"></i>
-                                            </span>
-                                        </div>
-                                        <div class="flex-grow-1">
-                                            <h6 class="mb-0">Emily Rodriguez</h6>
-                                            <small class="text-muted">Starts: Mar 15, 10:00 AM</small>
-                                        </div>
-                                        <span class="badge bg-warning bg-opacity-10 text-warning">In Progress</span>
-                                    </div>
-                                </div>
-                                
-                                <!-- Onboarding Item 3 -->
-                                <div class="list-group-item border-0">
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar avatar-sm me-3">
-                                            <span class="avatar-title rounded-circle bg-success bg-opacity-10 text-success">
-                                                <i class="fas fa-user"></i>
-                                            </span>
-                                        </div>
-                                        <div class="flex-grow-1">
-                                            <h6 class="mb-0">David Kim</h6>
-                                            <small class="text-muted">Starts: Mar 16, 1:00 PM</small>
-                                        </div>
-                                        <span class="badge bg-success bg-opacity-10 text-success">Confirmed</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="p-3 border-top">
-                                <a href="#" class="btn btn-outline-primary w-100">View All Onboardings</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                                </li>
-                                <li class="d-flex">
-                                    <span class="badge bg-warning rounded-circle p-2 me-3 mt-1"></span>
-                                    <div>
-                                        <p class="mb-0 text-dark">Jane Smith starts in 3 days</p>
-                                        <small class="text-muted">5 hours ago</small>
-                                    </div>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Upcoming Events -->
-                <div class="col-md-6">
-                    <div class="card border-0 shadow-sm h-100 bg-dark">
-                        <div class="card-header bg-dark text-white border-bottom border-secondary">
-                            <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Upcoming Events</h5>
-                        </div>
-                        <div class="card-body">
-                            <ul class="list-unstyled mb-0">
-                                <li class="border-start border-primary border-3 ps-3 mb-3">
-                                    <p class="mb-0 fw-medium">New Hire Orientation</p>
-                                    <small class="text-muted d-block">Tomorrow, 10:00 AM - 12:00 PM</small>
-                                    <small class="text-muted">5 attendees</small>
-                                </li>
-                                <li class="border-start border-success border-3 ps-3">
-                                    <p class="mb-0 fw-medium">Technical Interview - Frontend Position</p>
-                                    <small class="text-muted d-block">Mar 15, 2:00 PM - 3:00 PM</small>
-                                    <small class="text-muted">With: John Doe</small>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Quick Actions -->
-            <div class="bg-white p-6 rounded-lg shadow">
-                <h3 class="text-lg font-medium text-gray-900 mb-4">⚡ Quick Actions</h3>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <button class="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                        <i class="fas fa-upload text-indigo-600 text-2xl mb-2"></i>
-                        <span class="text-sm font-medium text-gray-700">Upload Resume</span>
-                    </button>
-                    <button class="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                        <i class="fas fa-user-plus text-green-600 text-2xl mb-2"></i>
-                        <span class="text-sm font-medium text-gray-700">Add Candidate</span>
-                    </button>
-                    <button class="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                        <i class="fas fa-play-circle text-blue-600 text-2xl mb-2"></i>
-                        <span class="text-sm font-medium text-gray-700">Start Onboarding</span>
-                    </button>
-                    <button class="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                        <i class="fas fa-chart-bar text-purple-600 text-2xl mb-2"></i>
-                        <span class="text-sm font-medium text-gray-700">View Reports</span>
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <!-- Quick Actions -->
-        <div class="row g-4 mb-4">
-            <div class="col-12">
-                <div class="card border-0 shadow-sm">
-                    <div class="card-body p-4">
-                        <h5 class="mb-4">Quick Actions</h5>
-                        <div class="row g-3">
-                            <div class="col-md-3 col-6">
-                                <a href="#" class="card h-100 border-0 text-center p-3 hover-shadow">
-                                    <div class="avatar avatar-lg bg-primary bg-opacity-10 text-primary rounded-circle mx-auto mb-3">
-                                        <i class="fas fa-file-upload"></i>
-                                    </div>
-                                    <h6 class="mb-0">Upload Documents</h6>
-                                </a>
-                            </div>
-                            <div class="col-md-3 col-6">
-                                <a href="#" class="card h-100 border-0 text-center p-3 hover-shadow">
-                                    <div class="avatar avatar-lg bg-success bg-opacity-10 text-success rounded-circle mx-auto mb-3">
-                                        <i class="fas fa-user-plus"></i>
-                                    </div>
-                                    <h6 class="mb-0">Add New Hire</h6>
-                                </a>
-                            </div>
-                            <div class="col-md-3 col-6">
-                                <a href="#" class="card h-100 border-0 text-center p-3 hover-shadow">
-                                    <div class="avatar avatar-lg bg-info bg-opacity-10 text-info rounded-circle mx-auto mb-3">
-                                        <i class="fas fa-envelope"></i>
-                                    </div>
-                                    <h6 class="mb-0">Send Welcome Email</h6>
-                                </a>
-                            </div>
-                            <div class="col-md-3 col-6">
-                                <a href="#" class="card h-100 border-0 text-center p-3 hover-shadow">
-                                    <div class="avatar avatar-lg bg-warning bg-opacity-10 text-warning rounded-circle mx-auto mb-3">
-                                        <i class="fas fa-tasks"></i>
-                                    </div>
-                                    <h6 class="mb-0">View Tasks</h6>
-                                </a>
+                                <span class="badge bg-primary bg-opacity-10 text-primary">Scheduled</span>
                             </div>
                         </div>
                     </div>
@@ -993,519 +267,308 @@
             </div>
         </div>
         
-        <!-- Document Upload -->
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-body p-0">
-                <div class="p-4 border-bottom">
-                    <h5 class="mb-0">Document Upload</h5>
+        <!-- Onboarding Setup -->
+        <div class="col-md-6">
+            <div class="card onboarding-card h-100">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h5 class="mb-0">Onboarding Setup</h5>
                 </div>
-                <div class="p-5 text-center" id="dropZone">
-                    <div class="mb-4">
-                        <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
-                        <h4>Drag and drop files here</h4>
-                        <p class="text-muted mb-4">or</p>
-                        <input type="file" id="resumeUpload" class="d-none" accept=".pdf,.docx,.doc" multiple>
-                        <button id="browseFiles" class="btn btn-primary">
-                            <i class="fas fa-folder-open me-2"></i> Browse Files
-                </button>
-                <p class="mt-2 text-xs text-gray-500">Supports PDF, DOCX (Max 10MB)</p>
-                <div id="uploadProgress" class="mt-4 hidden">
-                    <div class="w-full bg-gray-200 rounded-full h-2.5">
-                        <div id="progressBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
-                    </div>
-                    <p id="progressText" class="text-sm text-gray-600 mt-1">Uploading: 0%</p>
-                </div>
-            </div>
-            
-            <!-- Filters -->
-            <div class="bg-white p-4 rounded-lg shadow mb-6">
-                <div class="flex flex-wrap gap-4 items-end">
-                    <div class="flex-1 min-w-[200px]">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Match Score</label>
-                        <select id="scoreFilter" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                            <option value="all">All Scores</option>
-                            <option value="80-100">Excellent (80-100%)</option>
-                            <option value="50-79">Good (50-79%)</option>
-                            <option value="0-49">Needs Review (0-49%)</option>
-                        </select>
-                    </div>
-                    <div class="flex-1 min-w-[200px]">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Skills</label>
-                        <input type="text" id="skillsFilter" placeholder="Filter by skills (e.g., React, Python)" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                    </div>
-                    <div>
-                        <button id="applyFilters" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                            <i class="fas fa-filter mr-2"></i> Apply Filters
+                <div class="card-body d-flex flex-column">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newHireModal">
+                            <i class="fas fa-user-plus me-2"></i> Start New Onboarding
                         </button>
-                    </div>
-                    <div>
-                        <button id="resetFilters" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                            <i class="fas fa-redo mr-2"></i> Reset
+                        <button class="btn btn-outline-primary">
+                            <i class="fas fa-tasks me-2"></i> View Onboarding Templates
                         </button>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Resume Analysis -->
-            <div class="row g-4">
-                <!-- Resume Details -->
-                <div class="col-lg-4">
-                    <div class="card h-100 bg-dark border-secondary">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <h5 class="card-title mb-0 text-white">Resume Details</h5>
-                                <span class="badge bg-success bg-opacity-10 text-success">
-                                    <i class="fas fa-check-circle me-1"></i> 85% Match
-                                </span>
-                            </div>
-                    
-                    <div class="space-y-4">
-                        <div>
-                            <p class="text-sm font-medium text-gray-500">Name</p>
-                            <p class="text-gray-900">John Doe</p>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-500">Email</p>
-                            <p class="text-gray-900">john.doe@example.com</p>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-500">Phone</p>
-                            <p class="text-gray-900">(555) 123-4567</p>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-500">Experience</p>
-                            <p class="text-gray-900">5+ years</p>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-500">Current Position</p>
-                            <p class="text-gray-900">Senior Frontend Developer at TechCorp</p>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-500">Location</p>
-                            <p class="text-gray-900">San Francisco, CA</p>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-500">Match Score</p>
-                            <div class="w-full bg-gray-200 rounded-full h-2.5 mt-1">
-                                <div id="scoreBar" class="h-2.5 rounded-full" style="width: 85%; background-color: #10B981;"></div>
-                            </div>
-                            <p class="text-right text-xs text-gray-500 mt-1">85% match with job requirements</p>
-                        </div>
-                    </div>
-                    
-                    <div class="mt-6">
-                        <h4 class="text-sm font-medium text-gray-900 mb-2">Skills</h4>
-                        <div id="skillsContainer" class="flex flex-wrap gap-2">
-                            <span class="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">
-                                <i class="fas fa-check-circle mr-1"></i> JavaScript
-                            </span>
-                            <span class="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">
-                                <i class="fas fa-check-circle mr-1"></i> React
-                            </span>
-                            <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded">
-                                <i class="fas fa-exclamation-circle mr-1"></i> Node.js (intermediate)
-                            </span>
-                            <span class="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">
-                                <i class="fas fa-check-circle mr-1"></i> HTML5/CSS3
-                            </span>
-                            <span class="px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded">
-                                <i class="fas fa-times-circle mr-1"></i> TypeScript (missing)
-                            </span>
-                        </div>
-                    </div>
-                    
-                    <div class="mt-6 space-y-2">
-                        <button class="btn btn-primary w-100 mb-2">
-                            <i class="fas fa-check-circle mr-2"></i> Shortlist Candidate
-                        </button>
-                        <button id="convertToOnboarding" class="btn btn-success w-100">
-                            <i class="fas fa-user-plus mr-2"></i> Convert to Onboarding
-                        </button>
-                        <button class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                            <i class="fas fa-download mr-2"></i> Download Resume
-                        </button>
-                    </div>
-                    
-                    <div id="onboardingSuccess" class="hidden mt-4 p-3 bg-green-50 text-green-800 text-sm rounded-md">
-                        <div class="flex items-center">
-                            <i class="fas fa-check-circle mr-2 text-green-500"></i>
-                            <span>Candidate moved to onboarding successfully!</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Resume Content -->
-                <div class="col-lg-8">
-                    <div class="card h-100 bg-dark border-secondary">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h3 class="text-lg font-medium">Resume: John_Doe_Resume.pdf</h3>
-                    </div>
-                    
-                    <div class="border border-gray-200 rounded-lg p-4 h-96 overflow-y-auto">
-                        <div class="space-y-6">
-                            <div>
-                                <h2 class="text-2xl font-bold">John Doe</h2>
-                                <p class="text-gray-600">Senior Frontend Developer</p>
-                                <p class="text-sm text-gray-500 mt-1">San Francisco, CA • (555) 123-4567 • john.doe@example.com</p>
-                            </div>
-                            
-                            <div>
-                                <h3 class="text-lg font-semibold border-b pb-1 mb-2">Summary</h3>
-                                <p class="text-gray-700">Experienced Frontend Developer with 5+ years of experience in building responsive and user-friendly web applications using React, JavaScript, and modern frontend technologies.</p>
-                            </div>
-                            
-                            <div>
-                                <h3 class="text-lg font-semibold border-b pb-1 mb-2">Experience</h3>
-                                <div class="mb-4">
-                                    <div class="flex justify-between">
-                                        <h4 class="font-medium">Senior Frontend Developer</h4>
-                                        <span class="text-sm text-gray-500">2020 - Present</span>
-                                    </div>
-                                    <p class="text-sm text-gray-600">TechCorp Inc., San Francisco, CA</p>
-                                    <ul class="list-disc list-inside text-sm text-gray-700 mt-1 space-y-1">
-                                        <li>Led a team of 5 developers to build a responsive dashboard application using React and Redux</li>
-                                        <li>Improved application performance by 40% through code optimization</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Candidate Management -->
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-dark text-white border-bottom border-secondary d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fas fa-users me-2"></i>Candidate Management</h5>
-                <div class="d-flex">
-                    <div class="input-group input-group-sm me-2" style="width: 250px;">
-                        <span class="input-group-text bg-dark text-white border-secondary">
-                            <i class="fas fa-search"></i>
-                        </span>
-                        <input type="text" class="form-control bg-dark text-white border-secondary" placeholder="Search candidates...">
-                        <input type="text" placeholder="Search candidates..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <i class="fas fa-search text-gray-400"></i>
-                        </div>
-                    </div>
-                    <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
-                        <i class="fas fa-plus mr-2"></i> Add Candidate
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Candidates Table -->
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-dark table-hover mb-0">
-                        <thead class="table-dark">
-                                <tr>
-                                    <th>Candidate</th>
-                                    <th>Position</th>
-                                    <th>Status</th>
-                                    <th>Last Activity</th>
-                                    <th class="text-end">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <!-- Candidate 1 -->
-                                <tr>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="flex-shrink-0 me-3">
-                                                <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="" class="rounded-circle" width="40" height="40">
-                                            </div>
-                                            <div>
-                                                <div class="fw-medium">John Cooper</div>
-                                                <div class="text-muted small">john.cooper@example.com</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="fw-medium">Senior Frontend Developer</div>
-                                        <div class="text-muted small">Engineering</div>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-success bg-opacity-10 text-success">Active</span>
-                                    </td>
-                                    <td class="text-muted small">2 hours ago</td>
-                                    <td class="text-end">
-                                        <a href="#" class="btn btn-sm btn-link text-primary">View</a>
-                                        <a href="#" class="btn btn-sm btn-link text-primary">Edit</a>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                                            <img class="h-10 w-10 rounded-full" src="https://randomuser.me/api/portraits/men/32.jpg" alt="">
-                                        </div>
-                                        <div class="ml-4">
-                                            <div class="text-sm font-medium text-gray-900">Michael Chen</div>
-                                            <div class="text-sm text-gray-500">michael.chen@example.com</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">Backend Developer</div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Interviewed</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Feb 25, 2023</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <a href="#" class="text-indigo-600 hover:text-indigo-900">View</a>
-                                </td>
-                            </tr>
-                            
-                            <!-- Candidate 3 -->
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex items-center">
-                                        <div class="flex-shrink-0 h-10 w-10">
-                                            <img class="h-10 w-10 rounded-full" src="https://randomuser.me/api/portraits/women/68.jpg" alt="">
-                                        </div>
-                                        <div class="ml-4">
-                                            <div class="text-sm font-medium text-gray-900">Emily Rodriguez</div>
-                                            <div class="text-sm text-gray-500">emily.rodriguez@example.com</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">UI/UX Designer</div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Applied</span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Mar 5, 2023</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <a href="#" class="text-indigo-600 hover:text-indigo-900">View</a>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
-
-        <!-- Onboarding Module -->
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-dark text-white border-bottom border-secondary d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fas fa-user-plus me-2"></i>Onboarding Module</h5>
-                <button class="btn btn-primary btn-sm">
-                    <i class="fas fa-plus me-1"></i> New Onboarding
-                </button>
-            </div>
-            
-            <div class="card-body bg-dark">
-                <div class="border-bottom border-secondary pb-3 mb-4">
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <h3 class="h5 text-white mb-0">Sarah Johnson</h3>
-                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Senior Frontend Developer • Starting on Mar 15, 2023</p>
-                        </div>
-                        <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">In Progress</span>
-                    </div>
-                </div>
-                
-                <div class="px-4 py-5 sm:p-6">
-                    <div class="row g-4">
-                        <!-- Employee Profile -->
-                        <div class="col-md-4">
-                            <div class="bg-dark border border-secondary p-4 rounded">
-                                <div class="text-center">
-                                    <img class="mx-auto h-24 w-24 rounded-full" src="https://randomuser.me/api/portraits/women/44.jpg" alt="">
-                                    <h3 class="mt-2 text-lg font-medium text-gray-900">Sarah Johnson</h3>
-                                    <p class="text-sm text-gray-500">Senior Frontend Developer</p>
-                                </div>
-                                
-                                <!-- Onboarding Progress -->
-                                <div class="mt-6">
-                                    <h4 class="text-sm font-medium text-gray-900 mb-3">Onboarding Progress</h4>
-                                    <div class="space-y-4">
-                                        <div>
-                                            <div class="flex justify-between text-sm mb-1">
-                                                <span class="font-medium text-gray-700">Overall Progress</span>
-                                                <span class="text-gray-500">65%</span>
-                                            </div>
-                                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                                <div class="bg-blue-600 h-2 rounded-full" style="width: 65%"></div>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <div class="flex justify-between text-sm mb-1">
-                                                <span class="font-medium text-gray-700">Documents</span>
-                                                <span class="text-gray-500">3/5</span>
-                                            </div>
-                                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                                <div class="bg-green-500 h-2 rounded-full" style="width: 60%"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Onboarding Checklist -->
-                        <div class="col-md-8">
-                            <div class="border-b border-gray-200">
-                                <ul class="nav nav-tabs border-0">
-                                    <li class="nav-item">
-                                        <a href="#" class="nav-link active text-white">
-                                            <i class="fas fa-tasks me-1"></i> Checklist
-                                    </a>
-                                    <a href="#" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                                        Documents
-                                    </a>
-                                    <a href="#" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                                        Training
-                                    </a>
-                                </nav>
-                            </div>
-                            
-                            <!-- Pre-Joining Section -->
-                            <div class="mt-6">
-                                <h3 class="text-md font-medium text-gray-900 mb-3">Pre-Joining (Due: Mar 10, 2023)</h3>
-                                <div class="space-y-4">
-                                    <!-- Task 1 -->
-                                    <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
-                                        <div class="flex items-center">
-                                            <input type="checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" checked>
-                                            <span class="ml-3 text-sm font-medium text-gray-900">Signed Offer Letter</span>
-                                        </div>
-                                        <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Completed</span>
-                                    </div>
-                                    
-                                    <!-- Task 2 -->
-                                    <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
-                                        <div class="flex items-center">
-                                            <input type="checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" id="direct-deposit">
-                                            <label for="direct-deposit" class="ml-3 text-sm font-medium text-gray-900">Direct Deposit Setup</label>
-                                        </div>
-                                        <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Pending</span>
-                                    </div>
-                                    
-                                    <!-- Task 3 -->
-                                    <div class="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
-                                        <div class="flex items-center">
-                                            <input type="checkbox" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" id="benefits">
-                                            <label for="benefits" class="ml-3 text-sm font-medium text-gray-900">Benefits Enrollment</label>
-                                        </div>
-                                        <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">In Progress</span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Document Upload -->
-                            <div class="mt-4">
-                                <h5 class="text-white mb-3">Required Documents</h5>
-                                <div class="vstack gap-3">
-                                    <div class="d-flex justify-content-between align-items-center p-3 bg-dark border border-dashed border-secondary rounded">
-                                        <div class="d-flex align-items-center">
-                                            <i class="fas fa-file-pdf text-red-500 mr-3"></i>
-                                            <div>
-                                                <p class="text-sm font-medium text-gray-900">Tax Form W-4</p>
-                                                <p class="text-xs text-gray-500">Not uploaded</p>
-                                            </div>
-                                        </div>
-                                        <button class="text-sm text-indigo-600 hover:text-indigo-900">Upload</button>
-                                    </div>
-                                    
-                                    <div class="flex items-center justify-between p-3 bg-gray-50 border border-dashed border-gray-300 rounded-lg">
-                                        <div class="flex items-center">
-                                            <i class="fas fa-file-pdf text-red-500 mr-3"></i>
-                                            <div>
-                                                <p class="text-sm font-medium text-gray-900">I-9 Form</p>
-                                                <p class="text-xs text-gray-500">Not uploaded</p>
-                                            </div>
-                                        </div>
-                                        <button class="text-sm text-indigo-600 hover:text-indigo-900">Upload</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </div>
-
-    <!-- Help & Resources Section -->
-    <div class="row g-4 mt-4">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm bg-gradient-primary text-white overflow-hidden">
-                <div class="card-body p-4 p-md-5">
-                    <div class="row align-items-center">
-                        <div class="col-lg-8">
-                            <h3 class="text-white mb-3">Need Help with Onboarding?</h3>
-                            <p class="mb-4">Our team is here to help you with any questions or issues you might have during the onboarding process.</p>
-                            <div class="d-flex flex-wrap gap-2">
-                                <button class="btn btn-light">
-                                    <i class="fas fa-headset me-2"></i>Live Chat
-                                </button>
-                                <button class="btn btn-outline-light">
-                                    <i class="fas fa-envelope me-2"></i>Email Support
-                                </button>
-                                <button class="btn btn-outline-light">
-                                    <i class="fas fa-phone-alt me-2"></i>Schedule Call
-                                </button>
-                            </div>
-                        </div>
-                        <div class="col-lg-4 d-none d-lg-block">
-                            <img src="https://img.icons8.com/clouds/300/000000/customer-support.png" alt="Support" class="img-fluid">
-                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- Resources Section -->
-    <div class="row g-4 mt-2">
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm h-100">
+    <div class="row g-4">
+        <!-- Onboarding Workflow -->
+        <div class="col-12">
+            <div class="card onboarding-card">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h5 class="mb-0">Onboarding Workflow</h5>
+                    <p class="text-muted mb-0 mt-1">Track progress of new hires through the onboarding process</p>
+                </div>
                 <div class="card-body">
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="bg-primary bg-opacity-10 p-3 rounded-circle me-3">
-                            <i class="fas fa-book text-primary"></i>
+                    <div class="onboarding-step active">
+                        <div class="d-flex align-items-start">
+                            <div class="step-icon bg-primary bg-opacity-10 text-primary">
+                                <i class="fas fa-user-check"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="mb-0">Pre-boarding</h6>
+                                    <span class="badge bg-primary">In Progress</span>
+                                </div>
+                                <p class="text-muted small mb-3">Complete pre-employment documentation and system access requests</p>
+                                <div class="progress mb-3" style="height: 6px;">
+                                    <div class="progress-bar bg-primary" style="width: 75%;"></div>
+                                </div>
+                                <div class="d-flex justify-content-between small text-muted mb-2">
+                                    <span>3 of 4 tasks completed</span>
+                                    <span>75%</span>
+                                </div>
+                                <div class="task-list">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="task1" checked>
+                                        <label class="form-check-label" for="task1">Signed offer letter</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="task2" checked>
+                                        <label class="form-check-label" for="task2">Background check completed</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="task3" checked>
+                                        <label class="form-check-label" for="task3">IT equipment requested</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="task4">
+                                        <label class="form-check-label" for="task4">Email account created</label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <h5 class="mb-0">Onboarding Guide</h5>
                     </div>
-                    <p class="text-muted">Comprehensive guide to help you navigate through the onboarding process smoothly.</p>
-                    <a href="#" class="btn btn-sm btn-outline-primary">View Guide</a>
+                    
+                    <div class="onboarding-step">
+                        <div class="d-flex align-items-start">
+                            <div class="step-icon bg-secondary bg-opacity-10 text-secondary">
+                                <i class="fas fa-calendar-day"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-2">First Day</h6>
+                                <p class="text-muted small mb-3">Orientation and initial setup</p>
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Scheduled for June 15, 2023
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="onboarding-step">
+                        <div class="d-flex align-items-start">
+                            <div class="step-icon bg-secondary bg-opacity-10 text-secondary">
+                                <i class="fas fa-tasks"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-2">First Week</h6>
+                                <p class="text-muted small mb-3">Training and team introductions</p>
+                                <div class="progress mb-3" style="height: 6px;">
+                                    <div class="progress-bar" style="width: 0%;"></div>
+                                </div>
+                                <div class="d-flex justify-content-between small text-muted mb-2">
+                                    <span>0 of 8 tasks completed</span>
+                                    <span>0%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="onboarding-step">
+                        <div class="d-flex align-items-start">
+                            <div class="step-icon bg-secondary bg-opacity-10 text-secondary">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-2">30-60-90 Day Plan</h6>
+                                <p class="text-muted small mb-0">Performance milestones and goals</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="bg-warning bg-opacity-10 p-3 rounded-circle me-3">
-                            <i class="fas fa-question-circle text-warning"></i>
-                        </div>
-                        <h5 class="mb-0">FAQs</h5>
+        
+        <!-- Onboarding Resources & Tasks -->
+        <div class="col-lg-4">
+            <!-- Resource Center -->
+            <div class="card onboarding-card mb-4">
+                <div class="card-header bg-transparent border-0 py-3">
+                    <h5 class="mb-0">Resource Center</h5>
+                    <p class="text-muted mb-0 mt-1">Essential resources for new hires</p>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        <a href="#" class="list-group-item list-group-item-action border-0">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-primary bg-opacity-10 p-2 rounded me-3">
+                                    <i class="fas fa-envelope text-primary"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">Send Welcome Email</h6>
+                                    <small class="text-muted">Pre-written template</small>
+                                </div>
+                            </div>
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action border-0">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-success bg-opacity-10 p-2 rounded me-3">
+                                    <i class="fas fa-calendar-plus text-success"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">Schedule Orientation</h6>
+                                    <small class="text-muted">Set up first day schedule</small>
+                                </div>
+                            </div>
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action border-0">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-info bg-opacity-10 p-2 rounded me-3">
+                                    <i class="fas fa-user-plus text-info"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">Add to Team Channels</h6>
+                                    <small class="text-muted">Slack, Teams, etc.</small>
+                                </div>
+                            </div>
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action border-0">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-warning bg-opacity-10 p-2 rounded me-3">
+                                    <i class="fas fa-file-alt text-warning"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">Upload Documents</h6>
+                                    <small class="text-muted">Contracts, policies, etc.</small>
+                                </div>
+                            </div>
+                        </a>
                     </div>
-                    <p class="text-muted">Find answers to commonly asked questions about the onboarding process.</p>
-                    <a href="#" class="btn btn-sm btn-outline-primary">View FAQs</a>
                 </div>
             </div>
+            
         </div>
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="bg-info bg-opacity-10 p-3 rounded-circle me-3">
-                            <i class="fas fa-video text-info"></i>
+    </div>
+    
+    <!-- Add margin to the bottom of the container to prevent footer overlap -->
+    <div class="mb-5"></div>
+</div>
+
+<!-- New Hire Modal -->
+<div class="modal fade" id="newHireModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Hire</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">First Name</label>
+                            <input type="text" class="form-control" required>
                         </div>
-                        <h5 class="mb-0">Video Tutorials</h5>
+                        <div class="col-md-6">
+                            <label class="form-label">Last Name</label>
+                            <input type="text" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Phone</label>
+                            <input type="tel" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Job Title</label>
+                            <input type="text" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Department</label>
+                            <select class="form-select" required>
+                                <option value="">Select Department</option>
+                                <option>Engineering</option>
+                                <option>Product</option>
+                                <option>Design</option>
+                                <option>Marketing</option>
+                                <option>Sales</option>
+                                <option>HR</option>
+                                <option>Operations</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Start Date</label>
+                            <input type="date" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Manager</label>
+                            <select class="form-select" required>
+                                <option value="">Select Manager</option>
+                                <option>Sarah Johnson</option>
+                                <option>Michael Chen</option>
+                                <option>Emily Wilson</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Onboarding Template</label>
+                            <select class="form-select" required>
+                                <option value="">Select Template</option>
+                                <option>Standard Onboarding</option>
+                                <option>Engineering Team</option>
+                                <option>Management Track</option>
+                                <option>Internship Program</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" rows="3" placeholder="Any special instructions or notes"></textarea>
+                        </div>
                     </div>
-                    <p class="text-muted">Watch step-by-step video tutorials to help you complete your onboarding tasks.</p>
-                    <a href="#" class="btn btn-sm btn-outline-primary">Watch Videos</a>
-                </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary">Create Onboarding</button>
             </div>
         </div>
     </div>
+</div>
+
+<!-- Document Upload Modal -->
+<div class="modal fade" id="documentUploadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Upload Document</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="document-upload-area text-center p-5" id="dropZone">
+                    <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                    <h5>Drag & drop files here</h5>
+                    <p class="text-muted small mb-4">or</p>
+                    <button class="btn btn-outline-primary">
+                        <i class="fas fa-folder-open me-2"></i>Browse Files
+                    </button>
+                    <input type="file" class="d-none" id="fileInput" multiple>
+                </div>
+                <div class="mt-3">
+                    <label class="form-label">Document Type</label>
+                    <select class="form-select">
+                        <option>Contract</option>
+                        <option>ID/Passport</option>
+                        <option>Certification</option>
+                        <option>Education</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary">Upload</button>
+            </div>
+        </div>
+    </div>
+</div>
 
     <!-- New Onboarding Modal -->
     <div class="modal fade" id="newOnboardingModal" tabindex="-1" aria-hidden="true">

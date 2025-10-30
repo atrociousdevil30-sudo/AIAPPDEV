@@ -107,7 +107,36 @@ def calculate_match_score(resume_data: ResumeData, job_title: str, job_descripti
         'experience_match': round(experience_match, 1)
     }
 
+def time_ago(dt):
+    if not dt:
+        return ''
+    
+    now = datetime.now(timezone.utc)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    
+    diff = now - dt
+    
+    if diff.days > 365:
+        years = diff.days // 365
+        return f"{years} year{'s' if years > 1 else ''} ago"
+    if diff.days > 30:
+        months = diff.days // 30
+        return f"{months} month{'s' if months > 1 else ''} ago"
+    if diff.days > 0:
+        return f"{diff.days} day{'s' if diff.days > 1 else ''} ago"
+    if diff.seconds > 3600:
+        hours = diff.seconds // 3600
+        return f"{hours} hour{'s' if hours > 1 else ''} ago"
+    if diff.seconds > 60:
+        minutes = diff.seconds // 60
+        return f"{minutes} minute{'s' if minutes > 1 else ''} ago"
+    return "just now"
+
 app = Flask(__name__)
+
+# Add the time_ago filter to Jinja2 environment
+app.jinja_env.filters['time_ago'] = time_ago
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'dev-key-please-change-in-production'
 
 # Custom Jinja2 filter for date formatting
@@ -1317,12 +1346,21 @@ def interview_route():
 
 # Initialize the NLP chatbot
 try:
+    # Use a relative import from the current package
     from .nlp.train import NLPChatbot
+    
     # Global chatbot instance
     chatbot = NLPChatbot()
-except ImportError:
-    print("Warning: Could not import NLPChatbot. Some features may not be available.")
-    chatbot = None
+    print("Successfully initialized NLPChatbot")
+except (ImportError, ValueError) as e:
+    try:
+        # Fallback for direct script execution
+        from app.nlp.train import NLPChatbot
+        chatbot = NLPChatbot()
+        print("Successfully initialized NLPChatbot (fallback import)")
+    except Exception as e:
+        print(f"Warning: Could not initialize NLPChatbot: {str(e)}. Some features may not be available.")
+        chatbot = None
 
 @app.route('/ai-training')
 @app.route('/ai_training')
@@ -2131,89 +2169,303 @@ MOCK_DATA_SCIENTIST_DATA = {
     ]
 }
 
+@app.route('/candidates')
+@app.route('/candidates/management')
+def candidate_management():
+    if 'user_role' not in session or session['user_role'] != 'hr':
+        return redirect(url_for('login'))
+    
+    # Get all candidates
+    candidates = Candidate.query.order_by(Candidate.created_at.desc()).all()
+    
+    # Calculate statistics
+    new_this_week = Candidate.query.filter(
+        Candidate.created_at >= (datetime.utcnow() - timedelta(days=7))
+    ).count()
+    
+    in_review_count = Candidate.query.filter_by(status='In Review').count()
+    interview_count = Candidate.query.filter_by(status='Interview').count()
+    
+    return render_template(
+        'candidate_management.html',
+        candidates=candidates,
+        new_this_week=new_this_week,
+        in_review_count=in_review_count,
+        interview_count=interview_count
+    )
+
+@app.route('/candidates/add', methods=['POST'])
+def add_candidate():
+    if 'user_role' not in session or session['user_role'] != 'hr':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    try:
+        # Get form data
+        first_name = request.form.get('first_name')
+        last_name = request.form.get('last_name')
+        email = request.form.get('email')
+        phone = request.form.get('phone')
+        position_applied = request.form.get('position_applied')
+        source = request.form.get('source', 'Career Site')
+        notes = request.form.get('notes')
+        
+        # Create new candidate
+        candidate = Candidate(
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+            phone=phone,
+            position_applied=position_applied,
+            source=source,
+            status='New',
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        
+        # Handle file upload
+        if 'resume' in request.files:
+            file = request.files['resume']
+            if file.filename != '':
+                filename = secure_filename(file.filename)
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'resumes', filename)
+                os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                file.save(filepath)
+                
+                # Create resume record
+                resume = Resume(
+                    candidate=candidate,
+                    file_name=filename,
+                    file_path=filepath,
+                    file_type=filename.split('.')[-1],
+                    file_size=os.path.getsize(filepath),
+                    created_at=datetime.utcnow()
+                )
+                db.session.add(resume)
+        
+        # Add note if provided
+        if notes:
+            note = Note(
+                candidate=candidate,
+                user_id=session.get('user_id'),
+                content=notes,
+                is_private=False,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            db.session.add(note)
+        
+        db.session.add(candidate)
+        db.session.commit()
+        
+        flash('Candidate added successfully!', 'success')
+        return jsonify({'success': True, 'redirect': url_for('candidate_management')})
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error adding candidate: {str(e)}")
+        return jsonify({'success': False, 'message': 'Error adding candidate'}), 500
+
+def analyze_resume(resume_text: str, job_title: str) -> Dict[str, Any]:
+    """
+    Analyze resume text and return ATS score and analysis
+    
+    Args:
+        resume_text: Text content of the resume
+        job_title: Job title to match against
+        
+    Returns:
+        Dict containing analysis results
+    """
+    if not resume_text or not job_title:
+        return {
+            'success': False,
+            'message': 'Resume text and job title are required'
+        }
+    
+    # Get job description based on job title
+    job_desc = JOB_DESCRIPTIONS.get(job_title, {
+        'required_skills': [],
+        'required_experience': 0,
+        'required_education': [],
+        'keywords': []
+    })
+    
+    # Process resume text with spaCy
+    doc = nlp(resume_text.lower())
+    
+    # Extract skills (simple keyword matching for now)
+    found_skills = []
+    for skill in job_desc['required_skills']:
+        if skill.lower() in resume_text.lower():
+            found_skills.append(skill)
+    
+    # Calculate skills match percentage
+    skill_match = 0
+    if job_desc['required_skills']:
+        skill_match = (len(found_skills) / len(job_desc['required_skills'])) * 100
+    
+    # Check for education
+    education_found = any(edu.lower() in resume_text.lower() for edu in job_desc['required_education'])
+    education_match = 100 if education_found else 0
+    
+    # Check for keywords
+    found_keywords = [kw for kw in job_desc['keywords'] if kw.lower() in resume_text.lower()]
+    keyword_match = 0
+    if job_desc['keywords']:
+        keyword_match = (len(found_keywords) / len(job_desc['keywords'])) * 100
+    
+    # Calculate overall ATS score (weighted average)
+    ats_score = (skill_match * 0.5) + (education_match * 0.2) + (keyword_match * 0.3)
+    
+    # Generate recommendations
+    recommendations = []
+    if skill_match < 50:
+        missing_skills = [s for s in job_desc['required_skills'] if s.lower() not in [fs.lower() for fs in found_skills]]
+        if missing_skills:
+            recommendations.append(f"Consider highlighting these skills: {', '.join(missing_skills[:3])}")
+    
+    if not education_found and job_desc['required_education']:
+        recommendations.append(f"Consider adding education details or relevant certifications")
+    
+    if keyword_match < 40 and job_desc['keywords']:
+        recommendations.append("Incorporate more job-specific keywords from the job description")
+    
+    if not recommendations:
+        recommendations = ["Resume looks strong! Consider preparing for potential interview questions."]
+    
+    return {
+        'success': True,
+        'score': round(ats_score, 1),
+        'matched_skills': found_skills,
+        'missing_skills': [s for s in job_desc['required_skills'] if s.lower() not in [fs.lower() for fs in found_skills]],
+        'education_match': 'Yes' if education_found else 'No',
+        'keyword_match': f"{int(keyword_match)}%",
+        'recommendations': recommendations,
+        'missing_keywords': [kw for kw in job_desc['keywords'] if kw.lower() not in [fk.lower() for fk in found_keywords]],
+        'experience_match': 'Yes' if job_desc['required_experience'] == 0 else 'Check experience',
+        'skills_match': f"{int(skill_match)}%"
+    }
+
+@app.route('/api/candidates/<int:candidate_id>/analyze', methods=['POST'])
+def analyze_candidate_resume(candidate_id):
+    """API endpoint to analyze a candidate's resume"""
+    if 'user_role' not in session or session['user_role'] != 'hr':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    candidate = Candidate.query.get_or_404(candidate_id)
+    
+    # Get the most recent resume
+    resume = Resume.query.filter_by(candidate_id=candidate_id).order_by(Resume.created_at.desc()).first()
+    
+    if not resume:
+        return jsonify({
+            'success': False,
+            'message': 'No resume found for this candidate'
+        }), 404
+    
+    try:
+        # Read resume content (assuming it's a text file for simplicity)
+        with open(resume.file_path, 'r', encoding='utf-8') as f:
+            resume_text = f.read()
+        
+        # Analyze resume
+        analysis = analyze_resume(resume_text, candidate.position_applied or 'Data Scientist')
+        
+        # Update candidate's ATS score
+        if analysis['success']:
+            candidate.ats_score = analysis['score']
+            
+            # Add a note about the analysis
+            note = Note(
+                candidate_id=candidate_id,
+                user_id=session.get('user_id', 1),  # Default to admin
+                title=f'Resume ATS Analysis',
+                content=f"ATS Score: {analysis['score']}%\n"
+                        f"Matched Skills: {', '.join(analysis.get('matched_skills', []))}\n"
+                        f"Recommendations: {', '.join(analysis.get('recommendations', []))}",
+                note_type='analysis',
+                is_private=False
+            )
+            db.session.add(note)
+            db.session.commit()
+        
+        return jsonify(analysis)
+    
+    except Exception as e:
+        app.logger.error(f"Error analyzing resume: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Error analyzing resume: {str(e)}'
+        }), 500
+
+@app.route('/candidates/<int:candidate_id>')
+def view_candidate(candidate_id):
+    if 'user_role' not in session or session['user_role'] != 'hr':
+        return redirect(url_for('login'))
+    
+    candidate = Candidate.query.options(
+        joinedload(Candidate.resumes),
+        joinedload(Candidate.notes).joinedload(Note.user),
+        joinedload(Candidate.interviews)
+    ).get_or_404(candidate_id)
+    
+    # Get similar candidates (same position or similar skills)
+    similar_candidates = []
+    if candidate.position_applied:
+        similar_candidates = Candidate.query.filter(
+            Candidate.id != candidate.id,
+            or_(
+                Candidate.position_applied.ilike(f'%{candidate.position_applied}%'),
+                Candidate.skills.ilike(f'%{candidate.position_applied}%')
+            )
+        ).limit(5).all()
+    
+    return render_template(
+        'candidate_profile.html',
+        candidate=candidate,
+        similar_candidates=similar_candidates,
+        now=datetime.utcnow()
+    )
+
+@app.route('/api/candidates/<int:candidate_id>/status', methods=['PUT'])
+def update_candidate_status(candidate_id):
+    if 'user_role' not in session or session['user_role'] != 'hr':
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 401
+    
+    data = request.get_json()
+    new_status = data.get('status')
+    
+    if not new_status:
+        return jsonify({'success': False, 'message': 'Status is required'}), 400
+    
+    candidate = Candidate.query.get_or_404(candidate_id)
+    candidate.status = new_status
+    candidate.updated_at = datetime.utcnow()
+    
+    # Add status change note
+    note = Note(
+        candidate_id=candidate_id,
+        user_id=session.get('user_id'),
+        content=f'Status changed to {new_status}',
+        is_private=False,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+    
+    db.session.add(note)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Status updated successfully'})
+
 @app.route('/resume-screening', methods=['GET', 'POST'])
 def resume_screening_route():
-    from resume_parser import ResumeParser
-    import os
-    from werkzeug.utils import secure_filename
-    
-    if request.method == 'POST':
-        # Check if the post request has the file part
-        if 'resume' not in request.files:
-            flash('No file part', 'error')
-            return redirect(request.url)
-        
-        file = request.files['resume']
-        
-        # If user does not select file, browser also submit an empty part without filename
-        if file.filename == '':
-            flash('No selected file', 'error')
-            return redirect(request.url)
-        
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
-            
-            # Parse the resume
-            parser = ResumeParser()
-            resume_data = parser.parse_resume(filepath)
-            
-            # If no resume data was parsed, use mock data
-            if not resume_data.skills and not resume_data.experience and not resume_data.education:
-                resume_data = type('ResumeData', (), MOCK_DATA_SCIENTIST_DATA)
-            
-            # Calculate match score with Data Scientist job description
-            job_title = 'Data Scientist • 5 years experience'
-            job_description = """
-            We are looking for an experienced Data Scientist with expertise in machine learning, 
-            data analysis, and programming. The ideal candidate should have:
-            
-            Requirements:
-            - 5+ years of experience in data science or related field
-            - Strong programming skills in Python
-            - Experience with machine learning frameworks (TensorFlow, PyTorch)
-            - Knowledge of SQL and NoSQL databases
-            - Experience with data visualization tools
-            - Strong problem-solving skills
-            - Experience with cloud platforms (AWS, GCP, or Azure)
-            - Good understanding of software development best practices
-            """
-            
-            match_score = calculate_match_score(resume_data, job_title, job_description)
-            
-            # Create a candidate object
-            candidate = {
-                'id': len(db.candidates) + 1,
-                'name': resume_data.name or MOCK_DATA_SCIENTIST_DATA['name'],
-                'email': resume_data.email or MOCK_DATA_SCIENTIST_DATA['email'],
-                'phone': resume_data.phone or MOCK_DATA_SCIENTIST_DATA['phone'],
-                'resume_path': filepath,
-                'score': match_score['score'],
-                'summary': {
-                    'skills': resume_data.skills or MOCK_DATA_SCIENTIST_DATA['skills'],
-                    'experience': resume_data.experience or MOCK_DATA_SCIENTIST_DATA['experience'],
-                    'education': resume_data.education or MOCK_DATA_SCIENTIST_DATA['education'],
-                    'match_score': match_score
-                },
-                'status': 'New',
-                'applied_date': datetime.now().strftime('%Y-%m-%d')
-            }
-            
-            # Add to database (or in-memory list for now)
-            db.candidates.append(candidate)
-            
-            # Redirect to the candidate's analysis page
-            return redirect(url_for('manual_review', candidate_id=candidate['id']))
-    
-    # Get candidates with their ATS scores
-    candidates = sorted(db.candidates, key=lambda x: x.get('score', 0), reverse=True)
-    return render_template('resume_screening.html', candidates=candidates)
+    # Redirect all requests to candidate management
+    return redirect(url_for('candidate_management'))
 
 @app.route('/resume/review/<int:candidate_id>', methods=['GET', 'POST'])
 def manual_review(candidate_id):
-    # Find the candidate
-    candidate = next((c for c in db.candidates if c['id'] == candidate_id), None)
+    # Find the candidate in the database
+    candidate = Candidate.query.get_or_404(candidate_id)
     if not candidate:
         flash('Candidate not found', 'error')
         return redirect(url_for('resume_screening_route'))

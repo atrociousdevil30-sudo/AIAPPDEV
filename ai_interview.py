@@ -1,16 +1,73 @@
 import random
-from typing import Dict, List, Optional
-from datetime import datetime
 import json
+import torch
+import numpy as np
+from typing import Dict, List, Optional, Tuple
+from datetime import datetime
+from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
+from sentence_transformers import SentenceTransformer, util
+import nltk
+from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk.corpus import stopwords
+from nltk.probability import FreqDist
+
+# Download required NLTK data
+try:
+    nltk.data.find('tokenizers/punkt')
+    nltk.data.find('corpora/stopwords')
+except LookupError:
+    nltk.download('punkt')
+    nltk.download('stopwords')
+
+class NLPAnalyzer:
+    def __init__(self):
+        # Initialize sentiment analysis pipeline
+        self.sentiment_analyzer = pipeline("sentiment-analysis", 
+                                         model="distilbert-base-uncased-finetuned-sst-2-english")
+        
+        # Initialize sentence transformer for semantic similarity
+        self.sentence_encoder = SentenceTransformer('all-MiniLM-L6-v2')
+        
+        # Initialize stopwords
+        self.stop_words = set(stopwords.words('english'))
+        
+    def analyze_sentiment(self, text: str) -> Dict:
+        """Analyze sentiment of the given text."""
+        try:
+            return self.sentiment_analyzer(text)[0]
+        except Exception as e:
+            return {"label": "NEUTRAL", "score": 0.5}
+    
+    def extract_keywords(self, text: str, top_n: int = 5) -> List[str]:
+        """Extract top N keywords from the text."""
+        try:
+            words = [word.lower() for word in word_tokenize(text) 
+                    if word.isalnum() and word.lower() not in self.stop_words]
+            freq_dist = FreqDist(words)
+            return [word for word, _ in freq_dist.most_common(top_n)]
+        except Exception as e:
+            return []
+    
+    def get_semantic_similarity(self, text1: str, text2: str) -> float:
+        """Calculate semantic similarity between two texts."""
+        try:
+            embeddings = self.sentence_encoder.encode([text1, text2], convert_to_tensor=True)
+            return util.pytorch_cos_sim(embeddings[0], embeddings[1]).item()
+        except Exception as e:
+            return 0.0
 
 class AIInterviewer:
     def __init__(self):
+        self.nlp = NLPAnalyzer()
         self.interview_state = {
             'current_question_index': 0,
             'start_time': datetime.now().isoformat(),
             'responses': [],
             'current_topic': 'introduction',
-            'interview_complete': False
+            'interview_complete': False,
+            'extracted_keywords': set(),
+            'conversation_history': [],
+            'sentiment_scores': []
         }
         
         # Define interview questions by category
@@ -73,60 +130,78 @@ class AIInterviewer:
             'total_questions': len(topic_questions)
         }
     
-    def process_answer(self, answer: str, question: str) -> Dict[str, str]:
-        """Process the user's answer and generate a response."""
-        # Store the response
-        self.interview_state['responses'].append({
-            'question': question,
-            'answer': answer,
-            'timestamp': datetime.now().isoformat()
+    def process_response(self, user_response: str) -> Dict:
+        """Process user's response with NLP analysis and return feedback and next question."""
+        # Analyze response with NLP
+        sentiment = self.nlp.analyze_sentiment(user_response)
+        keywords = self.nlp.extract_keywords(user_response)
+        
+        # Update interview state
+        self.interview_state['extracted_keywords'].update(keywords)
+        self.interview_state['sentiment_scores'].append(sentiment['score'])
+        
+        # Store the response with analysis
+        response_data = {
+            'question': self.questions[self.interview_state['current_topic']][self.interview_state['current_question_index']],
+            'answer': user_response,
+            'timestamp': datetime.now().isoformat(),
+            'sentiment': sentiment,
+            'keywords': keywords
+        }
+        
+        # Add to conversation history
+        self.interview_state['conversation_history'].append({
+            'role': 'user',
+            'content': user_response,
+            'analysis': {
+                'sentiment': sentiment,
+                'keywords': keywords
+            }
         })
         
-        # Simple analysis of the answer (in a real app, this would use NLP)
-        answer_quality = self._analyze_answer(answer)
+        # Generate feedback using NLP
+        feedback = self._generate_nlp_feedback(user_response, sentiment, keywords)
         
-        # Move to next question
-        self.interview_state['current_question_index'] += 1
+        # Get next question based on conversation context
+        next_question = self._get_contextual_next_question(user_response, keywords)
         
-        # Generate feedback
-        feedback = self._generate_feedback(answer_quality)
-        
-        # Check if we should move to the next question or topic
-        next_question = self.get_next_question()
+        # Add AI response to conversation history
+        if not self.interview_state['interview_complete']:
+            self.interview_state['conversation_history'].append({
+                'role': 'assistant',
+                'content': next_question['content']
+            })
         
         return {
-            'type': 'feedback',
             'feedback': feedback,
             'next_question': next_question,
-            'answer_quality': answer_quality
+            'interview_complete': self.interview_state['interview_complete'],
+            'analysis': {
+                'sentiment': sentiment,
+                'keywords': keywords
+            }
         }
     
-    def _analyze_answer(self, answer: str) -> Dict[str, float]:
-        """Analyze the quality of the answer (simplified for demo)."""
-        # In a real app, this would use NLP to analyze the response
-        word_count = len(answer.split())
-        
-        # Simple heuristics for demo purposes
-        return {
-            'length_score': min(word_count / 30, 1.0),  # Max 30 words for good length
-            'specificity': random.uniform(0.5, 1.0),    # Random for demo
-            'relevance': random.uniform(0.7, 1.0),      # Random for demo
-            'clarity': random.uniform(0.6, 1.0)         # Random for demo
-        }
-    
-    def _generate_feedback(self, analysis: Dict[str, float]) -> str:
-        """Generate feedback based on answer analysis."""
+    def _generate_nlp_feedback(self, response: str, sentiment: Dict, keywords: List[str]) -> str:
+        """Generate feedback using NLP analysis of the response."""
         feedback = []
         
-        # Add positive feedback
-        if analysis['length_score'] > 0.7:
-            feedback.append(random.choice(self.feedback_templates['positive']))
+        # Sentiment-based feedback
+        if sentiment['label'] == 'POSITIVE' and sentiment['score'] > 0.9:
+            feedback.append("Great enthusiasm in your response!")
         
-        # Add constructive feedback
-        if analysis['length_score'] < 0.4:
-            feedback.append("Your answer was quite brief. Try to provide more details or examples to strengthen your response.")
+        # Length-based feedback
+        word_count = len(response.split())
+        if word_count < 15:
+            feedback.append("Consider expanding your answer with more details or examples.")
+        elif word_count > 150:
+            feedback.append("Your answer is quite detailed. Try to be more concise in your responses.")
         
-        # Add a random constructive tip
+        # Keyword analysis
+        if keywords:
+            tech_terms = [kw for kw in keywords if kw in self._get_technical_terms()]
+            if tech_terms:
+                feedback.append(f"Good use of technical terms like: {', '.join(tech_terms[:3])}.")
         if random.random() > 0.3:  # 70% chance to add a tip
             feedback.append(random.choice(self.feedback_templates['constructive']))
         

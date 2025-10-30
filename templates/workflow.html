@@ -2,125 +2,800 @@
 
 {% block title %}SmartHire AI - Workflow Management{% endblock %}
 
+{% block extra_css %}
+{{ super() }}
+<style>
+    .workflow-card {
+        transition: all 0.3s ease;
+        border: 1px solid var(--border-color);
+        border-radius: 0.75rem;
+        overflow: hidden;
+        height: 100%;
+        background: var(--card-bg);
+    }
+    
+    .bg-purple {
+        background-color: #6f42c1 !important;
+    }
+    
+    .text-purple {
+        color: #6f42c1 !important;
+    }
+    
+    .btn-outline-purple {
+        color: #6f42c1;
+        border-color: #6f42c1;
+    }
+    
+    .btn-outline-purple:hover {
+        color: #fff;
+        background-color: #6f42c1;
+        border-color: #6f42c1;
+    }
+    
+    .workflow-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15);
+    }
+    
+    .stat-card {
+        border-radius: 0.75rem;
+        transition: all 0.3s ease;
+        overflow: hidden;
+        border: none;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+    }
+    
+    .progress-thin {
+        height: 6px;
+        border-radius: 3px;
+    }
+    
+    .workflow-step {
+        position: relative;
+        padding-left: 2rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .step-dot {
+        position: absolute;
+        left: 0;
+        top: 0.25rem;
+        width: 1.25rem;
+        height: 1.25rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1;
+    }
+    
+    .badge-soft {
+        font-weight: 500;
+        padding: 0.35rem 0.75rem;
+        border-radius: 50px;
+    }
+    
+    .avatar-sm {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    
+    .avatar-group {
+        display: flex;
+        flex-wrap: wrap;
+        padding-left: 0;
+        margin-bottom: 0;
+    }
+    
+    .avatar-group-item {
+        margin-left: -0.75rem;
+        border: 2px solid var(--card-bg);
+        border-radius: 50%;
+        transition: all 0.2s;
+    }
+    
+    .avatar-group-item:hover {
+        z-index: 1;
+        transform: translateY(-2px);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <!-- Sidebar -->
-        <nav id="sidebar" class="col-md-3 col-lg-2 d-md-block sidebar collapse">
-            <div class="position-sticky pt-3">
-                <ul class="nav flex-column">
-                    <li class="nav-item">
-                        <a class="nav-link text-white" href="{{ url_for('hr_dashboard') }}">
-                            <i class="fas fa-tachometer-alt me-2"></i> Dashboard
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="{{ url_for('workflow_route') }}">
-                            <i class="fas fa-project-diagram me-2"></i> Workflow
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-white" href="{{ url_for('onboarding_route') }}">
-                            <i class="fas fa-user-plus me-2"></i> Onboarding
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-white" href="{{ url_for('hr_interviews') }}">
-                            <i class="fas fa-video me-2"></i> Interviews
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        </nav>
+<div class="container py-4">
+    <!-- Header with Actions -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">Workflow Management</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ url_for('hr_dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Workflow</li>
+                </ol>
+            </nav>
+        </div>
+        <div>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newWorkflowModal">
+                <i class="fas fa-plus me-2"></i>New Workflow
+            </button>
+        </div>
+    </div>
 
-        <!-- Main content -->
-        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
-            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom border-secondary">
-                <h1 class="h2 text-white">Workflow Management</h1>
-            </div>
-
-        
-        <!-- 5. Communication Center -->
-        <section id="communication" class="mb-4 card border-0 shadow-sm">
-            <div class="card-header bg-dark text-white">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-envelope me-2"></i>Communication Center</h5>
-                    <button class="btn btn-primary btn-sm">
-                        <i class="fas fa-plus me-2"></i>New Message
-                    </button>
-                </div>
-            </div>
-            <div class="card-body">
-            
-            <div class="row">
-                <!-- Email Templates -->
-                <div class="col-md-4 mb-4">
-                    <div class="card h-100 border-0 shadow-sm bg-dark">
-                        <div class="card-header bg-dark border-bottom border-secondary">
-                            <h5 class="mb-0"><i class="fas fa-envelope-open-text me-2"></i>Email Templates</h5>
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6 col-lg-3">
+            <div class="card stat-card bg-primary bg-opacity-10 border-0">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Active Workflows</h6>
+                            <h3 class="mb-0">24</h3>
                         </div>
-                        <div class="card-body">
-                            <ul class="list-group list-group-flush">
-                                <li class="list-group-item d-flex justify-content-between align-items-center bg-transparent text-white border-secondary">
-                                    <span>Interview Invitation</span>
-                                    <i class="fas fa-chevron-right text-secondary"></i>
-                                </li>
-                                <li class="list-group-item d-flex justify-content-between align-items-center bg-transparent text-white border-secondary">
-                                    <span>Offer Letter</span>
-                                    <i class="fas fa-chevron-right text-secondary"></i>
-                                </li>
-                                <li class="list-group-item d-flex justify-content-between align-items-center bg-transparent text-white border-secondary">
-                                    <span>Onboarding Welcome</span>
-                                    <i class="fas fa-chevron-right text-secondary"></i>
-                                </li>
-                            </ul>
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-primary bg-opacity-25 text-primary rounded-3">
+                                <i class="fas fa-tasks"></i>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted small">This week</span>
+                            <span class="text-success small">+12.5% <i class="fas fa-arrow-up"></i></span>
+                        </div>
+                        <div class="progress progress-thin mt-1">
+                            <div class="progress-bar bg-primary" role="progressbar" style="width: 75%" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100"></div>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Recent Messages -->
-                <div class="md:col-span-2 bg-white border border-gray-200 rounded-lg overflow-hidden">
-                    <div class="col-md-8">
-                    <div class="card h-100 border-0 shadow-sm bg-dark">
-                        <div class="card-header bg-dark border-bottom border-secondary">
-                            <h5 class="mb-0"><i class="fas fa-comments me-2"></i>Recent Messages</h5>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3">
+            <div class="card stat-card bg-success bg-opacity-10 border-0">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Completed</h6>
+                            <h3 class="mb-0">156</h3>
                         </div>
-                        <div class="card-body">
-                            <div class="mb-3 p-3 border border-secondary rounded">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <div class="d-flex align-items-center">
-                                        <div class="me-3 bg-primary bg-opacity-25 rounded-circle p-2">
-                                            <i class="fas fa-user text-primary"></i>
-                                        </div>
-                                        <div>
-                                            <p class="mb-0 fw-bold">John Doe</p>
-                                            <p class="mb-0 small text-muted">Applied for Senior Developer</p>
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-success bg-opacity-25 text-success rounded-3">
+                                <i class="fas fa-check-circle"></i>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted small">This month</span>
+                            <span class="text-success small">+8.2% <i class="fas fa-arrow-up"></i></span>
+                        </div>
+                        <div class="progress progress-thin mt-1">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: 65%" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3">
+            <div class="card stat-card bg-warning bg-opacity-10 border-0">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">In Review</h6>
+                            <h3 class="mb-0">18</h3>
+                        </div>
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-warning bg-opacity-25 text-warning rounded-3">
+                                <i class="fas fa-clock"></i>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted small">Avg. time: 2.5d</span>
+                            <span class="text-danger small">+1.2d <i class="fas fa-arrow-up"></i></span>
+                        </div>
+                        <div class="progress progress-thin mt-1">
+                            <div class="progress-bar bg-warning" role="progressbar" style="width: 45%" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3">
+            <div class="card stat-card bg-danger bg-opacity-10 border-0">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Overdue</h6>
+                            <h3 class="mb-0">7</h3>
+                        </div>
+                        <div class="avatar-sm flex-shrink-0">
+                            <span class="avatar-title bg-danger bg-opacity-25 text-danger rounded-3">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted small">Needs attention</span>
+                            <span class="text-danger small">+3 <i class="fas fa-arrow-up"></i></span>
+                        </div>
+                        <div class="progress progress-thin mt-1">
+                            <div class="progress-bar bg-danger" role="progressbar" style="width: 30%" aria-valuenow="30" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Workflow Pipeline -->
+    <div class="card workflow-card mb-4">
+        <div class="card-header border-0 bg-transparent">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Workflow Pipeline</h5>
+                <div class="d-flex">
+                    <div class="input-group input-group-sm ms-2" style="max-width: 250px;">
+                        <span class="input-group-text bg-transparent border-end-0"><i class="fas fa-search text-muted"></i></span>
+                        <input type="text" class="form-control border-start-0" placeholder="Search workflows...">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Workflow</th>
+                            <th>Status</th>
+                            <th>Progress</th>
+                            <th>Team</th>
+                            <th>Due Date</th>
+                            <th class="text-end pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0 me-3">
+                                        <div class="avatar-sm">
+                                            <span class="avatar-title bg-primary bg-opacity-10 text-primary rounded-3">
+                                                <i class="fas fa-user-plus"></i>
+                                            </span>
                                         </div>
                                     </div>
-                                    <span class="small text-muted">2h ago</span>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">New Employee Onboarding</h6>
+                                        <p class="text-muted mb-0 small">#WF-001</p>
+                                    </div>
                                 </div>
-                                <p class="mb-0 small">Thank you for the interview opportunity. I've completed the assignment you sent.</p>
-                        <!-- More messages... -->
+                            </td>
+                            <td><span class="badge bg-primary bg-opacity-10 text-primary">In Progress</span></td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="progress progress-thin w-100 me-2" style="height: 6px;">
+                                        <div class="progress-bar bg-primary" role="progressbar" style="width: 75%;" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <small class="text-muted">75%</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="avatar-group">
+                                    <a href="#" class="avatar-group-item" data-bs-toggle="tooltip" data-bs-placement="top" title="John Doe">
+                                        <img src="https://ui-avatars.com/api/?name=John+Doe&background=0D6EFD&color=fff" alt="" class="avatar-sm">
+                                    </a>
+                                    <a href="#" class="avatar-group-item" data-bs-toggle="tooltip" data-bs-placement="top" title="Jane Smith">
+                                        <img src="https://ui-avatars.com/api/?name=Jane+Smith&background=198754&color=fff" alt="" class="avatar-sm">
+                                    </a>
+                                    <a href="#" class="avatar-group-item" data-bs-toggle="tooltip" data-bs-placement="top" title="+2">
+                                        <div class="avatar-sm">
+                                            <span class="avatar-title rounded-circle bg-light text-dark">+2</span>
+                                        </div>
+                                    </a>
+                                </div>
+                            </td>
+                            <td>May 15, 2023</td>
+                            <td class="text-end pe-4">
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-link text-muted" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item" href="#"><i class="fas fa-eye me-2"></i>View</a></li>
+                                        <li><a class="dropdown-item" href="#"><i class="fas fa-edit me-2"></i>Edit</a></li>
+                                        <li><a class="dropdown-item text-danger" href="#"><i class="fas fa-trash-alt me-2"></i>Delete</a></li>
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                        <!-- More workflow items... -->
+                        <tr>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0 me-3">
+                                        <div class="avatar-sm">
+                                            <span class="avatar-title bg-warning bg-opacity-10 text-warning rounded-3">
+                                                <i class="fas fa-file-invoice"></i>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">Contract Renewal</h6>
+                                        <p class="text-muted mb-0 small">#WF-002</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="badge bg-warning bg-opacity-10 text-warning">Pending Review</span></td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="progress progress-thin w-100 me-2" style="height: 6px;">
+                                        <div class="progress-bar bg-warning" role="progressbar" style="width: 30%;" aria-valuenow="30" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <small class="text-muted">30%</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="avatar-group">
+                                    <a href="#" class="avatar-group-item" data-bs-toggle="tooltip" data-bs-placement="top" title="Mike Johnson">
+                                        <img src="https://ui-avatars.com/api/?name=Mike+Johnson&background=DC3545&color=fff" alt="" class="avatar-sm">
+                                    </a>
+                                </div>
+                            </td>
+                            <td>May 20, 2023</td>
+                            <td class="text-end pe-4">
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-link text-muted" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item" href="#"><i class="fas fa-eye me-2"></i>View</a></li>
+                                        <li><a class="dropdown-item" href="#"><i class="fas fa-edit me-2"></i>Edit</a></li>
+                                        <li><a class="dropdown-item text-danger" href="#"><i class="fas fa-trash-alt me-2"></i>Delete</a></li>
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0 me-3">
+                                        <div class="avatar-sm">
+                                            <span class="avatar-title bg-success bg-opacity-10 text-success rounded-3">
+                                                <i class="fas fa-trophy"></i>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">Performance Review</h6>
+                                        <p class="text-muted mb-0 small">#WF-003</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="badge bg-success bg-opacity-10 text-success">Completed</span></td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="progress progress-thin w-100 me-2" style="height: 6px;">
+                                        <div class="progress-bar bg-success" role="progressbar" style="width: 100%;" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <small class="text-muted">100%</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="avatar-group">
+                                    <a href="#" class="avatar-group-item" data-bs-toggle="tooltip" data-bs-placement="top" title="Sarah Williams">
+                                        <img src="https://ui-avatars.com/api/?name=Sarah+Williams&background=6C757D&color=fff" alt="" class="avatar-sm">
+                                    </a>
+                                    <a href="#" class="avatar-group-item" data-bs-toggle="tooltip" data-bs-placement="top" title="Robert Brown">
+                                        <img src="https://ui-avatars.com/api/?name=Robert+Brown&background=FD7E14&color=fff" alt="" class="avatar-sm">
+                                    </a>
+                                </div>
+                            </td>
+                            <td>May 5, 2023</td>
+                            <td class="text-end pe-4">
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-link text-muted" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item" href="#"><i class="fas fa-eye me-2"></i>View</a></li>
+                                        <li><a class="dropdown-item" href="#"><i class="fas fa-edit me-2"></i>Edit</a></li>
+                                        <li><a class="dropdown-item text-danger" href="#"><i class="fas fa-trash-alt me-2"></i>Delete</a></li>
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer bg-transparent border-top">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="text-muted small">Showing <span class="fw-semibold">3</span> of <span class="fw-semibold">24</span> workflows</div>
+                <nav aria-label="Page navigation">
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
+                        </li>
+                        <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                        <li class="page-item"><a class="page-link" href="#">2</a></li>
+                        <li class="page-item"><a class="page-link" href="#">3</a></li>
+                        <li class="page-item">
+                            <a class="page-link" href="#">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Workflow Progress -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card workflow-card h-100">
+                <div class="card-header border-0 bg-transparent">
+                    <h5 class="mb-0">Workflow Progress</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <!-- Workflow Stages -->
+                        <div class="col-lg-8">
+                            <div class="d-flex justify-content-between position-relative mb-4">
+                                <!-- Progress bar -->
+                                <div class="position-absolute w-100" style="top: 15px; height: 6px; background-color: #e9ecef;">
+                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 75%;" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                
+                                <!-- Stage 1 -->
+                                <div class="text-center" style="width: 20%;">
+                                    <div class="mx-auto mb-2 d-flex align-items-center justify-content-center rounded-circle bg-primary text-white" style="width: 36px; height: 36px; position: relative; z-index: 1;">
+                                        <i class="fas fa-check"></i>
+                                    </div>
+                                    <h6 class="mb-0 small">Draft</h6>
+                                    <p class="text-muted small mb-0">Completed</p>
+                                </div>
+                                
+                                <!-- Stage 2 -->
+                                <div class="text-center" style="width: 20%;">
+                                    <div class="mx-auto mb-2 d-flex align-items-center justify-content-center rounded-circle bg-primary text-white" style="width: 36px; height: 36px; position: relative; z-index: 1;">
+                                        <i class="fas fa-check"></i>
+                                    </div>
+                                    <h6 class="mb-0 small">Review</h6>
+                                    <p class="text-muted small mb-0">Completed</p>
+                                </div>
+                                
+                                <!-- Stage 3 -->
+                                <div class="text-center" style="width: 20%;">
+                                    <div class="mx-auto mb-2 d-flex align-items-center justify-content-center rounded-circle bg-primary text-white" style="width: 36px; height: 36px; position: relative; z-index: 1;">
+                                        <i class="fas fa-check"></i>
+                                    </div>
+                                    <h6 class="mb-0 small">Approval</h6>
+                                    <p class="text-muted small mb-0">In Progress</p>
+                                </div>
+                                
+                                <!-- Stage 4 -->
+                                <div class="text-center" style="width: 20%;">
+                                    <div class="mx-auto mb-2 d-flex align-items-center justify-content-center rounded-circle bg-light border border-2 border-primary text-primary" style="width: 36px; height: 36px; position: relative; z-index: 1;">
+                                        4
+                                    </div>
+                                    <h6 class="mb-0 small">Implementation</h6>
+                                    <p class="text-muted small mb-0">Pending</p>
+                                </div>
+                                
+                                <!-- Stage 5 -->
+                                <div class="text-center" style="width: 20%;">
+                                    <div class="mx-auto mb-2 d-flex align-items-center justify-content-center rounded-circle bg-light border border-2 border-secondary text-muted" style="width: 36px; height: 36px; position: relative; z-index: 1;">
+                                        5
+                                    </div>
+                                    <h6 class="mb-0 small">Completion</h6>
+                                    <p class="text-muted small mb-0">Not Started</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Timeline -->
+                            <div class="mt-5">
+                                <h6 class="mb-3">Recent Activity</h6>
+                                <div class="position-relative">
+                                    <!-- Timeline item 1 -->
+                                    <div class="d-flex mb-4">
+                                        <div class="flex-shrink-0 me-3">
+                                            <div class="avatar-xs">
+                                                <span class="avatar-title rounded-circle bg-primary bg-opacity-10 text-primary">
+                                                    <i class="fas fa-check"></i>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex justify-content-between">
+                                                <h6 class="mb-1">Draft Completed</h6>
+                                                <small class="text-muted">2h ago</small>
+                                            </div>
+                                            <p class="mb-0 text-muted">Workflow draft has been completed and submitted for review.</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Timeline item 2 -->
+                                    <div class="d-flex mb-4">
+                                        <div class="flex-shrink-0 me-3">
+                                            <div class="avatar-xs">
+                                                <span class="avatar-title rounded-circle bg-success bg-opacity-10 text-success">
+                                                    <i class="fas fa-user-check"></i>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex justify-content-between">
+                                                <h6 class="mb-1">Review Completed</h6>
+                                                <small class="text-muted">1 day ago</small>
+                                            </div>
+                                            <p class="mb-0 text-muted">Sarah Williams has completed the review process.</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Timeline item 3 -->
+                                    <div class="d-flex">
+                                        <div class="flex-shrink-0 me-3">
+                                            <div class="avatar-xs">
+                                                <span class="avatar-title rounded-circle bg-warning bg-opacity-10 text-warning">
+                                                    <i class="fas fa-clock"></i>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex justify-content-between">
+                                                <h6 class="mb-1">Pending Approval</h6>
+                                                <small class="text-muted">2 days ago</small>
+                                            </div>
+                                            <p class="mb-0 text-muted">Waiting for final approval from the management team.</p>
+                                            <div class="mt-2">
+                                                <span class="badge bg-light text-dark"><i class="fas fa-clock text-warning me-1"></i> Awaiting Response</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Workflow Details -->
+                        <div class="col-lg-4">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <h6 class="mb-3">Workflow Details</h6>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label small text-muted mb-1">Workflow Name</label>
+                                        <h6 class="mb-0">New Employee Onboarding</h6>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label small text-muted mb-1">Description</label>
+                                        <p class="mb-0">Complete all necessary steps to onboard a new employee including documentation, equipment setup, and training.</p>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label small text-muted mb-1">Start Date</label>
+                                        <p class="mb-0">May 1, 2023</p>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label small text-muted mb-1">Due Date</label>
+                                        <p class="mb-0">May 15, 2023</p>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label small text-muted mb-1">Assigned To</label>
+                                        <div class="d-flex align-items-center">
+                                            <img src="https://ui-avatars.com/api/?name=John+Doe&background=0D6EFD&color=fff" alt="" class="avatar-sm rounded-circle me-2">
+                                            <div>
+                                                <h6 class="mb-0">John Doe</h6>
+                                                <p class="small text-muted mb-0">HR Manager</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label small text-muted mb-1">Team Members</label>
+                                        <div class="avatar-group">
+                                            <a href="#" class="avatar-group-item" data-bs-toggle="tooltip" data-bs-placement="top" title="John Doe">
+                                                <img src="https://ui-avatars.com/api/?name=John+Doe&background=0D6EFD&color=fff" alt="" class="avatar-sm">
+                                            </a>
+                                            <a href="#" class="avatar-group-item" data-bs-toggle="tooltip" data-bs-placement="top" title="Jane Smith">
+                                                <img src="https://ui-avatars.com/api/?name=Jane+Smith&background=198754&color=fff" alt="" class="avatar-sm">
+                                            </a>
+                                            <a href="#" class="avatar-group-item" data-bs-toggle="tooltip" data-bs-placement="top" title="Mike Johnson">
+                                                <img src="https://ui-avatars.com/api/?name=Mike+Johnson&background=DC3545&color=fff" alt="" class="avatar-sm">
+                                            </a>
+                                            <a href="#" class="avatar-group-item" data-bs-toggle="tooltip" data-bs-placement="top" title="+2">
+                                                <div class="avatar-sm">
+                                                    <span class="avatar-title rounded-circle bg-light text-dark">+2</span>
+                                                </div>
+                                            </a>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-4">
+                                        <button class="btn btn-primary w-100">
+                                            <i class="fas fa-edit me-2"></i>Edit Workflow
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+        
+    <!-- Automation & AI Tools -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card workflow-card">
+                <div class="card-header border-0 bg-transparent">
+                    <h5 class="mb-0">Automation & AI Tools</h5>
+                    <p class="text-muted mb-0">Leverage AI-powered tools to automate and optimize your HR workflows</p>
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <!-- Document Automation -->
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-start mb-3">
+                                        <div class="bg-primary bg-opacity-10 p-3 rounded-3 me-3">
+                                            <i class="fas fa-file-alt text-primary fs-4"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-1">Document Automation</h6>
+                                            <p class="text-muted small mb-0">Generate and manage HR documents automatically</p>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-outline-primary w-100 mt-2">
+                                        <i class="fas fa-magic me-2"></i>Generate Documents
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Workflow Templates -->
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-start mb-3">
+                                        <div class="bg-success bg-opacity-10 p-3 rounded-3 me-3">
+                                            <i class="fas fa-project-diagram text-success fs-4"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-1">Workflow Templates</h6>
+                                            <p class="text-muted small mb-0">Pre-built templates for common HR processes</p>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-outline-success w-100 mt-2">
+                                        <i class="fas fa-clipboard-list me-2"></i>Browse Templates
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- AI Assistant -->
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-start mb-3">
+                                        <div class="bg-info bg-opacity-10 p-3 rounded-3 me-3">
+                                            <i class="fas fa-robot text-info fs-4"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-1">AI Assistant</h6>
+                                            <p class="text-muted small mb-0">Get AI-powered recommendations and support</p>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-outline-info w-100 mt-2" data-bs-toggle="modal" data-bs-target="#aiAssistantModal">
+                                        <i class="fas fa-comment-dots me-2"></i>Chat with AI
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Analytics Dashboard -->
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-start mb-3">
+                                        <div class="bg-warning bg-opacity-10 p-3 rounded-3 me-3">
+                                            <i class="fas fa-chart-line text-warning fs-4"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-1">Analytics Dashboard</h6>
+                                            <p class="text-muted small mb-0">Track and analyze workflow performance</p>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-outline-warning w-100 mt-2">
+                                        <i class="fas fa-chart-bar me-2"></i>View Analytics
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Approval Workflows -->
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-start mb-3">
+                                        <div class="bg-danger bg-opacity-10 p-3 rounded-3 me-3">
+                                            <i class="fas fa-clipboard-check text-danger fs-4"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-1">Approval Workflows</h6>
+                                            <p class="text-muted small mb-0">Streamline your approval processes</p>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-outline-danger w-100 mt-2">
+                                        <i class="fas fa-cog me-2"></i>Configure
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Integration Hub -->
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-start mb-3">
+                                        <div class="bg-purple bg-opacity-10 p-3 rounded-3 me-3">
+                                            <i class="fas fa-plug text-purple fs-4"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-1">Integration Hub</h6>
+                                            <p class="text-muted small mb-0">Connect with your favorite tools</p>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-outline-purple w-100 mt-2">
+                                        <i class="fas fa-plus-circle me-2"></i>Add Integration
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </section>
+        </div>
+    </div>
 
-        <!-- 6. Analytics & Insights -->
-        <section id="analytics" class="mb-4 card border-0 shadow-sm">
-            <div class="card-header bg-dark text-white">
-                <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Analytics & Insights</h5>
+    <!-- 6. Analytics & Insights -->
+    <section id="analytics" class="mb-4 card border-0 shadow-sm">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Analytics & Insights</h5>
+        </div>
+        <div class="card-body">
+        
+        <div class="row mb-4">
+            <div class="col-md-6 col-lg-3 mb-3">
+                <div class="card bg-primary bg-opacity-10 border-0 h-100">
+                    <div class="card-body">
+                        <p class="text-muted small mb-1">Total Hires</p>
+                        <h3 class="mb-0">124</h3>
+                        <p class="text-success small mb-0"><i class="fas fa-arrow-up me-1"></i>12% from last month</p>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
-            
-            <div class="row mb-4">
-                <div class="col-md-6 col-lg-3 mb-3">
-                    <div class="card bg-primary bg-opacity-10 border-0 h-100">
-                        <div class="card-body">
-                            <p class="text-muted small mb-1">Total Hires</p>
-                            <h3 class="mb-0">124</h3>
-                            <p class="text-success small mb-0"><i class="fas fa-arrow-up me-1"></i>12% from last month</p>
+            <div class="col-md-6 col-lg-3 mb-3">
+                <div class="card bg-success bg-opacity-10 border-0 h-100">
+                    <div class="card-body">
+                        <p class="text-muted small mb-1">Avg. Time to Hire</p>
+                        <h3 class="mb-0">23 days</h3>
+                        <p class="text-success small mb-0"><i class="fas fa-arrow-down me-1"></i>3 days faster</p>
                         </div>
                     </div>
                 </div>
@@ -345,65 +1020,100 @@
                                     </div>
                                     <div class="flex items-center">
                                         <button type="button" class="bg-gray-200 relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" role="switch" aria-checked="false">
-                                            <span class="translate-x-0 pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200"></span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="px-4 py-4 sm:px-6">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex flex-col">
-                                        <p class="text-sm font-medium text-gray-900">Auto-advance Candidates</p>
-                                        <p class="text-sm text-gray-500">Automatically move candidates to next stage after completing tasks</p>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <button type="button" class="bg-indigo-600 relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" role="switch" aria-checked="true">
-                                            <span class="translate-x-5 pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200"></span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </li>
-                            <!-- More automation options... -->
-                        </ul>
-                    </div>
-                </div>
-            </div>
-            </div>
-        </section>
-        
-        <script>
-            // Toggle switches for workflow automation
-        document.querySelectorAll('[role="switch"]').forEach(switchEl => {
-            switchEl.addEventListener('click', function() {
-                const isChecked = this.getAttribute('aria-checked') === 'true';
-                this.setAttribute('aria-checked', !isChecked);
-                this.classList.toggle('bg-indigo-600');
-                this.classList.toggle('bg-gray-200');
-                const span = this.querySelector('span');
-                if (span) {
-                    if (isChecked) {
-                        span.style.transform = 'translateX(0)';
-                    } else {
-                        span.style.transform = 'translateX(1.25rem)';
-                    }
+                                <script>
+            // Wait for the DOM to be fully loaded
+            document.addEventListener('DOMContentLoaded', function() {
+                // Toggle switches for workflow automation
+                document.querySelectorAll('[role="switch"]').forEach(switchEl => {
+                    switchEl.addEventListener('change', function() {
+                        const isChecked = this.checked;
+                        const statusText = this.nextElementSibling;
+                        if (statusText) {
+                            statusText.textContent = isChecked ? 'Active' : 'Inactive';
+                            statusText.className = isChecked ? 'text-success' : 'text-muted';
+                        }
+                    });
+                });
+
+                // Toggle switch for dark mode
+                const darkModeSwitch = document.getElementById('dark-mode-switch');
+                if (darkModeSwitch) {
+                    darkModeSwitch.addEventListener('change', function() {
+                        document.body.classList.toggle('dark-mode', this.checked);
+                        // You would typically save this preference to localStorage here
+                        // localStorage.setItem('darkMode', this.checked);
+                    });
+                }
+
+                // Initialize tooltips
+                const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl);
+                });
+
+                // Toggle sidebar
+                const sidebarToggle = document.getElementById('sidebarToggle');
+                const sidebar = document.getElementById('sidebar');
+                if (sidebarToggle && sidebar) {
+                    sidebarToggle.addEventListener('click', function() {
+                        sidebar.classList.toggle('collapsed');
+                        // Toggle icon between menu and x
+                        const icon = this.querySelector('i');
+                        if (icon) {
+                            icon.className = sidebar.classList.contains('collapsed') ? 'fas fa-bars' : 'fas fa-times';
+                        }
+                    });
+                }
+
+                // Handle color picker input
+                const colorPickers = document.querySelectorAll('input[type="color"]');
+                colorPickers.forEach(picker => {
+                    picker.addEventListener('input', function() {
+                        // Update the color value display
+                        const colorValue = this.value;
+                        const colorText = this.nextElementSibling;
+                        if (colorText && colorText.tagName === 'SPAN') {
+                            colorText.textContent = colorValue;
+                        }
+                        
+                        // If this is the primary color picker, update the theme
+                        if (this.id === 'primary-color') {
+                            document.documentElement.style.setProperty('--primary', colorValue);
+                        }
+                    });
+                });
+
+                // Toggle switches for workflow automation
+                document.querySelectorAll('.form-switch input[type="checkbox"]').forEach(switchEl => {
+                    switchEl.addEventListener('change', function() {
+                        const statusText = this.nextElementSibling;
+                        if (statusText) {
+                            statusText.textContent = this.checked ? 'Active' : 'Inactive';
+                            statusText.className = this.checked ? 'text-success' : 'text-muted';
+                        }
+                        
+                        // Toggle switch animation
+                        const span = this.nextElementSibling?.querySelector('.form-check-label');
+                        if (span) {
+                            span.style.transform = this.checked ? 'translateX(1.25rem)' : 'translateX(0)';
+                        }
+                    });
+                });
+
+                // Color picker update
+                const colorPicker = document.getElementById('primary-color');
+                if (colorPicker) {
+                    colorPicker.addEventListener('input', function() {
+                        const colorValue = this.value;
+                        // Update the color value display
+                        const colorText = this.nextElementSibling;
+                        if (colorText && colorText.tagName === 'SPAN') {
+                            colorText.textContent = colorValue;
+                        }
+                    });
                 }
             });
-        });
-
-        // Color picker update
-        const colorPicker = document.getElementById('primary-color');
-        if (colorPicker) {
-            colorPicker.addEventListener('input', (function() {
-                const colorValue = this.value;
-                // Update the color value display
-                const colorText = this.nextElementSibling;
-                if (colorText && colorText.tagName === 'SPAN') {
-                    colorText.textContent = colorValue;
-                }
-            }).bind(colorPicker));
-        }
-    });
-</script>
+        </script>
 {% endblock %}
 </body>
 </html>
